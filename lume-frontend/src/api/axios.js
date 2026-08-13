@@ -4,16 +4,9 @@ const axiosInstance = axios.create({
   baseURL: '/api',
 });
 
-axiosInstance.interceptors.request.use(
-  (config) => {
-    // Всегда берем токен напрямую из localStorage перед отправкой запроса
-    const token = localStorage.getItem('lumeToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+const axiosInstance = axios.create({
+  baseURL: 'https://lume-5mof.onrender.com', // Жёстко прописываем ссылку на бэкенд
+  headers: { 'Content-Type': 'application/json' },
+});
 
 export default axiosInstance;
