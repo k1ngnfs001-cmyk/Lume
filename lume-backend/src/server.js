@@ -11,7 +11,11 @@ dotenv.config();
 connectDB();
 
 const app = express();
-app.use(cors({ origin: 'http://localhost:5173' }));
+
+// ===== ИСПРАВЛЕНИЕ: Разрешаем запросы с любых доменов (чтобы работало на Vercel) =====
+app.use(cors());
+// =============================================================================
+
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
@@ -21,13 +25,16 @@ app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/chats', require('./routes/chatRoutes'));
 app.use('/api/stories', require('./routes/storyRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
-app.use('/api/admin', require('./routes/adminRoutes')); // <--- РАСКОММЕНТИРОВАНО!
+app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/search', require('./routes/searchRoutes'));
 
 const server = http.createServer(app);
+
+// ===== ИСПРАВЛЕНИЕ: Разрешаем сокетам принимать запросы с любых доменов =====
 const io = socketIO(server, {
-  cors: { origin: 'http://localhost:5173', methods: ['GET', 'POST'] }
+  cors: { origin: '*', methods: ['GET', 'POST'] }
 });
+// ============================================================================
 
 app.set('io', io);
 
