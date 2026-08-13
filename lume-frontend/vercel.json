@@ -1,0 +1,3 @@
+{
+  "rewrites": [{ "source": "/api/(.*)", "destination": "https://lume-5mof.onrender.com/api/$1" }]
+}
