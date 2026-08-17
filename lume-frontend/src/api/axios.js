@@ -1,12 +1,10 @@
 import axios from 'axios';
 
 const axiosInstance = axios.create({
-  // Обрати внимание: теперь в конце есть /api
-  baseURL: 'https://lume-5mof.onrender.com/api', 
+  baseURL: 'https://lume-5mof.onrender.com/api', // <--- ВАЖНО: /api в конце
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Интерцептор для подстановки JWT токена
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('lumeToken');
