@@ -1,3 +1,6 @@
 {
-  "rewrites": [{ "source": "/api/(.*)", "destination": "https://lume-5mof.onrender.com/api/$1" }]
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "https://lume-5mof.onrender.com/api/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
