@@ -240,76 +240,51 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
     }
   };
 
-  // ================= ИСПРАВЛЕННЫЕ ФУНКЦИИ (Оптимистичные) =================
+  // ================= ИСПРАВЛЕННЫЕ ФУНКЦИИ =================
   const handleLike = async (postId) => {
     if (!postId) return;
-    
-    const currentPost = posts.find(p => p._id === postId);
-    const currentIsLiked = currentPost?.isLikedByMe || false;
-    const currentLikes = currentPost?.likes || [];
-
-    const updatePostOptimistic = (p) => p._id === postId ? {
+    const updateLikes = (p) => p._id === postId ? {
       ...p,
-      isLikedByMe: !currentIsLiked,
-      likes: currentIsLiked 
-        ? currentLikes.filter(id => id !== currentUser._id) 
-        : [...currentLikes, currentUser._id]
+      isLikedByMe: !p.isLikedByMe,
+      likes: !p.isLikedByMe ? [...p.likes, currentUser._id] : p.likes.filter(id => id !== currentUser._id)
     } : p;
 
-    setViewerPosts(prev => prev.map(updatePostOptimistic));
-    setPosts(prev => prev.map(updatePostOptimistic));
+    setViewerPosts(prev => prev.map(updateLikes));
+    setPosts(prev => prev.map(updateLikes));
 
     try {
-      const response = await axios.post(`/posts/${postId}/like`);
-      const resData = response.data;
-      const isLiked = resData.isLiked || resData.liked || false;
-      const updatePostSync = (p) => p._id === postId ? { ...p, isLikedByMe: isLiked, likes: resData.likes || [] } : p;
-      setViewerPosts(prev => prev.map(updatePostSync));
-      setPosts(prev => prev.map(updatePostSync));
+      const res = await axios.post(`/posts/${postId}/like`);
+      const { likes, isLiked } = res.data;
+      const syncLikes = (p) => p._id === postId ? { ...p, isLikedByMe: isLiked, likes } : p;
+      setViewerPosts(prev => prev.map(syncLikes));
+      setPosts(prev => prev.map(syncLikes));
     } catch (error) {
-      // Откат
-      setViewerPosts(prev => prev.map(updatePostOptimistic));
-      setPosts(prev => prev.map(updatePostOptimistic));
       alert('Ошибка лайка: ' + (error.response?.data?.message || error.message));
     }
   };
 
   const handleSave = async (postId) => {
     if (!postId) return;
-    
-    const currentPost = posts.find(p => p._id === postId);
-    const isSaved = currentPost?.savedBy?.includes(currentUser._id) || false;
-
-    const updateSavedOptimistic = (p) => p._id === postId ? {
+    const updateSaves = (p) => p._id === postId ? {
       ...p,
-      savedBy: isSaved 
-        ? p.savedBy.filter(id => id !== currentUser._id) 
-        : [...(p.savedBy || []), currentUser._id]
+      isSavedByMe: !p.isSavedByMe,
+      savedBy: !p.isSavedByMe ? [...p.savedBy, currentUser._id] : p.savedBy.filter(id => id !== currentUser._id)
     } : p;
 
-    setViewerPosts(prev => prev.map(updateSavedOptimistic));
-    setPosts(prev => prev.map(updateSavedOptimistic));
+    setViewerPosts(prev => prev.map(updateSaves));
+    setPosts(prev => prev.map(updateSaves));
 
     try {
-      const response = await axios.post(`/posts/${postId}/save`);
-      const resData = response.data;
-      const newIsSaved = resData.isSaved || resData.saved || false;
-      const updateSavedSync = (p) => p._id === postId ? { 
-        ...p, 
-        savedBy: newIsSaved 
-          ? [...(p.savedBy || []), currentUser._id] 
-          : (p.savedBy || []).filter(id => id !== currentUser._id) 
-      } : p;
-      setViewerPosts(prev => prev.map(updateSavedSync));
-      setPosts(prev => prev.map(updateSavedSync));
+      const res = await axios.post(`/posts/${postId}/save`);
+      const { isSaved, savedBy } = res.data;
+      const syncSaves = (p) => p._id === postId ? { ...p, isSavedByMe: isSaved, savedBy } : p;
+      setViewerPosts(prev => prev.map(syncSaves));
+      setPosts(prev => prev.map(syncSaves));
     } catch (error) {
-      // Откат
-      setViewerPosts(prev => prev.map(updateSavedOptimistic));
-      setPosts(prev => prev.map(updateSavedOptimistic));
       alert('Ошибка сохранения: ' + (error.response?.data?.message || error.message));
     }
   };
-  // ========================================================================
+  // ==========================================================
 
   const handleAddComment = async (postId) => {
     if (!commentText.trim() || !postId) return;
@@ -611,7 +586,6 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
                     </Link>
                   </div>
 
-                  {/* ЛАЙК */}
                   <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={() => handleLike(viewerPost._id)}>
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
                       {viewerPost.isLikedByMe || (viewerPost.likes && viewerPost.likes.includes(currentUser?._id)) ? (
@@ -623,7 +597,6 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
                     <span className="text-white/80 text-[11px] font-bold tracking-wide">{viewerPost.likes?.length || 0}</span>
                   </div>
 
-                  {/* КОММЕНТАРИЙ */}
                   <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={(e) => { e.stopPropagation(); setIsCommentsOpen(!isCommentsOpen); }}>
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
                       <FaComment className="text-white/80 text-xl hover:text-white transition" />
@@ -631,7 +604,6 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
                     <span className="text-white/80 text-[11px] font-bold tracking-wide">{viewerPost.comments?.length || 0}</span>
                   </div>
 
-                  {/* СОХРАНЕНИЕ */}
                   <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={() => handleSave(viewerPost._id)}>
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
                       {viewerPost.savedBy && viewerPost.savedBy.includes(currentUser?._id) ? (
@@ -650,7 +622,7 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
                 </div>
               </div>
 
-              {/* ===== ПАНЕЛЬ КОММЕНТАРИЕВ (ВОССТАНОВЛЕНА) ===== */}
+              {/* ===== ПАНЕЛЬ КОММЕНТАРИЕВ ===== */}
               <AnimatePresence>
                 {isCommentsOpen && (
                   <motion.div

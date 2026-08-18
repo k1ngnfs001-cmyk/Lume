@@ -64,38 +64,30 @@ const ReelsFeed = ({ feedType = 'global' }) => {
     }
   }, [isMuted, currentIndex]);
 
-  // ============= ИСПРАВЛЕННЫЕ ФУНКЦИИ (Оптимистичные) =============
+  // ============= ИСПРАВЛЕННЫЕ ФУНКЦИИ (Без хаоса) =============
   const handleLike = async (postId) => {
     if (!postId) return;
-    // 1. Оптимистичное обновление (Мгновенно!)
+    // Мгновенное обновление (оптимистичное)
     setPosts(prev => prev.map(p => 
-      p._id === postId ? {
-        ...p,
-        isLikedByMe: !p.isLikedByMe,
-        likes: p.isLikedByMe 
-          ? p.likes.filter(id => id !== user._id) 
-          : [...p.likes, user._id]
+      p._id === postId ? { 
+        ...p, 
+        isLikedByMe: !p.isLikedByMe, 
+        likes: !p.isLikedByMe ? [...p.likes, user._id] : p.likes.filter(id => id !== user._id) 
       } : p
     ));
 
     try {
-      // 2. Реальный запрос к бэкенду
-      const response = await axios.post(`/posts/${postId}/like`);
-      const resData = response.data;
-      const isLiked = resData.isLiked || resData.liked || false;
-      // 3. Синхронизация с правильным ответом сервера
-      setPosts(prev => prev.map(p => 
-        p._id === postId ? { ...p, isLikedByMe: isLiked, likes: resData.likes || [] } : p
-      ));
+      const res = await axios.post(`/posts/${postId}/like`);
+      const { likes, isLiked } = res.data;
+      // Синхронизируем с правдой от сервера
+      setPosts(prev => prev.map(p => p._id === postId ? { ...p, isLikedByMe: isLiked, likes } : p));
     } catch (error) {
-      // 4. Откат в случае ошибки
+      // Откат в случае ошибки
       setPosts(prev => prev.map(p => 
-        p._id === postId ? {
-          ...p,
-          isLikedByMe: !p.isLikedByMe,
-          likes: p.isLikedByMe 
-            ? p.likes.filter(id => id !== user._id) 
-            : [...p.likes, user._id]
+        p._id === postId ? { 
+          ...p, 
+          isLikedByMe: !p.isLikedByMe, 
+          likes: !p.isLikedByMe ? [...p.likes, user._id] : p.likes.filter(id => id !== user._id) 
         } : p
       ));
       alert('Ошибка лайка: ' + (error.response?.data?.message || error.message));
@@ -104,42 +96,31 @@ const ReelsFeed = ({ feedType = 'global' }) => {
 
   const handleSave = async (postId) => {
     if (!postId) return;
-    // 1. Оптимистичное обновление
     setPosts(prev => prev.map(p => 
-      p._id === postId ? {
-        ...p,
-        savedBy: p.savedBy?.includes(user._id)
-          ? p.savedBy.filter(id => id !== user._id)
-          : [...(p.savedBy || []), user._id]
+      p._id === postId ? { 
+        ...p, 
+        isSavedByMe: !p.isSavedByMe, 
+        savedBy: !p.isSavedByMe ? [...p.savedBy, user._id] : p.savedBy.filter(id => id !== user._id) 
       } : p
     ));
 
     try {
-      const response = await axios.post(`/posts/${postId}/save`);
-      const resData = response.data;
-      const isSaved = resData.isSaved || resData.saved || false;
-      setPosts(prev => prev.map(p => 
-        p._id === postId ? { 
-          ...p, 
-          savedBy: isSaved 
-            ? [...(p.savedBy || []), user._id] 
-            : (p.savedBy || []).filter(id => id !== user._id) 
-        } : p
-      ));
+      const res = await axios.post(`/posts/${postId}/save`);
+      const { isSaved, savedBy } = res.data;
+      setPosts(prev => prev.map(p => p._id === postId ? { ...p, isSavedByMe: isSaved, savedBy } : p));
     } catch (error) {
       // Откат
       setPosts(prev => prev.map(p => 
-        p._id === postId ? {
-          ...p,
-          savedBy: p.savedBy?.includes(user._id)
-            ? p.savedBy.filter(id => id !== user._id)
-            : [...(p.savedBy || []), user._id]
+        p._id === postId ? { 
+          ...p, 
+          isSavedByMe: !p.isSavedByMe, 
+          savedBy: !p.isSavedByMe ? [...p.savedBy, user._id] : p.savedBy.filter(id => id !== user._id) 
         } : p
       ));
       alert('Ошибка сохранения: ' + (error.response?.data?.message || error.message));
     }
   };
-  // ================================================================
+  // ============================================================
 
   const handleFollow = async (targetUserId) => {
     if (!user || !targetUserId || targetUserId === user._id) return;
@@ -161,7 +142,6 @@ const ReelsFeed = ({ feedType = 'global' }) => {
     }
   };
 
-  // ... (остальные функции handleVideoClick, openEditModal, handleAddComment и т.д. остаются без изменений)
   const toggleMute = (e) => { e.stopPropagation(); setIsMuted(prev => !prev); };
   const handleVideoClick = () => { if (videoRef.current) { if (videoRef.current.paused) videoRef.current.play(); else videoRef.current.pause(); } };
   const handleTimeUpdate = () => { if (videoRef.current) { const currentTime = videoRef.current.currentTime; const duration = videoRef.current.duration; if (duration && duration > 0) setProgress((currentTime / duration) * 100); } };
@@ -197,7 +177,7 @@ const ReelsFeed = ({ feedType = 'global' }) => {
 
   const post = posts[currentIndex];
   const isLiked = post.isLikedByMe || (post.likes && post.likes.includes(user?._id));
-  const isSaved = post.savedBy && post.savedBy.includes(user?._id);
+  const isSaved = post.isSavedByMe || (post.savedBy && post.savedBy.includes(user?._id));
   const isFollowingAuthor = user?.following?.map(id => id.toString()).includes(post.user?._id.toString());
   const canEdit = user && user._id === post.user?._id;
 

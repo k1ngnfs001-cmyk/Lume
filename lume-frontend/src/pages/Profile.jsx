@@ -171,76 +171,49 @@ const Profile = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [goNext, goPrev]);
 
-  // ================= ИСПРАВЛЕННЫЕ ФУНКЦИИ (Оптимистичные) =================
+  // ================= ИСПРАВЛЕННЫЕ ФУНКЦИИ =================
   const handleLike = async (postId) => {
     if (!postId) return;
-    // 1. Оптимистичное обновление (мгновенно)
-    const currentPost = profileData.posts.find(p => p._id === postId);
-    const currentIsLiked = currentPost?.isLikedByMe || false;
-    const currentLikes = currentPost?.likes || [];
+    const updateLikes = (item) => item._id === postId ? {
+      ...item, isLikedByMe: !item.isLikedByMe,
+      likes: !item.isLikedByMe ? [...item.likes, currentUser._id] : item.likes.filter(id => id !== currentUser._id)
+    } : item;
 
-    const updatePostOptimistic = (p) => p._id === postId ? {
-      ...p,
-      isLikedByMe: !currentIsLiked,
-      likes: currentIsLiked 
-        ? currentLikes.filter(id => id !== currentUser._id) 
-        : [...currentLikes, currentUser._id]
-    } : p;
-
-    setViewerPosts(prev => prev.map(updatePostOptimistic));
-    setProfileData(prev => ({ ...prev, posts: prev.posts.map(updatePostOptimistic) }));
+    setViewerPosts(prev => prev.map(updateLikes));
+    setProfileData(prev => ({ ...prev, posts: prev.posts.map(updateLikes) }));
 
     try {
-      const response = await axios.post(`/posts/${postId}/like`);
-      const resData = response.data;
-      const isLiked = resData.isLiked || resData.liked || false;
-      const updatePostSync = (p) => p._id === postId ? { ...p, isLikedByMe: isLiked, likes: resData.likes || [] } : p;
-      setViewerPosts(prev => prev.map(updatePostSync));
-      setProfileData(prev => ({ ...prev, posts: prev.posts.map(updatePostSync) }));
+      const res = await axios.post(`/posts/${postId}/like`);
+      const { likes, isLiked } = res.data;
+      const syncLikes = (item) => item._id === postId ? { ...item, isLikedByMe: isLiked, likes } : item;
+      setViewerPosts(prev => prev.map(syncLikes));
+      setProfileData(prev => ({ ...prev, posts: prev.posts.map(syncLikes) }));
     } catch (error) {
-      // Откат
-      setViewerPosts(prev => prev.map(updatePostOptimistic));
-      setProfileData(prev => ({ ...prev, posts: prev.posts.map(updatePostOptimistic) }));
-      alert('Ошибка лайка: ' + (error.response?.data?.message || error.message));
+      alert('Ошибка лайка');
     }
   };
 
   const handleSave = async (postId) => {
     if (!postId) return;
-    // 1. Оптимистичное обновление
-    const currentPost = profileData.posts.find(p => p._id === postId);
-    const isSaved = currentPost?.savedBy?.includes(currentUser._id) || false;
+    const updateSaves = (item) => item._id === postId ? {
+      ...item, isSavedByMe: !item.isSavedByMe,
+      savedBy: !item.isSavedByMe ? [...item.savedBy, currentUser._id] : item.savedBy.filter(id => id !== currentUser._id)
+    } : item;
 
-    const updateSavedOptimistic = (p) => p._id === postId ? {
-      ...p,
-      savedBy: isSaved 
-        ? p.savedBy.filter(id => id !== currentUser._id) 
-        : [...(p.savedBy || []), currentUser._id]
-    } : p;
-
-    setViewerPosts(prev => prev.map(updateSavedOptimistic));
-    setProfileData(prev => ({ ...prev, posts: prev.posts.map(updateSavedOptimistic) }));
+    setViewerPosts(prev => prev.map(updateSaves));
+    setProfileData(prev => ({ ...prev, posts: prev.posts.map(updateSaves) }));
 
     try {
-      const response = await axios.post(`/posts/${postId}/save`);
-      const resData = response.data;
-      const newIsSaved = resData.isSaved || resData.saved || false;
-      const updateSavedSync = (p) => p._id === postId ? { 
-        ...p, 
-        savedBy: newIsSaved 
-          ? [...(p.savedBy || []), currentUser._id] 
-          : (p.savedBy || []).filter(id => id !== currentUser._id) 
-      } : p;
-      setViewerPosts(prev => prev.map(updateSavedSync));
-      setProfileData(prev => ({ ...prev, posts: prev.posts.map(updateSavedSync) }));
+      const res = await axios.post(`/posts/${postId}/save`);
+      const { isSaved, savedBy } = res.data;
+      const syncSaves = (item) => item._id === postId ? { ...item, isSavedByMe: isSaved, savedBy } : item;
+      setViewerPosts(prev => prev.map(syncSaves));
+      setProfileData(prev => ({ ...prev, posts: prev.posts.map(syncSaves) }));
     } catch (error) {
-      // Откат
-      setViewerPosts(prev => prev.map(updateSavedOptimistic));
-      setProfileData(prev => ({ ...prev, posts: prev.posts.map(updateSavedOptimistic) }));
-      alert('Ошибка сохранения: ' + (error.response?.data?.message || error.message));
+      alert('Ошибка сохранения');
     }
   };
-  // ========================================================================
+  // ==========================================================
 
   const handleAddComment = async (postId) => {
     if (!commentText.trim() || !postId) return;

@@ -7,7 +7,6 @@ exports.createPost = async (req, res) => {
   try {
     const { content } = req.body;
     
-    // ВАЖНО: Проверяем, есть ли файл в запросе
     if (!req.file) {
       return res.status(400).json({ message: 'Медиа-файл не найден или не загружен.' });
     }
@@ -41,18 +40,52 @@ exports.createPost = async (req, res) => {
 
 exports.getFeed = async (req, res) => {
   try {
+    const userId = req.user._id;
     const posts = await Post.find()
       .sort({ createdAt: -1 })
       .populate('user', 'username avatar isVerified')
       .populate('comments.user', 'username avatar isVerified')
       .populate('comments.replies.user', 'username avatar isVerified');
-    res.json(posts);
+    
+    // Явно помечаем, лайкнул ли этот пост текущий пользователь
+    const processedPosts = posts.map(post => ({
+      ...post.toObject(),
+      isLikedByMe: post.likes.some(id => id.toString() === userId.toString()),
+      isSavedByMe: post.savedBy.some(id => id.toString() === userId.toString())
+    }));
+
+    res.json(processedPosts);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// ============= ИСПРАВЛЕННАЯ ФУНКЦИЯ (Без конфликтов версий) =============
+exports.getFollowingPosts = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const currentUser = await User.findById(userId).populate('following');
+    const followingIds = currentUser.following.map(u => u._id);
+    
+    const posts = await Post.find({ user: { $in: followingIds } })
+      .sort({ createdAt: -1 })
+      .populate('user', 'username avatar isVerified')
+      .populate('comments.user', 'username avatar isVerified')
+      .populate('comments.replies.user', 'username avatar isVerified');
+
+    // Явно помечаем, лайкнул ли этот пост текущий пользователь
+    const processedPosts = posts.map(post => ({
+      ...post.toObject(),
+      isLikedByMe: post.likes.some(id => id.toString() === userId.toString()),
+      isSavedByMe: post.savedBy.some(id => id.toString() === userId.toString())
+    }));
+
+    res.json(processedPosts);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ===== ЛАЙК ПОСТА (Атомарное обновление, без VersionError) =====
 exports.toggleLike = async (req, res) => {
   try {
     const postId = req.params.id;
@@ -63,16 +96,14 @@ exports.toggleLike = async (req, res) => {
 
     const isLiked = post.likes.includes(userId);
 
-    // Атомарное обновление (без использования .save())
     const updatedPost = await Post.findByIdAndUpdate(
       postId,
       isLiked 
-        ? { $pull: { likes: userId } }     // Убираем лайк
-        : { $addToSet: { likes: userId } }, // Добавляем лайк
+        ? { $pull: { likes: userId } } 
+        : { $addToSet: { likes: userId } },
       { new: true }
     );
 
-    // Отправляем уведомление только если лайк был поставлен (а не убран)
     if (!isLiked && post.user.toString() !== userId.toString()) {
       const notification = await Notification.create({
         recipient: post.user,
@@ -88,140 +119,20 @@ exports.toggleLike = async (req, res) => {
 
     res.json({ 
       likes: updatedPost.likes, 
-      isLiked: !isLiked // Отправляем новое состояние (true если поставили, false если убрали)
+      isLiked: !isLiked 
     });
   } catch (error) {
     console.error('Ошибка лайка:', error);
     res.status(500).json({ message: error.message });
   }
 };
-// ==========================================================================
 
-exports.addComment = async (req, res) => {
-  try {
-    const { text } = req.body;
-    const post = await Post.findById(req.params.id);
-    if (!post) return res.status(404).json({ message: 'Пост не найден' });
-
-    const newComment = { user: req.user._id, text };
-    post.comments.push(newComment);
-    await post.save();
-
-    const populatedPost = await post.populate({
-      path: 'comments.user',
-      select: 'username avatar isVerified'
-    });
-    const addedComment = populatedPost.comments[populatedPost.comments.length - 1];
-
-    if (post.user.toString() !== req.user._id.toString()) {
-      const notification = await Notification.create({
-        recipient: post.user,
-        sender: req.user._id,
-        type: 'comment',
-        referenceId: post._id,
-        text: `Комментарий: "${text.substring(0, 30)}..."`
-      });
-      const populatedNotif = await notification.populate('sender', 'username avatar');
-      const io = req.app.get('io');
-      io.to(post.user.toString()).emit('new_notification', populatedNotif);
-    }
-
-    res.status(201).json(addedComment);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-exports.toggleSave = async (req, res) => {
-  try {
-    const postId = req.params.id;
-    const userId = req.user._id;
-
-    // Сначала просто проверим, сохранён ли уже пост
-    const post = await Post.findById(postId);
-    if (!post) {
-      return res.status(404).json({ message: 'Пост не найден' });
-    }
-
-    const isSaved = post.savedBy.includes(userId);
-    
-    // ===== ГЛАВНОЕ ИСПРАВЛЕНИЕ: Атомарное обновление, а не .save() =====
-    const updatedPost = await Post.findByIdAndUpdate(
-      postId,
-      isSaved 
-        ? { $pull: { savedBy: userId } }     // Убираем из сохранённых
-        : { $addToSet: { savedBy: userId } }, // Добавляем в сохранённые
-      { new: true } // Возвращаем обновлённый документ
-    );
-    // ====================================================================
-
-    res.json({ 
-      isSaved: !isSaved, 
-      savedCount: updatedPost.savedBy.length 
-    });
-
-  } catch (error) {
-    console.error('Ошибка сохранения:', error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-exports.getFollowingPosts = async (req, res) => {
-  try {
-    const currentUser = await User.findById(req.user._id).populate('following');
-    const followingIds = currentUser.following.map(u => u._id);
-    
-    const posts = await Post.find({ user: { $in: followingIds } })
-      .sort({ createdAt: -1 })
-      .populate('user', 'username avatar isVerified')
-      .populate('comments.user', 'username avatar isVerified')
-      .populate('comments.replies.user', 'username avatar isVerified');
-      
-    res.json(posts);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// ===== ОБНОВЛЕНИЕ ПОСТА =====
-exports.updatePost = async (req, res) => {
-  try {
-    const post = await Post.findById(req.params.id);
-    if (!post) return res.status(404).json({ message: 'Пост не найден' });
-    // Проверка прав
-    if (post.user.toString() !== req.user._id.toString() && !req.user.isAdmin) {
-      return res.status(403).json({ message: 'Нет прав для редактирования' });
-    }
-
-    const { content } = req.body;
-    if (content !== undefined) {
-      post.content = content;
-    }
-
-    if (req.file) {
-      const b64 = Buffer.from(req.file.buffer).toString('base64');
-      let dataURI = "data:" + req.file.mimetype + ";base64," + b64;
-      const result = await cloudinary.uploader.upload(dataURI, {
-        folder: "lume_posts",
-        resource_type: "auto"
-      });
-      post.mediaUrl = result.secure_url;
-      post.mediaType = result.resource_type === 'video' ? 'video' : 'image';
-    }
-
-    await post.save();
-    const updatedPost = await post.populate('user', 'username avatar isVerified');
-    res.json(updatedPost);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// ===== ФУНКЦИИ ДЛЯ КОММЕНТАРИЕВ =====
+// ===== ЛАЙК КОММЕНТАРИЯ (Атомарно) =====
 exports.toggleCommentLike = async (req, res) => {
   try {
     const { postId, commentId } = req.params;
     const userId = req.user._id;
+
     const post = await Post.findById(postId);
     if (!post) return res.status(404).json({ message: 'Пост не найден' });
 
@@ -229,44 +140,97 @@ exports.toggleCommentLike = async (req, res) => {
     if (!comment) return res.status(404).json({ message: 'Комментарий не найден' });
 
     const isLiked = comment.likes.includes(userId);
-    if (isLiked) {
-      comment.likes.pull(userId);
-    } else {
-      comment.likes.push(userId);
-    }
-    await post.save();
-    await post.populate('comments.user comments.replies.user', 'username avatar isVerified');
-    res.json({ success: true, comment: post.comments.id(commentId) });
+
+    await Post.updateOne(
+      { _id: postId, 'comments._id': commentId },
+      isLiked
+        ? { $pull: { 'comments.$.likes': userId } }
+        : { $addToSet: { 'comments.$.likes': userId } }
+    );
+
+    const updatedPost = await Post.findById(postId)
+      .populate('comments.user comments.replies.user', 'username avatar isVerified');
+
+    res.json({ success: true, comment: updatedPost.comments.id(commentId) });
   } catch (error) {
+    console.error('Ошибка лайка комментария:', error);
     res.status(500).json({ message: error.message });
   }
 };
 
+// ===== ДОБАВЛЕНИЕ КОММЕНТАРИЯ (Атомарно) =====
+exports.addComment = async (req, res) => {
+  try {
+    const { text } = req.body;
+    const postId = req.params.id;
+
+    const newComment = { user: req.user._id, text };
+
+    const updatedPost = await Post.findByIdAndUpdate(
+      postId,
+      { $push: { comments: newComment } },
+      { new: true }
+    ).populate({
+      path: 'comments.user',
+      select: 'username avatar isVerified'
+    });
+
+    if (!updatedPost) return res.status(404).json({ message: 'Пост не найден' });
+
+    const addedComment = updatedPost.comments[updatedPost.comments.length - 1];
+
+    if (updatedPost.user.toString() !== req.user._id.toString()) {
+      const notification = await Notification.create({
+        recipient: updatedPost.user,
+        sender: req.user._id,
+        type: 'comment',
+        referenceId: updatedPost._id,
+        text: `Комментарий: "${text.substring(0, 30)}..."`
+      });
+      const populatedNotif = await notification.populate('sender', 'username avatar');
+      const io = req.app.get('io');
+      io.to(updatedPost.user.toString()).emit('new_notification', populatedNotif);
+    }
+
+    res.status(201).json(addedComment);
+  } catch (error) {
+    console.error('Ошибка добавления комментария:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ===== ДОБАВЛЕНИЕ ОТВЕТА НА КОММЕНТАРИЙ (Атомарно) =====
 exports.addCommentReply = async (req, res) => {
   try {
     const { postId, commentId } = req.params;
     const { text } = req.body;
-    const post = await Post.findById(postId);
-    if (!post) return res.status(404).json({ message: 'Пост не найден' });
-
-    const comment = post.comments.id(commentId);
-    if (!comment) return res.status(404).json({ message: 'Комментарий не найден' });
 
     const newReply = { user: req.user._id, text };
-    comment.replies.push(newReply);
-    await post.save();
-    await post.populate('comments.user comments.replies.user', 'username avatar isVerified');
-    const addedReply = comment.replies[comment.replies.length - 1];
+
+    const updatedPost = await Post.findOneAndUpdate(
+      { _id: postId, 'comments._id': commentId },
+      { $push: { 'comments.$.replies': newReply } },
+      { new: true }
+    ).populate('comments.user comments.replies.user', 'username avatar isVerified');
+
+    if (!updatedPost) return res.status(404).json({ message: 'Пост или комментарий не найден' });
+
+    const parentComment = updatedPost.comments.id(commentId);
+    const addedReply = parentComment.replies[parentComment.replies.length - 1];
+
     res.status(201).json({ success: true, reply: addedReply, commentId });
   } catch (error) {
+    console.error('Ошибка добавления ответа:', error);
     res.status(500).json({ message: error.message });
   }
 };
 
+// ===== РЕДАКТИРОВАНИЕ КОММЕНТАРИЯ (Атомарно) =====
 exports.editComment = async (req, res) => {
   try {
     const { postId, commentId } = req.params;
     const { text, isReply } = req.body;
+
     const post = await Post.findById(postId);
     if (!post) return res.status(404).json({ message: 'Пост не найден' });
 
@@ -285,46 +249,104 @@ exports.editComment = async (req, res) => {
       return res.status(403).json({ message: 'Вы не можете редактировать чужой комментарий' });
     }
 
-    targetComment.text = text;
-    await post.save();
-    await post.populate('comments.user comments.replies.user', 'username avatar isVerified');
-    res.json({ success: true, comment: targetComment });
+    await Post.updateOne(
+      { _id: postId, 'comments._id': commentId },
+      { $set: { 'comments.$.text': text } }
+    );
+
+    const updatedPost = await Post.findById(postId)
+      .populate('comments.user comments.replies.user', 'username avatar isVerified');
+
+    let updatedComment = isReply 
+      ? updatedPost.comments.find(c => c.replies.id(commentId))?.replies.id(commentId)
+      : updatedPost.comments.id(commentId);
+
+    res.json({ success: true, comment: updatedComment });
   } catch (error) {
+    console.error('Ошибка редактирования:', error);
     res.status(500).json({ message: error.message });
   }
 };
 
+// ===== УДАЛЕНИЕ КОММЕНТАРИЯ (Атомарно) =====
 exports.deleteComment = async (req, res) => {
   try {
     const { postId, commentId } = req.params;
     const { isReply } = req.body;
+
+    if (isReply) {
+      await Post.updateOne(
+        { _id: postId, 'comments.replies._id': commentId },
+        { $pull: { 'comments.$.replies': { _id: commentId } } }
+      );
+    } else {
+      await Post.updateOne(
+        { _id: postId },
+        { $pull: { comments: { _id: commentId } } }
+      );
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Ошибка удаления:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ===== СОХРАНЕНИЕ ПОСТА (Атомарно) =====
+exports.toggleSave = async (req, res) => {
+  try {
+    const postId = req.params.id;
+    const userId = req.user._id;
+
     const post = await Post.findById(postId);
     if (!post) return res.status(404).json({ message: 'Пост не найден' });
 
-    let targetComment;
-    if (isReply) {
-      const parentComment = post.comments.find(c => c.replies.id(commentId));
-      if (!parentComment) return res.status(404).json({ message: 'Ответ не найден' });
-      targetComment = parentComment.replies.id(commentId);
-    } else {
-      targetComment = post.comments.id(commentId);
-    }
-
-    if (!targetComment) return res.status(404).json({ message: 'Комментарий не найден' });
-
-    if (targetComment.user.toString() !== req.user._id.toString() && !req.user.isAdmin) {
-      return res.status(403).json({ message: 'Вы не можете удалять чужой комментарий' });
-    }
-
-    if (isReply) {
-      const parentComment = post.comments.find(c => c.replies.id(commentId));
-      parentComment.replies.pull(commentId);
-    } else {
-      post.comments.pull(commentId);
-    }
+    const isSaved = post.savedBy.includes(userId);
     
+    const updatedPost = await Post.findByIdAndUpdate(
+      postId,
+      isSaved 
+        ? { $pull: { savedBy: userId } } 
+        : { $addToSet: { savedBy: userId } },
+      { new: true }
+    );
+
+    res.json({ 
+      isSaved: !isSaved, 
+      savedBy: updatedPost.savedBy 
+    });
+  } catch (error) {
+    console.error('Ошибка сохранения:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.updatePost = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    if (!post) return res.status(404).json({ message: 'Пост не найден' });
+    if (post.user.toString() !== req.user._id.toString() && !req.user.isAdmin) {
+      return res.status(403).json({ message: 'Нет прав для редактирования' });
+    }
+
+    const { content } = req.body;
+    if (content !== undefined) post.content = content;
+
+    if (req.file) {
+      const b64 = Buffer.from(req.file.buffer).toString('base64');
+      let dataURI = "data:" + req.file.mimetype + ";base64," + b64;
+      const result = await cloudinary.uploader.upload(dataURI, {
+        folder: "lume_posts",
+        resource_type: "auto"
+      });
+      post.mediaUrl = result.secure_url;
+      post.mediaType = result.resource_type === 'video' ? 'video' : 'image';
+    }
+
     await post.save();
-    res.json({ success: true });
+    const updatedPost = await post.populate('user', 'username avatar isVerified');
+    res.json(updatedPost);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
