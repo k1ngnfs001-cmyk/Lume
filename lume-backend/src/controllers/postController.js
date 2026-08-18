@@ -52,39 +52,50 @@ exports.getFeed = async (req, res) => {
   }
 };
 
+// ============= ИСПРАВЛЕННАЯ ФУНКЦИЯ (Без конфликтов версий) =============
 exports.toggleLike = async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id);
+    const postId = req.params.id;
+    const userId = req.user._id;
+
+    const post = await Post.findById(postId);
     if (!post) return res.status(404).json({ message: 'Пост не найден' });
 
-    const userId = req.user._id;
     const isLiked = post.likes.includes(userId);
 
-    if (isLiked) {
-      post.likes = post.likes.filter(id => id.toString() !== userId.toString());
-    } else {
-      post.likes.push(userId);
-      
-      if (post.user.toString() !== userId.toString()) {
-        const notification = await Notification.create({
-          recipient: post.user,
-          sender: userId,
-          type: 'like',
-          referenceId: post._id,
-          text: `Понравился ваш пост`
-        });
-        const populatedNotif = await notification.populate('sender', 'username avatar');
-        const io = req.app.get('io');
-        io.to(post.user.toString()).emit('new_notification', populatedNotif);
-      }
+    // Атомарное обновление (без использования .save())
+    const updatedPost = await Post.findByIdAndUpdate(
+      postId,
+      isLiked 
+        ? { $pull: { likes: userId } }     // Убираем лайк
+        : { $addToSet: { likes: userId } }, // Добавляем лайк
+      { new: true }
+    );
+
+    // Отправляем уведомление только если лайк был поставлен (а не убран)
+    if (!isLiked && post.user.toString() !== userId.toString()) {
+      const notification = await Notification.create({
+        recipient: post.user,
+        sender: userId,
+        type: 'like',
+        referenceId: post._id,
+        text: `Понравился ваш пост`
+      });
+      const populatedNotif = await notification.populate('sender', 'username avatar');
+      const io = req.app.get('io');
+      io.to(post.user.toString()).emit('new_notification', populatedNotif);
     }
 
-    await post.save();
-    res.json({ likes: post.likes, isLiked: !isLiked });
+    res.json({ 
+      likes: updatedPost.likes, 
+      isLiked: !isLiked // Отправляем новое состояние (true если поставили, false если убрали)
+    });
   } catch (error) {
+    console.error('Ошибка лайка:', error);
     res.status(500).json({ message: error.message });
   }
 };
+// ==========================================================================
 
 exports.addComment = async (req, res) => {
   try {
