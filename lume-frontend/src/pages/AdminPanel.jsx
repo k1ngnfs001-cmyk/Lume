@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaHeart, FaRegHeart, FaPlay, FaChevronUp, FaChevronDown, FaSearch, FaComment, FaBookmark } from 'react-icons/fa';
 import { FiBookmark } from 'react-icons/fi';
 
-// ВАЖНО: Принимаем isSidebarOpen как пропс
 const AdminPanel = ({ isSidebarOpen = true }) => {
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
@@ -352,9 +351,16 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
                     )}
                   </div>
                   <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/5 pointer-events-none">
-                    <button className="text-xs text-white/50 flex items-center gap-1">
+                    
+                    {/* ========== ИСПРАВЛЕННАЯ КНОПКА КОММЕНТАРИЕВ ========== */}
+                    <button 
+                      onClick={() => handleOpenComments(post._id)} 
+                      className="text-xs text-white/50 flex items-center gap-1 pointer-events-auto hover:text-white transition"
+                    >
                       💬 {post.comments?.length || 0} комментов
                     </button>
+                    {/* ====================================================== */}
+
                     <div className="space-x-2 pointer-events-auto">
                       <button 
                         onClick={(e) => { e.stopPropagation(); setEditingPost(post); setEditMediaFile(null); setEditMediaPreview(null); }} 
@@ -377,14 +383,13 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
         </div>
       </div>
 
-      {/* ===== ПЛЕЕР (ДОБАВЛЕНА ПЛАВНАЯ АНИМАЦИЯ ПЕРЕМЕЩЕНИЯ) ===== */}
+      {/* ===== ПЛЕЕР ===== */}
       <AnimatePresence>
         {viewerPost && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            // ===== ВАЖНО: Добавлен transition-all duration-300 ease-in-out для плавного движения влево/вправо =====
             className={`fixed top-0 right-0 bottom-0 z-[9999] bg-[#0a0a0a] flex items-center justify-center overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'left-[260px]' : 'left-0'}`}
           >
             <div className="flex flex-row items-center justify-center gap-4 md:gap-8 w-full max-w-[1000px] mx-auto px-4 h-full">
@@ -456,7 +461,6 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
                   </div>
                 </div>
 
-                {/* ===== КНОПКИ В ПЛЕЕРЕ ===== */}
                 <div className="flex flex-col items-center gap-4 py-4 shrink-0 min-w-[60px] md:min-w-[80px]">
                   <div className="relative">
                     <Link to={`/profile/${viewerPost.user?._id}`}>
