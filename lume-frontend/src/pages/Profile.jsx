@@ -40,7 +40,6 @@ const Profile = () => {
   const [hoveredId, setHoveredId] = useState(null);
   const videoRefs = useRef({});
 
-  // ===== ИСПРАВЛЕННАЯ ФУНКЦИЯ =====
   const getMediaUrl = (url) => {
     if (!url) return '';
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
@@ -172,35 +171,76 @@ const Profile = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [goNext, goPrev]);
 
+  // ================= ИСПРАВЛЕННЫЕ ФУНКЦИИ (Оптимистичные) =================
   const handleLike = async (postId) => {
     if (!postId) return;
+    // 1. Оптимистичное обновление (мгновенно)
+    const currentPost = profileData.posts.find(p => p._id === postId);
+    const currentIsLiked = currentPost?.isLikedByMe || false;
+    const currentLikes = currentPost?.likes || [];
+
+    const updatePostOptimistic = (p) => p._id === postId ? {
+      ...p,
+      isLikedByMe: !currentIsLiked,
+      likes: currentIsLiked 
+        ? currentLikes.filter(id => id !== currentUser._id) 
+        : [...currentLikes, currentUser._id]
+    } : p;
+
+    setViewerPosts(prev => prev.map(updatePostOptimistic));
+    setProfileData(prev => ({ ...prev, posts: prev.posts.map(updatePostOptimistic) }));
+
     try {
       const response = await axios.post(`/posts/${postId}/like`);
-      const { likes, isLiked } = response.data;
-      setViewerPosts(prev => prev.map(p => 
-        p._id === postId ? { ...p, likes, isLikedByMe: isLiked } : p
-      ));
-      setProfileData(prev => ({
-        ...prev,
-        posts: prev.posts.map(p => p._id === postId ? { ...p, likes, isLikedByMe: isLiked } : p)
-      }));
+      const resData = response.data;
+      const isLiked = resData.isLiked || resData.liked || false;
+      const updatePostSync = (p) => p._id === postId ? { ...p, isLikedByMe: isLiked, likes: resData.likes || [] } : p;
+      setViewerPosts(prev => prev.map(updatePostSync));
+      setProfileData(prev => ({ ...prev, posts: prev.posts.map(updatePostSync) }));
     } catch (error) {
+      // Откат
+      setViewerPosts(prev => prev.map(updatePostOptimistic));
+      setProfileData(prev => ({ ...prev, posts: prev.posts.map(updatePostOptimistic) }));
       alert('Ошибка лайка: ' + (error.response?.data?.message || error.message));
     }
   };
 
   const handleSave = async (postId) => {
     if (!postId) return;
+    // 1. Оптимистичное обновление
+    const currentPost = profileData.posts.find(p => p._id === postId);
+    const isSaved = currentPost?.savedBy?.includes(currentUser._id) || false;
+
+    const updateSavedOptimistic = (p) => p._id === postId ? {
+      ...p,
+      savedBy: isSaved 
+        ? p.savedBy.filter(id => id !== currentUser._id) 
+        : [...(p.savedBy || []), currentUser._id]
+    } : p;
+
+    setViewerPosts(prev => prev.map(updateSavedOptimistic));
+    setProfileData(prev => ({ ...prev, posts: prev.posts.map(updateSavedOptimistic) }));
+
     try {
       const response = await axios.post(`/posts/${postId}/save`);
-      const { isSaved } = response.data;
-      setViewerPosts(prev => prev.map(p => 
-        p._id === postId ? { ...p, savedBy: isSaved ? [...(p.savedBy || []), currentUser._id] : (p.savedBy || []).filter(id => id !== currentUser._id) } : p
-      ));
+      const resData = response.data;
+      const newIsSaved = resData.isSaved || resData.saved || false;
+      const updateSavedSync = (p) => p._id === postId ? { 
+        ...p, 
+        savedBy: newIsSaved 
+          ? [...(p.savedBy || []), currentUser._id] 
+          : (p.savedBy || []).filter(id => id !== currentUser._id) 
+      } : p;
+      setViewerPosts(prev => prev.map(updateSavedSync));
+      setProfileData(prev => ({ ...prev, posts: prev.posts.map(updateSavedSync) }));
     } catch (error) {
+      // Откат
+      setViewerPosts(prev => prev.map(updateSavedOptimistic));
+      setProfileData(prev => ({ ...prev, posts: prev.posts.map(updateSavedOptimistic) }));
       alert('Ошибка сохранения: ' + (error.response?.data?.message || error.message));
     }
   };
+  // ========================================================================
 
   const handleAddComment = async (postId) => {
     if (!commentText.trim() || !postId) return;
@@ -227,6 +267,7 @@ const Profile = () => {
       const updateComments = (comments) => comments.map(c => c._id === commentId ? updatedComment : c);
       setViewerPost(prev => ({ ...prev, comments: updateComments(prev.comments) }));
       setViewerPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: updateComments(p.comments) } : p));
+      setProfileData(prev => ({ ...prev, posts: prev.posts.map(p => p._id === postId ? { ...p, comments: updateComments(p.comments) } : p) }));
     } catch (error) {
       alert('Ошибка лайка комментария: ' + (error.response?.data?.message || error.message));
     }
@@ -243,6 +284,7 @@ const Profile = () => {
       );
       setViewerPost(prev => ({ ...prev, comments: updateReplies(prev.comments) }));
       setViewerPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: updateReplies(p.comments) } : p));
+      setProfileData(prev => ({ ...prev, posts: prev.posts.map(p => p._id === postId ? { ...p, comments: updateReplies(p.comments) } : p) }));
       setReplyTexts(prev => ({ ...prev, [commentId]: '' }));
     } catch (error) {
       alert('Ошибка добавления ответа: ' + (error.response?.data?.message || error.message));
@@ -264,6 +306,7 @@ const Profile = () => {
       );
       setViewerPost(prev => ({ ...prev, comments: updateComment(prev.comments) }));
       setViewerPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: updateComment(p.comments) } : p));
+      setProfileData(prev => ({ ...prev, posts: prev.posts.map(p => p._id === postId ? { ...p, comments: updateComment(p.comments) } : p) }));
       setEditingCommentId(null);
       setEditCommentText('');
     } catch (error) {
@@ -280,6 +323,7 @@ const Profile = () => {
         : comments.filter(c => c._id !== commentId);
       setViewerPost(prev => ({ ...prev, comments: filterComment(prev.comments) }));
       setViewerPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: filterComment(p.comments) } : p));
+      setProfileData(prev => ({ ...prev, posts: prev.posts.map(p => p._id === postId ? { ...p, comments: filterComment(p.comments) } : p) }));
     } catch (error) {
       alert('Ошибка удаления: ' + (error.response?.data?.message || error.message));
     }
@@ -464,7 +508,7 @@ const Profile = () => {
                       <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-xs border-[2px] border-[#0a0a0a] cursor-pointer hover:scale-110 transition">+</div>
                     )}
                   </div>
-                  <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={(e) => { e.stopPropagation(); handleLike(viewerPost._id); }}>
+                  <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={() => handleLike(viewerPost._id)}>
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
                       <span className={`text-xl transition-colors ${viewerPost.isLikedByMe || viewerPost.likes?.includes(currentUser?._id) ? 'text-red-500' : 'text-white/80 hover:text-white'}`}>
                         {viewerPost.isLikedByMe || viewerPost.likes?.includes(currentUser?._id) ? <FaHeart /> : <FaRegHeart />}

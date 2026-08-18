@@ -159,17 +159,26 @@ const Search = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [goNext, goPrev]);
 
+  // ============= ИСПРАВЛЕННЫЕ ФУНКЦИИ =============
   const handleLike = async (postId) => {
     if (!postId) return;
     try {
       const response = await axios.post(`/posts/${postId}/like`);
-      const { likes, isLiked } = response.data;
-      setViewerPost(prev => ({ ...prev, likes, isLikedByMe: isLiked }));
-      setViewerPosts(prev => prev.map(p => p._id === postId ? { ...p, likes, isLikedByMe: isLiked } : p));
+      const resData = response.data;
+      
+      const isLiked = resData.isLiked || resData.liked || false;
+      const likesCount = resData.likes 
+        ? resData.likes.length 
+        : (resData.totalLikes || resData.likesCount || 0);
+
+      const updatePost = (p) => p._id === postId ? { ...p, isLikedByMe: isLiked, likes: resData.likes || [] } : p;
+      
+      setViewerPost(prev => updatePost(prev));
+      setViewerPosts(prev => prev.map(updatePost));
       setResults(prev => ({
         ...prev,
-        reels: prev.reels.map(p => p._id === postId ? { ...p, likes, isLikedByMe: isLiked } : p),
-        posts: prev.posts.map(p => p._id === postId ? { ...p, likes, isLikedByMe: isLiked } : p)
+        reels: prev.reels.map(updatePost),
+        posts: prev.posts.map(updatePost)
       }));
     } catch (error) {
       alert('Ошибка лайка: ' + (error.response?.data?.message || error.message));
@@ -180,19 +189,30 @@ const Search = () => {
     if (!postId) return;
     try {
       const response = await axios.post(`/posts/${postId}/save`);
-      const { isSaved } = response.data;
+      const resData = response.data;
+      
+      const isSaved = resData.isSaved || resData.saved || false;
+      const savedCount = resData.savedCount || resData.totalSaved || 0;
+
       const updateSaved = (post) => ({
         ...post,
         savedBy: isSaved 
           ? [...(post.savedBy || []), currentUser._id] 
           : (post.savedBy || []).filter(id => id !== currentUser._id)
       });
+
       setViewerPost(updateSaved);
       setViewerPosts(prev => prev.map(p => p._id === postId ? updateSaved(p) : p));
+      setResults(prev => ({
+        ...prev,
+        reels: prev.reels.map(p => p._id === postId ? updateSaved(p) : p),
+        posts: prev.posts.map(p => p._id === postId ? updateSaved(p) : p)
+      }));
     } catch (error) {
       alert('Ошибка сохранения: ' + (error.response?.data?.message || error.message));
     }
   };
+  // =================================================
 
   const handleFollow = async (targetUserId) => {
     if (!currentUser || !targetUserId || targetUserId === currentUser._id) return;
