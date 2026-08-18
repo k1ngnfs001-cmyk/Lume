@@ -30,11 +30,16 @@ exports.login = async (req, res) => {
   const { email, password } = req.body;
   try {
     const user = await User.findOne({ email }).select('+password');
-    if (!user) return res.status(401).json({ message: 'Неверный email или пароль' });
+    if (!user) {
+      return res.status(401).json({ message: 'Неверный email или пароль' });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ message: 'Неверный email или пароль' });
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Неверный email или пароль' });
+    }
 
+    // Генерация 6-значного OTP кода
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiry = Date.now() + 10 * 60 * 1000;
 
@@ -42,9 +47,12 @@ exports.login = async (req, res) => {
     user.otpExpiry = otpExpiry;
     await user.save();
 
-    await sendOTPEmail(email, otp);
+    // ВРЕМЕННО ОТКЛЮЧАЕМ ОТПРАВКУ ПИСЕМ. ПРОСТО ВЫВОДИМ КОД В ЛОГИ!
+    console.log('========================================');
+    console.log('✅ ВОТ ТВОЙ КОД ДЛЯ ВХОДА (смотри в логи Render):', otp);
+    console.log('========================================');
 
-    res.json({ message: 'Код подтверждения отправлен на почту', requireOtp: true });
+    res.json({ message: 'Код подтверждения отправлен (смотри в логи бэкенда!)', requireOtp: true });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
