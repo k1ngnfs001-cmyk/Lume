@@ -2,23 +2,23 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import LumeLogo from '../assets/logo.png'; // Верни импорт своего логотипа
+import LumeLogo from '../assets/logo.png';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
-  const [step, setStep] = useState(1); // 1 = Email/Pass, 2 = OTP
+  const [step, setStep] = useState(1);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [otp, setOtp] = useState('');
-  const [isLoading, setIsLoading] = useState(false); // Защита от двойного клика
+  const [isLoading, setIsLoading] = useState(false);
 
   const { register, login, verifyOtp } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isLoading) return; // Не даём нажать дважды
+    if (isLoading) return;
 
     setIsLoading(true);
 
@@ -26,8 +26,7 @@ const Auth = () => {
       if (isLogin) {
         const result = await login(email, password);
         if (result.success && result.requireOtp) {
-          setStep(2); // Переключаем на ввод кода
-          alert('Код отправлен на вашу почту!');
+          setStep(2); // Мгновенно переключаем на ввод кода, без алерта!
         } else if (result.success) {
           navigate('/');
         } else {
@@ -44,7 +43,7 @@ const Auth = () => {
     } else if (step === 2) {
       const result = await verifyOtp(email, otp);
       if (result.success) {
-        navigate('/'); // Успешный вход
+        navigate('/');
       } else {
         alert(result.message);
       }
@@ -59,14 +58,14 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-dark relative overflow-hidden">
-      <div className="absolute top-[-20%] left-[-10%] w-96 h-96 bg-accent/30 rounded-full blur-[80px] pointer-events-none" />
-      <div className="absolute bottom-[-20%] right-[-10%] w-96 h-96 bg-glow/30 rounded-full blur-[80px] pointer-events-none" />
+    <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] relative overflow-hidden">
+      <div className="absolute top-[-20%] left-[-10%] w-96 h-96 bg-[#6C63FF]/30 rounded-full blur-[80px] pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-96 h-96 bg-[#3b82f6]/30 rounded-full blur-[80px] pointer-events-none" />
 
       <motion.div 
         initial={{ opacity: 0, y: 20 }} 
         animate={{ opacity: 1, y: 0 }} 
-        className="relative bg-white/10 border border-white/20 backdrop-blur-2xl p-10 rounded-3xl w-full max-w-md shadow-2xl shadow-accent/10"
+        className="relative bg-white/5 border border-white/10 backdrop-blur-xl p-10 rounded-3xl w-full max-w-md shadow-2xl"
       >
         <div className="flex justify-center mb-6">
           <img src={LumeLogo} alt="Lume" className="w-16 h-auto object-contain" />
@@ -99,7 +98,7 @@ const Auth = () => {
                     placeholder="Имя пользователя" 
                     value={username} 
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 text-white rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-accent/50 transition-all placeholder:text-white/40"
+                    className="w-full bg-white/5 border border-white/10 text-white rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#6C63FF]/50 transition-all placeholder:text-white/40"
                     required 
                   />
                 )}
@@ -108,7 +107,7 @@ const Auth = () => {
                   placeholder="Email" 
                   value={email} 
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 text-white rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-accent/50 transition-all placeholder:text-white/40"
+                  className="w-full bg-white/5 border border-white/10 text-white rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#6C63FF]/50 transition-all placeholder:text-white/40"
                   required 
                 />
                 <input 
@@ -116,7 +115,7 @@ const Auth = () => {
                   placeholder="Пароль" 
                   value={password} 
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 text-white rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-accent/50 transition-all placeholder:text-white/40"
+                  className="w-full bg-white/5 border border-white/10 text-white rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#6C63FF]/50 transition-all placeholder:text-white/40"
                   required 
                 />
                 
@@ -124,7 +123,7 @@ const Auth = () => {
                   type="submit" 
                   disabled={isLoading}
                   className={`w-full text-white font-semibold py-3 rounded-xl shadow-lg transition-all mt-2 ${
-                    isLoading ? 'bg-gray-600 cursor-not-allowed' : 'bg-linear-to-r from-accent to-glow hover:shadow-accent/50'
+                    isLoading ? 'bg-gray-600 cursor-not-allowed' : 'bg-gradient-to-r from-[#6C63FF] to-[#3b82f6] hover:shadow-[#6C63FF]/25'
                   }`}
                 >
                   {isLoading ? 'Загрузка...' : (isLogin ? 'Войти в Lume' : 'Создать аккаунт')}
@@ -138,10 +137,10 @@ const Auth = () => {
 
                 <input 
                   type="text" 
-                  placeholder="Введите код из письма" 
+                  placeholder="Введите код из логов Render" 
                   value={otp} 
                   onChange={(e) => setOtp(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 text-white rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-accent/50 transition-all placeholder:text-white/40 tracking-widest text-center text-xl font-bold"
+                  className="w-full bg-white/5 border border-white/10 text-white rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#6C63FF]/50 transition-all placeholder:text-white/40 tracking-widest text-center text-xl font-bold"
                   required 
                   maxLength={6}
                 />
@@ -150,7 +149,7 @@ const Auth = () => {
                   type="submit" 
                   disabled={isLoading}
                   className={`w-full text-white font-semibold py-3 rounded-xl shadow-lg transition-all mt-2 ${
-                    isLoading ? 'bg-gray-600 cursor-not-allowed' : 'bg-linear-to-r from-accent to-glow hover:shadow-accent/50'
+                    isLoading ? 'bg-gray-600 cursor-not-allowed' : 'bg-gradient-to-r from-[#6C63FF] to-[#3b82f6] hover:shadow-[#6C63FF]/25'
                   }`}
                 >
                   {isLoading ? 'Проверка...' : 'Подтвердить вход'}
