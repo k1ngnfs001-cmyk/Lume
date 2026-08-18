@@ -9,7 +9,6 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const token = localStorage.getItem('lumeToken');
-    
     if (token) {
       axios.get('/auth/me')
         .then(response => {
@@ -18,9 +17,16 @@ export const AuthProvider = ({ children }) => {
           setUser(userData);
         })
         .catch(error => {
-          console.error('Не удалось загрузить данные пользователя:', error);
-          const savedUser = localStorage.getItem('lumeUser');
-          if (savedUser) setUser(JSON.parse(savedUser));
+          // Если сервер ответил 401, значит токен невалидный. Удаляем его!
+          if (error.response?.status === 401) {
+            localStorage.removeItem('lumeToken');
+            localStorage.removeItem('lumeUser');
+            setUser(null);
+          } else {
+            console.error('Не удалось загрузить данные пользователя:', error);
+            const savedUser = localStorage.getItem('lumeUser');
+            if (savedUser) setUser(JSON.parse(savedUser));
+          }
         })
         .finally(() => setLoading(false));
     } else {
@@ -41,11 +47,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ШАГ 1: Логин с паролем (возвращает requireOtp)
   const login = async (email, password) => {
     try {
       const response = await axios.post('/auth/login', { email, password });
-      // Если бэкенд требует OTP, возвращаем флаг
       if (response.data.requireOtp) {
         return { success: true, requireOtp: true, message: response.data.message };
       }
@@ -59,8 +63,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ШАГ 2: Подтверждение кода
-    const verifyOtp = async (email, otp) => {
+  const verifyOtp = async (email, otp) => {
     try {
       const response = await axios.post('/auth/verify-otp', { email, otp });
       const { token, ...userData } = response.data;
@@ -69,11 +72,6 @@ export const AuthProvider = ({ children }) => {
       setUser(userData);
       return { success: true, data: userData };
     } catch (error) {
-      // ===== ИСПРАВЛЕНИЕ: Не выводим в консоль ошибку 400 =====
-      if (error.response?.status !== 400) {
-        console.error('Ошибка подтверждения OTP:', error);
-      }
-      // ======================================================
       return { success: false, message: error.response?.data?.message || 'Неверный или истекший код' };
     }
   };

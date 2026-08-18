@@ -174,9 +174,12 @@ const Profile = () => {
   // ================= ИСПРАВЛЕННЫЕ ФУНКЦИИ =================
   const handleLike = async (postId) => {
     if (!postId) return;
+    const isLiked = (item) => item.isLikedByMe || false;
+
     const updateLikes = (item) => item._id === postId ? {
-      ...item, isLikedByMe: !item.isLikedByMe,
-      likes: !item.isLikedByMe ? [...item.likes, currentUser._id] : item.likes.filter(id => id !== currentUser._id)
+      ...item,
+      isLikedByMe: !isLiked(item),
+      likes: !isLiked(item) ? [...(item.likes || []), currentUser._id] : (item.likes || []).filter(id => id !== currentUser._id)
     } : item;
 
     setViewerPosts(prev => prev.map(updateLikes));
@@ -185,7 +188,7 @@ const Profile = () => {
     try {
       const res = await axios.post(`/posts/${postId}/like`);
       const { likes, isLiked } = res.data;
-      const syncLikes = (item) => item._id === postId ? { ...item, isLikedByMe: isLiked, likes } : item;
+      const syncLikes = (item) => item._id === postId ? { ...item, isLikedByMe: isLiked, likes: likes || [] } : item;
       setViewerPosts(prev => prev.map(syncLikes));
       setProfileData(prev => ({ ...prev, posts: prev.posts.map(syncLikes) }));
     } catch (error) {
@@ -195,9 +198,12 @@ const Profile = () => {
 
   const handleSave = async (postId) => {
     if (!postId) return;
+    const isSaved = (item) => item.isSavedByMe || false;
+
     const updateSaves = (item) => item._id === postId ? {
-      ...item, isSavedByMe: !item.isSavedByMe,
-      savedBy: !item.isSavedByMe ? [...item.savedBy, currentUser._id] : item.savedBy.filter(id => id !== currentUser._id)
+      ...item,
+      isSavedByMe: !isSaved(item),
+      savedBy: !isSaved(item) ? [...(item.savedBy || []), currentUser._id] : (item.savedBy || []).filter(id => id !== currentUser._id)
     } : item;
 
     setViewerPosts(prev => prev.map(updateSaves));
@@ -206,14 +212,13 @@ const Profile = () => {
     try {
       const res = await axios.post(`/posts/${postId}/save`);
       const { isSaved, savedBy } = res.data;
-      const syncSaves = (item) => item._id === postId ? { ...item, isSavedByMe: isSaved, savedBy } : item;
+      const syncSaves = (item) => item._id === postId ? { ...item, isSavedByMe: isSaved, savedBy: savedBy || [] } : item;
       setViewerPosts(prev => prev.map(syncSaves));
       setProfileData(prev => ({ ...prev, posts: prev.posts.map(syncSaves) }));
     } catch (error) {
       alert('Ошибка сохранения');
     }
   };
-  // ==========================================================
 
   const handleAddComment = async (postId) => {
     if (!commentText.trim() || !postId) return;

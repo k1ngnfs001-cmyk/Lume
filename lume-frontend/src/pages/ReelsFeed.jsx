@@ -64,63 +64,48 @@ const ReelsFeed = ({ feedType = 'global' }) => {
     }
   }, [isMuted, currentIndex]);
 
-  // ============= ИСПРАВЛЕННЫЕ ФУНКЦИИ (Без хаоса) =============
+  // ===== ИСПРАВЛЕННЫЕ ФУНКЦИИ (Защита от null массивов) =====
   const handleLike = async (postId) => {
     if (!postId) return;
-    // Мгновенное обновление (оптимистичное)
+    const isLiked = (post) => post.isLikedByMe || false;
+
     setPosts(prev => prev.map(p => 
       p._id === postId ? { 
         ...p, 
-        isLikedByMe: !p.isLikedByMe, 
-        likes: !p.isLikedByMe ? [...p.likes, user._id] : p.likes.filter(id => id !== user._id) 
+        isLikedByMe: !isLiked(p), 
+        likes: !isLiked(p) ? [...(p.likes || []), user._id] : (p.likes || []).filter(id => id !== user._id) 
       } : p
     ));
 
     try {
       const res = await axios.post(`/posts/${postId}/like`);
       const { likes, isLiked } = res.data;
-      // Синхронизируем с правдой от сервера
-      setPosts(prev => prev.map(p => p._id === postId ? { ...p, isLikedByMe: isLiked, likes } : p));
+      setPosts(prev => prev.map(p => p._id === postId ? { ...p, isLikedByMe: isLiked, likes: likes || [] } : p));
     } catch (error) {
-      // Откат в случае ошибки
-      setPosts(prev => prev.map(p => 
-        p._id === postId ? { 
-          ...p, 
-          isLikedByMe: !p.isLikedByMe, 
-          likes: !p.isLikedByMe ? [...p.likes, user._id] : p.likes.filter(id => id !== user._id) 
-        } : p
-      ));
       alert('Ошибка лайка: ' + (error.response?.data?.message || error.message));
     }
   };
 
   const handleSave = async (postId) => {
     if (!postId) return;
+    const isSaved = (post) => post.isSavedByMe || false;
+
     setPosts(prev => prev.map(p => 
       p._id === postId ? { 
         ...p, 
-        isSavedByMe: !p.isSavedByMe, 
-        savedBy: !p.isSavedByMe ? [...p.savedBy, user._id] : p.savedBy.filter(id => id !== user._id) 
+        isSavedByMe: !isSaved(p), 
+        savedBy: !isSaved(p) ? [...(p.savedBy || []), user._id] : (p.savedBy || []).filter(id => id !== user._id) 
       } : p
     ));
 
     try {
       const res = await axios.post(`/posts/${postId}/save`);
       const { isSaved, savedBy } = res.data;
-      setPosts(prev => prev.map(p => p._id === postId ? { ...p, isSavedByMe: isSaved, savedBy } : p));
+      setPosts(prev => prev.map(p => p._id === postId ? { ...p, isSavedByMe: isSaved, savedBy: savedBy || [] } : p));
     } catch (error) {
-      // Откат
-      setPosts(prev => prev.map(p => 
-        p._id === postId ? { 
-          ...p, 
-          isSavedByMe: !p.isSavedByMe, 
-          savedBy: !p.isSavedByMe ? [...p.savedBy, user._id] : p.savedBy.filter(id => id !== user._id) 
-        } : p
-      ));
       alert('Ошибка сохранения: ' + (error.response?.data?.message || error.message));
     }
   };
-  // ============================================================
 
   const handleFollow = async (targetUserId) => {
     if (!user || !targetUserId || targetUserId === user._id) return;

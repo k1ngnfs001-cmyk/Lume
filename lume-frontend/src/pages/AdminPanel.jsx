@@ -240,13 +240,15 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
     }
   };
 
-  // ================= ИСПРАВЛЕННЫЕ ФУНКЦИИ =================
+  // ================= ИСПРАВЛЕННЫЕ ФУНКЦИИ (Без `null` массивов) =================
   const handleLike = async (postId) => {
     if (!postId) return;
+    const isLiked = (p) => p.isLikedByMe || false;
+
     const updateLikes = (p) => p._id === postId ? {
       ...p,
-      isLikedByMe: !p.isLikedByMe,
-      likes: !p.isLikedByMe ? [...p.likes, currentUser._id] : p.likes.filter(id => id !== currentUser._id)
+      isLikedByMe: !isLiked(p),
+      likes: !isLiked(p) ? [...(p.likes || []), currentUser._id] : (p.likes || []).filter(id => id !== currentUser._id)
     } : p;
 
     setViewerPosts(prev => prev.map(updateLikes));
@@ -255,7 +257,7 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
     try {
       const res = await axios.post(`/posts/${postId}/like`);
       const { likes, isLiked } = res.data;
-      const syncLikes = (p) => p._id === postId ? { ...p, isLikedByMe: isLiked, likes } : p;
+      const syncLikes = (p) => p._id === postId ? { ...p, isLikedByMe: isLiked, likes: likes || [] } : p;
       setViewerPosts(prev => prev.map(syncLikes));
       setPosts(prev => prev.map(syncLikes));
     } catch (error) {
@@ -265,10 +267,12 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
 
   const handleSave = async (postId) => {
     if (!postId) return;
+    const isSaved = (p) => p.isSavedByMe || false;
+
     const updateSaves = (p) => p._id === postId ? {
       ...p,
-      isSavedByMe: !p.isSavedByMe,
-      savedBy: !p.isSavedByMe ? [...p.savedBy, currentUser._id] : p.savedBy.filter(id => id !== currentUser._id)
+      isSavedByMe: !isSaved(p),
+      savedBy: !isSaved(p) ? [...(p.savedBy || []), currentUser._id] : (p.savedBy || []).filter(id => id !== currentUser._id)
     } : p;
 
     setViewerPosts(prev => prev.map(updateSaves));
@@ -277,14 +281,13 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
     try {
       const res = await axios.post(`/posts/${postId}/save`);
       const { isSaved, savedBy } = res.data;
-      const syncSaves = (p) => p._id === postId ? { ...p, isSavedByMe: isSaved, savedBy } : p;
+      const syncSaves = (p) => p._id === postId ? { ...p, isSavedByMe: isSaved, savedBy: savedBy || [] } : p;
       setViewerPosts(prev => prev.map(syncSaves));
       setPosts(prev => prev.map(syncSaves));
     } catch (error) {
       alert('Ошибка сохранения: ' + (error.response?.data?.message || error.message));
     }
   };
-  // ==========================================================
 
   const handleAddComment = async (postId) => {
     if (!commentText.trim() || !postId) return;

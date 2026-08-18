@@ -8,20 +8,28 @@ export const NotificationProvider = ({ children }) => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchNotifications = async () => {
-    // На время решения проблемы с бэкендом просто отключаем запросы
-    // return; 
+    const token = localStorage.getItem('lumeToken');
+    // Не стучимся без токена (убираем 401)
+    if (!token) return; 
+
     try {
       const res = await axios.get('/notifications');
-      setNotifications(res.data);
-      const unread = res.data.filter(n => !n.isRead).length;
+      const data = Array.isArray(res.data) ? res.data : [];
+      setNotifications(data);
+      const unread = data.filter(n => !n.isRead).length;
       setUnreadCount(unread);
     } catch (error) {
-      console.log('Уведомления временно отключены');
+      // Игнорируем 401
+      if (error.response?.status !== 401) {
+        console.error('Ошибка загрузки уведомлений:', error);
+      }
     }
   };
 
   useEffect(() => {
     fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const markAsRead = async (id) => {
@@ -30,7 +38,7 @@ export const NotificationProvider = ({ children }) => {
       setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
-      console.log('Уведомления временно отключены');
+      console.error('Ошибка отметки прочитанным:', error);
     }
   };
 
