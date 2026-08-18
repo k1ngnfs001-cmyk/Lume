@@ -352,14 +352,14 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
                   </div>
                   <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/5 pointer-events-none">
                     
-                    {/* ========== ИСПРАВЛЕННАЯ КНОПКА КОММЕНТАРИЕВ ========== */}
+                    {/* ========== ИСПРАВЛЕННАЯ КНОПКА КОММЕНТАРИЕВ (Добавлен e.stopPropagation) ========== */}
                     <button 
-                      onClick={() => handleOpenComments(post._id)} 
+                      onClick={(e) => { e.stopPropagation(); handleOpenComments(post._id); }} 
                       className="text-xs text-white/50 flex items-center gap-1 pointer-events-auto hover:text-white transition"
                     >
                       💬 {post.comments?.length || 0} комментов
                     </button>
-                    {/* ====================================================== */}
+                    {/* ================================================================================== */}
 
                     <div className="space-x-2 pointer-events-auto">
                       <button 
