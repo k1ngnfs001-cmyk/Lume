@@ -1,7 +1,7 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-// const sendOTPEmail = require('../config/email'); // Временно отключаем
+// const sendOTPEmail = require('../config/email'); // <--- ПОЛНОСТЬЮ УБРАЛИ ИМПОРТ ПОЧТЫ
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -48,7 +48,7 @@ exports.login = async (req, res) => {
     await user.save();
 
     // ==============================================
-    // ОТПРАВКА ПИСЕМ ПОКА ОТКЛЮЧЕНА!
+    // ПОЧТА ПОЛНОСТЬЮ ОТКЛЮЧЕНА! КОД ТОЛЬКО В КОНСОЛЬ!
     // ==============================================
     console.log('========================================');
     console.log('✅ КОД ДЛЯ ВХОДА (смотри в логах Render):', otp);
