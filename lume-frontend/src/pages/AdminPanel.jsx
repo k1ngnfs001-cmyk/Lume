@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaHeart, FaRegHeart, FaPlay, FaChevronUp, FaChevronDown, FaSearch, FaComment, FaBookmark } from 'react-icons/fa';
+import { FaHeart, FaRegHeart, FaPlay, FaChevronUp, FaChevronDown, FaSearch, FaComment, FaBookmark, FaTrash, FaPencilAlt, FaReply } from 'react-icons/fa';
 import { FiBookmark } from 'react-icons/fi';
 
 const AdminPanel = ({ isSidebarOpen = true }) => {
@@ -20,8 +20,6 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
   const [editingComment, setEditingComment] = useState(null);
   const [selectedPostComments, setSelectedPostComments] = useState([]);
   const [commentsModalOpen, setCommentsModalOpen] = useState(false);
-
-  // ===== НОВЫЙ СТЕЙТ ДЛЯ ЗАПОМИНАНИЯ ID ПОСТА =====
   const [activeCommentPostId, setActiveCommentPostId] = useState(null);
 
   const [viewerPost, setViewerPost] = useState(null);
@@ -31,6 +29,13 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
   const [progress, setProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const videoRef = useRef(null);
+  
+  // ===== НОВЫЕ СТЕЙТЫ ДЛЯ КОММЕНТАРИЕВ В АДМИН ПЛЕЕРЕ =====
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [replyTexts, setReplyTexts] = useState({});
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editCommentText, setEditCommentText] = useState('');
 
   const [editMediaFile, setEditMediaFile] = useState(null);
   const [editMediaPreview, setEditMediaPreview] = useState(null);
@@ -142,29 +147,22 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
   };
 
   const handleOpenComments = async (postId) => {
+    setActiveCommentPostId(postId);
     try {
-      // ===== ЗАПОМИНАЕМ ID ПОСТА =====
-      setActiveCommentPostId(postId);
       const res = await axios.get(`/admin/posts/${postId}/comments`);
       setSelectedPostComments(res.data);
       setCommentsModalOpen(true);
     } catch (error) { alert('Ошибка загрузки комментариев: ' + error.message); }
   };
 
-  // ===== ОБНОВЛЕННЫЕ ФУНКЦИИ РЕДАКТИРОВАНИЯ И УДАЛЕНИЯ =====
   const handleUpdateComment = async () => {
     if (!editCommentText.trim()) return;
     try {
       const response = await axios.put(`/admin/comments/${editingComment._id}`, { text: editCommentText });
-      
-      // Обновляем список в модалке
       setSelectedPostComments(prev => prev.map(c => c._id === editingComment._id ? response.data : c));
-      
-      // Обновляем основной список постов, чтобы счетчик обновился
       setPosts(prev => prev.map(p => 
         p._id === activeCommentPostId ? { ...p, comments: p.comments.map(c => c._id === editingComment._id ? response.data : c) } : p
       ));
-      
       setEditingComment(null);
     } catch (error) { alert('Ошибка обновления: ' + error.message); }
   };
@@ -173,11 +171,7 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
     if (!window.confirm('Удалить этот комментарий?')) return;
     try {
       await axios.delete(`/admin/comments/${id}`);
-      
-      // Обновляем список в модалке
       setSelectedPostComments(prev => prev.filter(c => c._id !== id));
-      
-      // ОБНОВЛЯЕМ ОСНОВНОЙ СПИСОК ПОСТОВ, ЧТОБЫ СЧЕТЧИК ОБНОВИЛСЯ!
       setPosts(prev => prev.map(p => 
         p._id === activeCommentPostId ? { ...p, comments: p.comments.filter(c => c._id !== id) } : p
       ));
@@ -191,6 +185,7 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
     setViewerPost(post);
     setProgress(0);
     setIsMuted(true);
+    setIsCommentsOpen(false); // Закрываем комменты при открытии плеера
     document.body.style.overflow = 'hidden';
   };
 
@@ -199,6 +194,7 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
     setViewerPosts([]);
     setProgress(0);
     setIsMuted(true);
+    setIsCommentsOpen(false);
     document.body.style.overflow = '';
   };
 
@@ -245,16 +241,18 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
     }
   };
 
+  // ===== ИСПРАВЛЕННЫЕ ФУНКЦИИ С ОБНОВЛЕНИЕМ СЕТКИ =====
   const handleLike = async (postId) => {
     if (!postId) return;
     try {
       const response = await axios.post(`/posts/${postId}/like`);
       const { likes, isLiked } = response.data;
-      setViewerPosts(prevPosts => prevPosts.map(p => 
-        p._id === postId ? { ...p, likes: likes, isLikedByMe: isLiked } : p
-      ));
+      const updatePost = (p) => p._id === postId ? { ...p, likes, isLikedByMe: isLiked } : p;
+      
+      setViewerPosts(prev => prev.map(updatePost));
+      setPosts(prev => prev.map(updatePost)); // Обновляем сетку!
     } catch (error) {
-      console.error('Ошибка лайка:', error);
+      alert('Ошибка лайка: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -263,14 +261,106 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
     try {
       const response = await axios.post(`/posts/${postId}/save`);
       const { isSaved } = response.data;
-      setViewerPosts(prevPosts => prevPosts.map(p => 
-        p._id === postId ? { 
-          ...p, 
-          savedBy: isSaved ? [...(p.savedBy || []), currentUser._id] : (p.savedBy || []).filter(id => id !== currentUser._id) 
-        } : p
-      ));
+      const updatePost = (p) => p._id === postId ? { 
+        ...p, 
+        savedBy: isSaved ? [...(p.savedBy || []), currentUser._id] : (p.savedBy || []).filter(id => id !== currentUser._id) 
+      } : p;
+      
+      setViewerPosts(prev => prev.map(updatePost));
+      setPosts(prev => prev.map(updatePost)); // Обновляем сетку!
     } catch (error) {
-      console.error('Ошибка сохранения:', error);
+      alert('Ошибка сохранения: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  // ===== ФУНКЦИИ ДЛЯ КОММЕНТАРИЕВ В ПЛЕЕРЕ =====
+  const handleAddComment = async (postId) => {
+    if (!commentText.trim() || !postId) return;
+    try {
+      const response = await axios.post(`/posts/${postId}/comment`, { text: commentText });
+      const newComment = response.data;
+      
+      const updatePostComments = (p) => p._id === postId ? { ...p, comments: [...p.comments, newComment] } : p;
+      
+      setViewerPost(prev => ({ ...prev, comments: [...prev.comments, newComment] }));
+      setViewerPosts(prev => prev.map(updatePostComments));
+      setPosts(prev => prev.map(updatePostComments)); // Обновляем сетку
+      setCommentText('');
+    } catch (error) {
+      alert('Ошибка добавления комментария: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const handleCommentLike = async (postId, commentId) => {
+    try {
+      const response = await axios.post(`/posts/${postId}/comments/${commentId}/like`);
+      const updatedComment = response.data.comment;
+      const updateComments = (comments) => comments.map(c => c._id === commentId ? updatedComment : c);
+      
+      setViewerPost(prev => ({ ...prev, comments: updateComments(prev.comments) }));
+      setViewerPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: updateComments(p.comments) } : p));
+      setPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: updateComments(p.comments) } : p));
+    } catch (error) {
+      alert('Ошибка лайка комментария: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const handleReply = async (postId, commentId) => {
+    const text = replyTexts[commentId];
+    if (!text || !text.trim()) return;
+    try {
+      const response = await axios.post(`/posts/${postId}/comments/${commentId}/reply`, { text });
+      const { reply, commentId: parentId } = response.data;
+      const updateReplies = (comments) => comments.map(c => 
+        c._id === parentId ? { ...c, replies: [...c.replies, reply] } : c
+      );
+      
+      setViewerPost(prev => ({ ...prev, comments: updateReplies(prev.comments) }));
+      setViewerPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: updateReplies(p.comments) } : p));
+      setPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: updateReplies(p.comments) } : p));
+      setReplyTexts(prev => ({ ...prev, [commentId]: '' }));
+    } catch (error) {
+      alert('Ошибка добавления ответа: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const startEditComment = (commentId, currentText) => {
+    setEditingCommentId(commentId);
+    setEditCommentText(currentText);
+  };
+
+  const saveEditComment = async (postId, commentId, isReply = false) => {
+    if (!editCommentText.trim()) return;
+    try {
+      await axios.put(`/posts/${postId}/comments/${commentId}`, { text: editCommentText, isReply });
+      const updateComment = (comments) => comments.map(c => 
+        c._id === commentId ? { ...c, text: editCommentText } : 
+        isReply ? { ...c, replies: c.replies.map(r => r._id === commentId ? { ...r, text: editCommentText } : r) } : c
+      );
+      
+      setViewerPost(prev => ({ ...prev, comments: updateComment(prev.comments) }));
+      setViewerPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: updateComment(p.comments) } : p));
+      setPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: updateComment(p.comments) } : p));
+      setEditingCommentId(null);
+      setEditCommentText('');
+    } catch (error) {
+      alert('Ошибка редактирования: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const deleteComment = async (postId, commentId, isReply = false) => {
+    if (!window.confirm('Вы уверены, что хотите удалить этот комментарий?')) return;
+    try {
+      await axios.delete(`/posts/${postId}/comments/${commentId}`, { data: { isReply } });
+      const filterComment = (comments) => isReply 
+        ? comments.map(c => ({ ...c, replies: c.replies.filter(r => r._id !== commentId) }))
+        : comments.filter(c => c._id !== commentId);
+      
+      setViewerPost(prev => ({ ...prev, comments: filterComment(prev.comments) }));
+      setViewerPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: filterComment(p.comments) } : p));
+      setPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: filterComment(p.comments) } : p));
+    } catch (error) {
+      alert('Ошибка удаления: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -373,15 +463,12 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
                     )}
                   </div>
                   <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/5 pointer-events-none">
-                    
-                    {/* ========== ИСПРАВЛЕННАЯ КНОПКА КОММЕНТАРИЕВ ========== */}
                     <button 
                       onClick={(e) => { e.stopPropagation(); handleOpenComments(post._id); }} 
                       className="text-xs text-white/50 flex items-center gap-1 pointer-events-auto hover:text-white transition"
                     >
                       💬 {post.comments?.length || 0} комментов
                     </button>
-                    {/* ====================================================== */}
 
                     <div className="space-x-2 pointer-events-auto">
                       <button 
@@ -405,7 +492,7 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
         </div>
       </div>
 
-      {/* ===== ПЛЕЕР ===== */}
+      {/* ===== ПЛЕЕР С ПОЛНОЦЕННЫМИ КНОПКАМИ И КОММЕНТАРИЯМИ ===== */}
       <AnimatePresence>
         {viewerPost && (
           <motion.div
@@ -422,7 +509,7 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
                 ✕
               </button>
 
-              <div className={`flex flex-row items-center justify-center gap-4 md:gap-8 transition-all duration-300 ease-in-out w-full`}>
+              <div className={`flex flex-row items-center justify-center gap-4 md:gap-8 transition-all duration-300 ease-in-out w-full ${isCommentsOpen ? 'translate-x-[-180px]' : 'translate-x-0'}`}>
                 <div className="flex-1 flex items-center justify-center min-w-0 h-full">
                   <div className="relative w-full max-w-[450px] lg:max-w-[650px] aspect-[1/1] max-h-[85vh] rounded-[24px] overflow-hidden bg-black shadow-2xl cursor-pointer">
                     
@@ -483,6 +570,7 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
                   </div>
                 </div>
 
+                {/* ПРАВЫЕ КНОПКИ (С РАБОЧИМИ onClick) */}
                 <div className="flex flex-col items-center gap-4 py-4 shrink-0 min-w-[60px] md:min-w-[80px]">
                   <div className="relative">
                     <Link to={`/profile/${viewerPost.user?._id}`}>
@@ -492,6 +580,7 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
                     </Link>
                   </div>
 
+                  {/* ЛАЙК */}
                   <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={() => handleLike(viewerPost._id)}>
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
                       {viewerPost.isLikedByMe || (viewerPost.likes && viewerPost.likes.includes(currentUser?._id)) ? (
@@ -503,13 +592,15 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
                     <span className="text-white/80 text-[11px] font-bold tracking-wide">{viewerPost.likes?.length || 0}</span>
                   </div>
 
-                  <div className="flex flex-col items-center gap-1 cursor-pointer">
+                  {/* КОММЕНТАРИЙ */}
+                  <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={(e) => { e.stopPropagation(); setIsCommentsOpen(!isCommentsOpen); }}>
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
                       <FaComment className="text-white/80 text-xl hover:text-white transition" />
                     </div>
                     <span className="text-white/80 text-[11px] font-bold tracking-wide">{viewerPost.comments?.length || 0}</span>
                   </div>
 
+                  {/* СОХРАНЕНИЕ */}
                   <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={() => handleSave(viewerPost._id)}>
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
                       {viewerPost.savedBy && viewerPost.savedBy.includes(currentUser?._id) ? (
@@ -527,6 +618,176 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
                   </div>
                 </div>
               </div>
+
+              {/* ===== ПАНЕЛЬ КОММЕНТАРИЕВ (ВОССТАНОВЛЕНА) ===== */}
+              <AnimatePresence>
+                {isCommentsOpen && (
+                  <motion.div
+                    initial={{ x: '100%' }}
+                    animate={{ x: 0 }}
+                    exit={{ x: '100%' }}
+                    transition={{ duration: 0.3 }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute right-0 top-0 bottom-0 w-[420px] bg-[#0a0a0a]/95 backdrop-blur-xl border-l border-white/10 z-40 p-6 flex flex-col shadow-2xl"
+                  >
+                    <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+                      <span className="text-white font-bold text-lg">Комментарии</span>
+                      <button onClick={() => setIsCommentsOpen(false)} className="text-white/50 hover:text-white transition text-xl">✕</button>
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto space-y-6 pr-2 pb-20 custom-scrollbar">
+                      {viewerPost.comments?.length === 0 && <p className="text-white/40 text-center mt-10">Нет комментариев</p>}
+                      {viewerPost.comments?.map((comment) => {
+                        const isCommentAuthor = currentUser?._id === comment.user?._id;
+                        const isPostAuthor = currentUser?._id === viewerPost.user?._id;
+                        const isLikedByMe = comment.likes?.includes(currentUser?._id);
+                        
+                        return (
+                          <div key={comment._id} className="border-b border-white/5 pb-4">
+                            <div className="flex gap-3 mb-2">
+                              <Link to={`/profile/${comment.user?._id}`} className="shrink-0 hover:opacity-80 transition">
+                                <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs text-white overflow-hidden">
+                                  {comment.user?.avatar ? <img src={comment.user.avatar} alt="Avatar" className="w-full h-full object-cover" crossOrigin="anonymous" /> : comment.user?.username?.charAt(0).toUpperCase()}
+                                </div>
+                              </Link>
+                              
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Link to={`/profile/${comment.user?._id}`} className="text-white/60 text-xs font-medium hover:text-white transition inline-block">
+                                    @{comment.user?.username}
+                                  </Link>
+                                  {isPostAuthor && <span className="text-[10px] text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">Автор</span>}
+                                  {comment.user?.isVerified && <span className="text-blue-500 text-xs">✓</span>}
+                                </div>
+
+                                {editingCommentId === comment._id ? (
+                                  <div className="mt-1 flex flex-col gap-2">
+                                    <textarea 
+                                      value={editCommentText}
+                                      onChange={(e) => setEditCommentText(e.target.value)}
+                                      className="w-full bg-black/40 border border-white/10 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent/50 resize-none"
+                                      rows="2"
+                                    />
+                                    <div className="flex gap-2">
+                                      <button onClick={() => { setEditingCommentId(null); setEditCommentText(''); }} className="text-xs text-white/50 hover:text-white">Отмена</button>
+                                      <button onClick={() => saveEditComment(viewerPost._id, comment._id, false)} className="text-xs text-accent hover:opacity-80">Сохранить</button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <p className="text-white/80 text-sm mt-1">{comment.text}</p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-4 ml-11 mt-1">
+                              <div className="flex items-center gap-1 cursor-pointer" onClick={() => handleCommentLike(viewerPost._id, comment._id)}>
+                                <span className={`text-sm transition-colors ${isLikedByMe ? 'text-red-500' : 'text-white/40 hover:text-white'}`}>
+                                  {isLikedByMe ? <FaHeart /> : <FaRegHeart />}
+                                </span>
+                                <span className="text-xs text-white/40">{comment.likes?.length > 0 ? comment.likes.length : ''}</span>
+                              </div>
+
+                              <div className="flex items-center gap-1 cursor-pointer text-white/40 hover:text-white transition text-xs" onClick={() => {
+                                const input = document.getElementById(`reply-input-${comment._id}`);
+                                if (input) { input.focus(); }
+                              }}>
+                                <FaReply size={12} /> <span>Ответить</span>
+                              </div>
+
+                              {isCommentAuthor && !editingCommentId && (
+                                <div className="flex items-center gap-2 text-white/30 ml-auto">
+                                  <button onClick={() => startEditComment(comment._id, comment.text)} className="hover:text-white transition"><FaPencilAlt size={12} /></button>
+                                  <button onClick={() => deleteComment(viewerPost._id, comment._id, false)} className="hover:text-red-400 transition"><FaTrash size={12} /></button>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="ml-11 mt-2 flex gap-2">
+                              <input 
+                                id={`reply-input-${comment._id}`}
+                                type="text"
+                                placeholder="Написать ответ..."
+                                value={replyTexts[comment._id] || ''}
+                                onChange={(e) => setReplyTexts(prev => ({ ...prev, [comment._id]: e.target.value }))}
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleReply(viewerPost._id, comment._id); }}
+                                className="flex-1 bg-transparent border-b border-white/10 text-white text-xs outline-none pb-1 placeholder:text-white/30 focus:border-accent/50 transition"
+                              />
+                              <button onClick={() => handleReply(viewerPost._id, comment._id)} className="text-accent text-xs font-medium hover:opacity-80 transition">Отправить</button>
+                            </div>
+
+                            {comment.replies?.length > 0 && (
+                              <div className="ml-11 mt-3 space-y-3 border-l-2 border-white/10 pl-3">
+                                {comment.replies.map((reply) => {
+                                  const isReplyAuthor = currentUser?._id === reply.user?._id;
+                                  const isReplyEditing = editingCommentId === reply._id;
+
+                                  return (
+                                    <div key={reply._id} className="flex gap-3">
+                                      <Link to={`/profile/${reply.user?._id}`} className="shrink-0 hover:opacity-80 transition">
+                                        <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-[10px] text-white overflow-hidden">
+                                          {reply.user?.avatar ? <img src={reply.user.avatar} alt="Avatar" className="w-full h-full object-cover" crossOrigin="anonymous" /> : reply.user?.username?.charAt(0).toUpperCase()}
+                                        </div>
+                                      </Link>
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <Link to={`/profile/${reply.user?._id}`} className="text-white/40 text-[11px] font-medium hover:text-white transition inline-block">
+                                            @{reply.user?.username}
+                                          </Link>
+                                          {reply.user?.isVerified && <span className="text-blue-500 text-[10px]">✓</span>}
+                                        </div>
+
+                                        {isReplyEditing ? (
+                                          <div className="mt-1 flex flex-col gap-2">
+                                            <textarea 
+                                              value={editCommentText}
+                                              onChange={(e) => setEditCommentText(e.target.value)}
+                                              className="w-full bg-black/40 border border-white/10 text-white rounded-lg px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-accent/50 resize-none"
+                                              rows="2"
+                                            />
+                                            <div className="flex gap-2">
+                                              <button onClick={() => { setEditingCommentId(null); setEditCommentText(''); }} className="text-[10px] text-white/50 hover:text-white">Отмена</button>
+                                              <button onClick={() => saveEditComment(viewerPost._id, reply._id, true)} className="text-[10px] text-accent hover:opacity-80">Сохранить</button>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <p className="text-white/70 text-sm mt-1">{reply.text}</p>
+                                        )}
+                                        
+                                        {isReplyAuthor && !isReplyEditing && (
+                                          <div className="flex items-center gap-2 mt-1 text-white/20">
+                                            <button onClick={() => startEditComment(reply._id, reply.text)} className="hover:text-white transition"><FaPencilAlt size={10} /></button>
+                                            <button onClick={() => deleteComment(viewerPost._id, reply._id, true)} className="hover:text-red-400 transition"><FaTrash size={10} /></button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="p-4 border-t border-white/10 bg-[#0a0a0a]/90 backdrop-blur-md z-10 shrink-0">
+                      <div className="flex gap-2 bg-black/40 border border-white/10 rounded-full px-4 py-2 items-center">
+                        <input
+                          type="text"
+                          placeholder="Добавить комментарий..."
+                          value={commentText}
+                          onChange={(e) => setCommentText(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleAddComment(viewerPost._id); }}
+                          className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-white/30"
+                        />
+                        <button onClick={() => handleAddComment(viewerPost._id)} className="text-accent font-medium text-sm hover:opacity-80 transition">
+                          Опубликовать
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
         )}
