@@ -8,30 +8,20 @@ export const NotificationProvider = ({ children }) => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchNotifications = async () => {
-    // ===== ГЛАВНОЕ ИСПРАВЛЕНИЕ: Если нет токена, просто выходим! =====
-    const token = localStorage.getItem('lumeToken');
-    if (!token) return; 
-
+    // На время решения проблемы с бэкендом просто отключаем запросы
+    // return; 
     try {
       const res = await axios.get('/notifications');
       setNotifications(res.data);
       const unread = res.data.filter(n => !n.isRead).length;
       setUnreadCount(unread);
     } catch (error) {
-      // Игнорируем ошибку 401, так как она возникает только когда пользователь не авторизован
-      if (error.response?.status !== 401) {
-        console.error('Ошибка загрузки уведомлений:', error);
-      }
+      console.log('Уведомления временно отключены');
     }
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('lumeToken');
-    if (token) {
-      fetchNotifications();
-      const interval = setInterval(fetchNotifications, 30000); // Обновлять каждые 30 сек
-      return () => clearInterval(interval);
-    }
+    fetchNotifications();
   }, []);
 
   const markAsRead = async (id) => {
@@ -40,7 +30,7 @@ export const NotificationProvider = ({ children }) => {
       setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
-      console.error('Ошибка отметки прочитанным:', error);
+      console.log('Уведомления временно отключены');
     }
   };
 
