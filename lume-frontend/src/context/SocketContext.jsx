@@ -13,7 +13,7 @@ export const SocketProvider = ({ children }) => {
     const token = localStorage.getItem('lumeToken');
     if (!token || !user) return;
 
-    const newSocket = io('http://localhost:5000', { // При деплое замени на Render URL
+    const newSocket = io('https://lume-5mof.onrender.com', { // При деплое замени на Render URL
       auth: { token }
     });
 

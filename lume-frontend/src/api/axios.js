@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 const axiosInstance = axios.create({
-  baseURL: 'https://lume-5mof.onrender.com/api', // <--- ВАЖНО: /api в конце
+  baseURL: 'https://lume-5mof.onrender.com/api',
+  timeout: 30000, // <--- 30 секунд. Если Render засыпает, запрос оборвется и выкинет тебя из "Загрузки"
   headers: { 'Content-Type': 'application/json' },
 });
 

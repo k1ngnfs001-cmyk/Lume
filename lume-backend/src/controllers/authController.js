@@ -1,7 +1,7 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const sendOTPEmail = require('../config/email');
+// const sendOTPEmail = require('../config/email'); // Временно отключаем
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -47,12 +47,15 @@ exports.login = async (req, res) => {
     user.otpExpiry = otpExpiry;
     await user.save();
 
-    // ВРЕМЕННО ОТКЛЮЧАЕМ ОТПРАВКУ ПИСЕМ. ПРОСТО ВЫВОДИМ КОД В ЛОГИ!
+    // ====================================================
+    // ВРЕМЕННО: отправка писем отключена, код выводится в консоль Render
+    // ====================================================
     console.log('========================================');
-    console.log('✅ ВОТ ТВОЙ КОД ДЛЯ ВХОДА (смотри в логи Render):', otp);
+    console.log('✅ КОД ДЛЯ ВХОДА (смотри в логах Render):', otp);
     console.log('========================================');
+    // await sendOTPEmail(email, otp); 
 
-    res.json({ message: 'Код подтверждения отправлен (смотри в логи бэкенда!)', requireOtp: true });
+    res.json({ message: 'Код подтверждения (смотри в логах)', requireOtp: true });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -83,12 +86,8 @@ exports.verifyOtp = async (req, res) => {
   }
 };
 
-// ==========================================================
-// ВОТ НЕДОСТАЮЩАЯ ФУНКЦИЯ, ИЗ-ЗА КОТОРОЙ ВСЁ ПАДАЛО:
-// ==========================================================
 exports.getMe = async (req, res) => {
   try {
-    // req.user.id подставляется из authMiddleware (протекта)
     const user = await User.findById(req.user.id).select('-password');
     if (!user) {
       return res.status(404).json({ message: 'Пользователь не найден' });
