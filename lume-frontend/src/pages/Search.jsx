@@ -52,7 +52,7 @@ const Search = () => {
         const res = await axios.get(`/search?${params.toString()}`);
         setResults(res.data);
       } catch (error) {
-        console.error('Ошибка поиска:', error);
+        alert('Ошибка поиска: ' + (error.response?.data?.message || error.message));
       } finally {
         setLoading(false);
       }
@@ -145,25 +145,22 @@ const Search = () => {
   }, [viewerPost, isCommentsOpen, goNext, goPrev]);
 
   // =========================================================
-  //  ДОБАВЛЕНО: УПРАВЛЕНИЕ С КЛАВИАТУРЫ (Стрелки и Пробел)
+  //  УПРАВЛЕНИЕ С КЛАВИАТУРЫ (Стрелки и Пробел)
   // =========================================================
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Не срабатывает, если пользователь печатает текст
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         goNext();
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         goPrev();
-      } else if (e.key === ' ') { // Пробел
+      } else if (e.key === ' ') {
         e.preventDefault();
         handleVideoClick();
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [goNext, goPrev]);
@@ -173,18 +170,15 @@ const Search = () => {
     try {
       const response = await axios.post(`/posts/${postId}/like`);
       const { likes, isLiked } = response.data;
-      
       setViewerPost(prev => ({ ...prev, likes, isLikedByMe: isLiked }));
-      setViewerPosts(prevPosts => prevPosts.map(p => 
-        p._id === postId ? { ...p, likes, isLikedByMe: isLiked } : p
-      ));
+      setViewerPosts(prev => prev.map(p => p._id === postId ? { ...p, likes, isLikedByMe: isLiked } : p));
       setResults(prev => ({
         ...prev,
         reels: prev.reels.map(p => p._id === postId ? { ...p, likes, isLikedByMe: isLiked } : p),
         posts: prev.posts.map(p => p._id === postId ? { ...p, likes, isLikedByMe: isLiked } : p)
       }));
     } catch (error) {
-      console.error('Ошибка лайка:', error);
+      alert('Ошибка лайка: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -202,7 +196,7 @@ const Search = () => {
       setViewerPost(updateSaved);
       setViewerPosts(prev => prev.map(p => p._id === postId ? updateSaved(p) : p));
     } catch (error) {
-      console.error('Ошибка сохранения:', error);
+      alert('Ошибка сохранения: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -211,7 +205,6 @@ const Search = () => {
     try {
       const response = await axios.post(`/users/follow/${targetUserId}`);
       const { isFollowing } = response.data;
-      
       setUser(prev => {
         if (!prev) return prev;
         const currentFollowing = prev.following || [];
@@ -220,7 +213,7 @@ const Search = () => {
       const updatedUser = { ...currentUser, following: isFollowing ? [...currentUser.following, targetUserId] : currentUser.following.filter(id => id !== targetUserId) };
       localStorage.setItem('lumeUser', JSON.stringify(updatedUser));
     } catch (error) {
-      console.error('Ошибка подписки/отписки:', error);
+      alert('Ошибка подписки/отписки: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -230,12 +223,11 @@ const Search = () => {
       const response = await axios.post(`/posts/${postId}/comment`, { text: commentText });
       const newComment = response.data;
       const updateComments = (post) => ({ ...post, comments: [...post.comments, newComment] });
-      
       setViewerPost(updateComments);
       setViewerPosts(prev => prev.map(p => p._id === postId ? updateComments(p) : p));
       setCommentText('');
     } catch (error) {
-      console.error('Ошибка добавления комментария:', error);
+      alert('Ошибка добавления комментария: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -247,7 +239,7 @@ const Search = () => {
       setViewerPost(prev => ({ ...prev, comments: updateComments(prev.comments) }));
       setViewerPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: updateComments(p.comments) } : p));
     } catch (error) {
-      console.error('Ошибка лайка комментария:', error);
+      alert('Ошибка лайка комментария: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -264,7 +256,7 @@ const Search = () => {
       setViewerPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: updateReplies(p.comments) } : p));
       setReplyTexts(prev => ({ ...prev, [commentId]: '' }));
     } catch (error) {
-      console.error('Ошибка добавления ответа:', error);
+      alert('Ошибка добавления ответа: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -440,20 +432,13 @@ const Search = () => {
                 >
                   {reel.mediaType === 'video' ? (
                     <video
-                      ref={(el) => {
-                        if (el) videoRefs.current[videoId] = el;
-                      }}
+                      ref={(el) => { if (el) videoRefs.current[videoId] = el; }}
                       src={getMediaUrl(reel.mediaUrl)}
                       className="w-full h-full object-cover"
                       muted
                       playsInline
                       loop={false}
-                      onEnded={(e) => {
-                        if (hoveredId === videoId) {
-                          e.target.currentTime = 0;
-                          e.target.play().catch(() => {});
-                        }
-                      }}
+                      onEnded={(e) => { if (hoveredId === videoId) { e.target.currentTime = 0; e.target.play().catch(() => {}); } }}
                     />
                   ) : (
                     <img src={getMediaUrl(reel.mediaUrl)} alt="Reel" className="w-full h-full object-cover" />
@@ -489,18 +474,10 @@ const Search = () => {
                 
                 <div className="flex-1 flex items-center justify-center min-w-0 h-full">
                   <div className="relative w-full max-w-[450px] lg:max-w-[650px] aspect-[1/1] max-h-[85vh] rounded-[24px] overflow-hidden bg-black shadow-2xl cursor-pointer">
-                    
                     <button onClick={toggleMute} className="absolute top-4 left-4 z-30 bg-black/60 backdrop-blur-sm hover:bg-black/80 p-2 rounded-full text-white transition">
                       {isMuted ? '🔇' : '🔊'}
                     </button>
-
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); closeViewer(); }}
-                      className="absolute top-4 right-4 z-30 bg-black/60 backdrop-blur-sm hover:bg-black/80 p-2 rounded-full text-white transition"
-                    >
-                      ✕
-                    </button>
-
+                    <button onClick={(e) => { e.stopPropagation(); closeViewer(); }} className="absolute top-4 right-4 z-30 bg-black/60 backdrop-blur-sm hover:bg-black/80 p-2 rounded-full text-white transition">✕</button>
                     <div onClick={handleVideoClick} className="w-full h-full relative">
                       <AnimatePresence mode="wait">
                         <motion.div key={viewerPost._id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="w-full h-full relative">
@@ -513,9 +490,7 @@ const Search = () => {
                           ) : (
                             <div className="w-full h-full bg-gray-800 flex items-center justify-center text-white/30 text-4xl font-bold text-center p-4">{viewerPost.content}</div>
                           )}
-                          
                           <div className="absolute bottom-0 left-0 right-0 h-[40%] bg-linear-to-t from-black/90 via-black/40 to-transparent pointer-events-none rounded-b-[24px]"></div>
-                          
                           <div className="absolute bottom-6 left-4 z-10 text-left">
                             <Link to={`/profile/${viewerPost.user?._id}`} className="inline-flex items-center gap-3 mb-2 hover:opacity-80 transition">
                               <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white font-bold text-xs overflow-hidden shrink-0">
@@ -525,11 +500,9 @@ const Search = () => {
                             </Link>
                             <p className="text-white/90 text-sm drop-shadow-md leading-relaxed max-w-[80%]">{viewerPost.content}</p>
                           </div>
-
                           <div className="absolute bottom-0 left-0 w-full h-1 bg-white/20 z-20 pointer-events-none">
                             <div className="h-full bg-red-500 transition-all duration-100 ease-linear" style={{ width: `${progress}%` }}></div>
                           </div>
-
                           <AnimatePresence>
                             {!isPlaying && (
                               <motion.div
@@ -552,14 +525,12 @@ const Search = () => {
                 </div>
 
                 <div className="flex flex-col items-center gap-4 py-4 shrink-0 min-w-[60px] md:min-w-[80px]">
-                  
                   <div className="relative">
                     <Link to={`/profile/${viewerPost.user?._id}`}>
                       <div className="w-12 h-12 rounded-full border-[2px] border-white/30 bg-gray-800 flex items-center justify-center overflow-hidden cursor-pointer hover:border-accent transition">
                         {viewerPost.user?.avatar && viewerPost.user.avatar !== '' ? <img src={viewerPost.user.avatar} alt="Avatar" className="w-full h-full object-cover" crossOrigin="anonymous" /> : <span className="text-white font-bold text-lg">{viewerPost.user?.username?.charAt(0).toUpperCase()}</span>}
                       </div>
                     </Link>
-                    
                     {viewerPost.user?._id !== currentUser?._id && (
                       <AnimatePresence mode="wait">
                         {!currentUser?.following?.map(id => id.toString()).includes(viewerPost.user?._id?.toString()) ? (
@@ -591,10 +562,7 @@ const Search = () => {
                     )}
                   </div>
 
-                  <div 
-                    className="flex flex-col items-center gap-1 cursor-pointer" 
-                    onClick={(e) => { e.stopPropagation(); handleLike(viewerPost._id); }}
-                  >
+                  <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={(e) => { e.stopPropagation(); handleLike(viewerPost._id); }}>
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
                       {viewerPost.isLikedByMe || (viewerPost.likes && viewerPost.likes.includes(currentUser?._id)) ? (
                         <FaHeart className="text-red-500 text-xl transition-colors" />
@@ -612,10 +580,7 @@ const Search = () => {
                     <span className="text-white/80 text-[11px] font-bold tracking-wide">{viewerPost.comments?.length || 0}</span>
                   </div>
 
-                  <div 
-                    className="flex flex-col items-center gap-1 cursor-pointer" 
-                    onClick={(e) => { e.stopPropagation(); handleSave(viewerPost._id); }}
-                  >
+                  <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={(e) => { e.stopPropagation(); handleSave(viewerPost._id); }}>
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
                       {viewerPost.savedBy && viewerPost.savedBy.includes(currentUser?._id) ? (
                         <FaBookmark className="text-yellow-400 text-xl transition-colors" />
@@ -647,7 +612,6 @@ const Search = () => {
                       <span className="text-white font-bold text-lg">Комментарии</span>
                       <button onClick={() => setIsCommentsOpen(false)} className="text-white/50 hover:text-white transition text-xl">✕</button>
                     </div>
-                    
                     <div className="flex-1 overflow-y-auto space-y-6 pr-2 pb-20 custom-scrollbar">
                       {viewerPost.comments?.length === 0 && <p className="text-white/40 text-center mt-10">Нет комментариев</p>}
                       {viewerPost.comments?.map((comment) => {
@@ -663,7 +627,6 @@ const Search = () => {
                                   {comment.user?.avatar ? <img src={comment.user.avatar} alt="Avatar" className="w-full h-full object-cover" crossOrigin="anonymous" /> : comment.user?.username?.charAt(0).toUpperCase()}
                                 </div>
                               </Link>
-                              
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <Link to={`/profile/${comment.user?._id}`} className="text-white/60 text-xs font-medium hover:text-white transition inline-block">
@@ -672,7 +635,6 @@ const Search = () => {
                                   {isPostAuthor && <span className="text-[10px] text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">Автор</span>}
                                   {comment.user?.isVerified && <span className="text-blue-500 text-xs">✓</span>}
                                 </div>
-
                                 {editingCommentId === comment._id ? (
                                   <div className="mt-1 flex flex-col gap-2">
                                     <textarea 
@@ -699,14 +661,12 @@ const Search = () => {
                                 </span>
                                 <span className="text-xs text-white/40">{comment.likes?.length > 0 ? comment.likes.length : ''}</span>
                               </div>
-
                               <div className="flex items-center gap-1 cursor-pointer text-white/40 hover:text-white transition text-xs" onClick={() => {
                                 const input = document.getElementById(`reply-input-${comment._id}`);
                                 if (input) { input.focus(); }
                               }}>
                                 <FaReply size={12} /> <span>Ответить</span>
                               </div>
-
                               {isCommentAuthor && !editingCommentId && (
                                 <div className="flex items-center gap-2 text-white/30 ml-auto">
                                   <button onClick={() => startEditComment(comment._id, comment.text)} className="hover:text-white transition"><FaPencilAlt size={12} /></button>
@@ -714,7 +674,6 @@ const Search = () => {
                                 </div>
                               )}
                             </div>
-
                             <div className="ml-11 mt-2 flex gap-2">
                               <input 
                                 id={`reply-input-${comment._id}`}
@@ -727,13 +686,11 @@ const Search = () => {
                               />
                               <button onClick={() => handleReply(viewerPost._id, comment._id)} className="text-accent text-xs font-medium hover:opacity-80 transition">Отправить</button>
                             </div>
-
                             {comment.replies?.length > 0 && (
                               <div className="ml-11 mt-3 space-y-3 border-l-2 border-white/10 pl-3">
                                 {comment.replies.map((reply) => {
                                   const isReplyAuthor = currentUser?._id === reply.user?._id;
                                   const isReplyEditing = editingCommentId === reply._id;
-
                                   return (
                                     <div key={reply._id} className="flex gap-3">
                                       <Link to={`/profile/${reply.user?._id}`} className="shrink-0 hover:opacity-80 transition">
@@ -748,7 +705,6 @@ const Search = () => {
                                           </Link>
                                           {reply.user?.isVerified && <span className="text-blue-500 text-[10px]">✓</span>}
                                         </div>
-
                                         {isReplyEditing ? (
                                           <div className="mt-1 flex flex-col gap-2">
                                             <textarea 
@@ -765,7 +721,6 @@ const Search = () => {
                                         ) : (
                                           <p className="text-white/70 text-sm mt-1">{reply.text}</p>
                                         )}
-                                        
                                         {isReplyAuthor && !isReplyEditing && (
                                           <div className="flex items-center gap-2 mt-1 text-white/20">
                                             <button onClick={() => startEditComment(reply._id, reply.text)} className="hover:text-white transition"><FaPencilAlt size={10} /></button>
@@ -782,7 +737,6 @@ const Search = () => {
                         );
                       })}
                     </div>
-
                     <div className="p-4 border-t border-white/10 bg-[#0a0a0a]/90 backdrop-blur-md z-10 shrink-0">
                       <div className="flex gap-2 bg-black/40 border border-white/10 rounded-full px-4 py-2 items-center">
                         <input

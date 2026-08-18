@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from '../api/axios';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -8,6 +8,7 @@ import { FiBookmark, FiMoreVertical, FiEdit2 } from 'react-icons/fi';
 
 const ReelsFeed = ({ feedType = 'global' }) => {
   const { user, setUser } = useAuth();
+  const location = useLocation();
   const [posts, setPosts] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -44,13 +45,13 @@ const ReelsFeed = ({ feedType = 'global' }) => {
         const res = await axios.get(endpoint);
         setPosts(res.data);
       } catch (error) {
-        console.error('Ошибка загрузки постов:', error);
+        alert('Ошибка загрузки ленты: ' + (error.response?.data?.message || error.message));
       } finally {
         setLoading(false);
       }
     };
     fetchPosts();
-  }, [feedType]);
+  }, [feedType, location.key]);
 
   useEffect(() => {
     setProgress(0);
@@ -64,52 +65,49 @@ const ReelsFeed = ({ feedType = 'global' }) => {
   }, [isMuted, currentIndex]);
 
   const handleLike = async (postId) => {
+    if (!postId) return;
     try {
       const response = await axios.post(`/posts/${postId}/like`);
       const { likes, isLiked } = response.data;
-      setPosts(prevPosts => prevPosts.map(p => 
-        p._id === postId ? { ...p, likes: likes, isLikedByMe: isLiked } : p
-      ));
+      setPosts(prev => prev.map(p => p._id === postId ? { ...p, likes, isLikedByMe: isLiked } : p));
     } catch (error) {
-      console.error('Ошибка лайка:', error);
+      alert('Ошибка лайка: ' + (error.response?.data?.message || error.message));
     }
   };
 
   const handleSave = async (postId) => {
+    if (!postId) return;
     try {
       const response = await axios.post(`/posts/${postId}/save`);
-      const { isSaved, savedCount } = response.data;
-      setPosts(prevPosts => prevPosts.map(p => 
+      const { isSaved } = response.data;
+      setPosts(prev => prev.map(p => 
         p._id === postId ? { 
           ...p, 
           savedBy: isSaved ? [...(p.savedBy || []), user._id] : (p.savedBy || []).filter(id => id !== user._id) 
         } : p
       ));
     } catch (error) {
-      console.error('Ошибка сохранения:', error);
+      alert('Ошибка сохранения: ' + (error.response?.data?.message || error.message));
     }
   };
 
   const handleFollow = async (targetUserId) => {
     if (!user || !targetUserId || targetUserId === user._id) return;
-
     try {
       const response = await axios.post(`/users/follow/${targetUserId}`);
       const { isFollowing } = response.data;
-
       setUser(prev => {
         if (!prev) return prev;
         const currentFollowing = prev.following || [];
         const newFollowing = isFollowing
           ? [...currentFollowing, targetUserId]
           : currentFollowing.filter(id => id !== targetUserId);
-        
         const updatedUser = { ...prev, following: newFollowing };
         localStorage.setItem('lumeUser', JSON.stringify(updatedUser));
         return updatedUser;
       });
     } catch (error) {
-      console.error('Ошибка подписки/отписки:', error);
+      alert('Ошибка подписки: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -185,7 +183,6 @@ const ReelsFeed = ({ feedType = 'global' }) => {
       setIsEditModalOpen(false);
       alert('Пост успешно обновлён!');
     } catch (error) {
-      console.error('Ошибка при обновлении поста:', error);
       alert('Ошибка обновления: ' + (error.response?.data?.message || 'Сервер не отвечает'));
     } finally {
       setIsUpdating(false);
@@ -193,16 +190,16 @@ const ReelsFeed = ({ feedType = 'global' }) => {
   };
 
   const handleAddComment = async (postId) => {
-    if (!commentText.trim()) return;
+    if (!commentText.trim() || !postId) return;
     try {
       const response = await axios.post(`/posts/${postId}/comment`, { text: commentText });
       const newComment = response.data;
-      setPosts(prevPosts => prevPosts.map(p => 
+      setPosts(prev => prev.map(p => 
         p._id === postId ? { ...p, comments: [...p.comments, newComment] } : p
       ));
       setCommentText('');
     } catch (error) {
-      console.error('Ошибка добавления комментария:', error);
+      alert('Ошибка добавления комментария: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -210,14 +207,14 @@ const ReelsFeed = ({ feedType = 'global' }) => {
     try {
       const response = await axios.post(`/posts/${postId}/comments/${commentId}/like`);
       const updatedComment = response.data.comment;
-      setPosts(prevPosts => prevPosts.map(p => 
+      setPosts(prev => prev.map(p => 
         p._id === postId ? {
           ...p,
           comments: p.comments.map(c => c._id === commentId ? updatedComment : c)
         } : p
       ));
     } catch (error) {
-      console.error('Ошибка лайка комментария:', error);
+      alert('Ошибка лайка комментария: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -227,7 +224,7 @@ const ReelsFeed = ({ feedType = 'global' }) => {
     try {
       const response = await axios.post(`/posts/${postId}/comments/${commentId}/reply`, { text });
       const { reply, commentId: parentId } = response.data;
-      setPosts(prevPosts => prevPosts.map(p => 
+      setPosts(prev => prev.map(p => 
         p._id === postId ? {
           ...p,
           comments: p.comments.map(c => 
@@ -237,7 +234,7 @@ const ReelsFeed = ({ feedType = 'global' }) => {
       ));
       setReplyTexts(prev => ({ ...prev, [commentId]: '' }));
     } catch (error) {
-      console.error('Ошибка добавления ответа:', error);
+      alert('Ошибка добавления ответа: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -250,7 +247,7 @@ const ReelsFeed = ({ feedType = 'global' }) => {
     if (!editCommentText.trim()) return;
     try {
       await axios.put(`/posts/${postId}/comments/${commentId}`, { text: editCommentText, isReply });
-      setPosts(prevPosts => prevPosts.map(p => 
+      setPosts(prev => prev.map(p => 
         p._id === postId ? {
           ...p,
           comments: isReply ? 
@@ -272,7 +269,7 @@ const ReelsFeed = ({ feedType = 'global' }) => {
     if (!window.confirm('Вы уверены, что хотите удалить этот комментарий?')) return;
     try {
       await axios.delete(`/posts/${postId}/comments/${commentId}`, { data: { isReply } });
-      setPosts(prevPosts => prevPosts.map(p => 
+      setPosts(prev => prev.map(p => 
         p._id === postId ? {
           ...p,
           comments: isReply ?
@@ -296,7 +293,6 @@ const ReelsFeed = ({ feedType = 'global' }) => {
     if (currentIndex > 0) setCurrentIndex(prev => prev - 1);
   }, [currentIndex]);
 
-  // Обработчик скролла колесиком
   useEffect(() => {
     const handleGlobalScroll = (e) => {
       const sidebar = document.getElementById('lume-sidebar');
@@ -321,26 +317,20 @@ const ReelsFeed = ({ feedType = 'global' }) => {
     return () => window.removeEventListener('wheel', handleGlobalScroll);
   }, [currentIndex, posts.length, goToNext, goToPrev]);
 
-  // =========================================================
-  //  ДОБАВЛЕНО: УПРАВЛЕНИЕ С КЛАВИАТУРЫ (Стрелки и Пробел)
-  // =========================================================
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Не срабатывает, если пользователь печатает текст
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         goToNext();
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         goToPrev();
-      } else if (e.key === ' ') { // Пробел
+      } else if (e.key === ' ') {
         e.preventDefault();
         handleVideoClick();
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [goToNext, goToPrev]);
@@ -356,21 +346,13 @@ const ReelsFeed = ({ feedType = 'global' }) => {
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-[#0a0a0a] flex flex-row items-center justify-center">
-      
-      <motion.div 
-        layout 
-        transition={{ duration: 0.35, ease: "easeInOut" }}
-        className="flex-1 h-full flex flex-row items-center justify-center min-w-0"
-      >
+      <motion.div layout transition={{ duration: 0.35, ease: "easeInOut" }} className="flex-1 h-full flex flex-row items-center justify-center min-w-0">
         <div className="flex flex-row items-center justify-center gap-4 md:gap-8 w-full max-w-[1000px] mx-auto px-4 py-8">
-          
           <div className="flex-1 flex items-center justify-center min-w-0">
             <div className="relative w-full max-w-[450px] lg:max-w-[650px] aspect-[1/1] max-h-[85vh] rounded-[24px] overflow-hidden bg-black shadow-2xl cursor-pointer">
-              
               <button onClick={toggleMute} className="absolute top-4 left-4 z-30 bg-black/60 backdrop-blur-sm hover:bg-black/80 p-2 rounded-full text-white transition">
                 {isMuted ? '🔇' : '🔊'}
               </button>
-
               {canEdit && (
                 <div className="absolute top-4 right-4 z-30">
                   <button onClick={openEditMenu} className="bg-black/60 backdrop-blur-sm hover:bg-black/80 p-2 rounded-full text-white transition">
@@ -388,7 +370,6 @@ const ReelsFeed = ({ feedType = 'global' }) => {
                   </AnimatePresence>
                 </div>
               )}
-
               <div onClick={handleVideoClick} className="w-full h-full relative">
                 <AnimatePresence mode="wait">
                   <motion.div key={post._id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="w-full h-full relative">
@@ -401,15 +382,12 @@ const ReelsFeed = ({ feedType = 'global' }) => {
                     ) : (
                       <div className="w-full h-full bg-gray-800 flex items-center justify-center text-white/30 text-4xl font-bold text-center p-4">{post.content}</div>
                     )}
-                    
                     <div className="absolute bottom-0 left-0 right-0 h-[40%] bg-linear-to-t from-black/90 via-black/40 to-transparent pointer-events-none rounded-b-[24px]"></div>
-                    
                     <div className="absolute bottom-6 left-4 z-10 text-left">
                       <Link to={`/profile/${post.user?._id}`} className="inline-flex items-center gap-3 mb-2 hover:opacity-80 transition">
                         <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white font-bold text-xs overflow-hidden shrink-0">
                           {post.user?.avatar && post.user.avatar !== '' ? <img src={post.user.avatar} alt="Avatar" className="w-full h-full object-cover" crossOrigin="anonymous" /> : post.user?.username?.charAt(0).toUpperCase()}
                         </div>
-                        
                         <div className="flex flex-row items-center gap-1.5">
                           <span className="text-white font-bold text-base drop-shadow-lg flex items-center gap-1">
                             @{post.user?.username}{post.user?.isVerified && <span className="text-blue-500 text-lg ml-1">✓</span>}
@@ -421,7 +399,6 @@ const ReelsFeed = ({ feedType = 'global' }) => {
                       </Link>
                       <p className="text-white/90 text-sm drop-shadow-md leading-relaxed max-w-[80%]">{post.content}</p>
                     </div>
-
                     <AnimatePresence>
                       {!isPlaying && (
                         <motion.div
@@ -443,6 +420,7 @@ const ReelsFeed = ({ feedType = 'global' }) => {
             </div>
           </div>
 
+          {/* Правая колонка кнопок */}
           <div className="flex flex-col items-center gap-4 py-4 shrink-0 min-w-[60px] md:min-w-[80px]">
             <div className="relative">
               <Link to={`/profile/${post.user?._id}`}>
@@ -450,7 +428,6 @@ const ReelsFeed = ({ feedType = 'global' }) => {
                   {post.user?.avatar && post.user.avatar !== '' ? <img src={post.user.avatar} alt="Avatar" className="w-full h-full object-cover" crossOrigin="anonymous" /> : <span className="text-white font-bold text-lg">{post.user?.username?.charAt(0).toUpperCase()}</span>}
                 </div>
               </Link>
-              
               {post.user?._id !== user?._id && (
                 <AnimatePresence mode="wait">
                   {!isFollowingAuthor ? (
@@ -503,20 +480,12 @@ const ReelsFeed = ({ feedType = 'global' }) => {
 
       <AnimatePresence>
         {isCommentsOpen && (
-          <motion.div 
-            layout
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: "420px", opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.35, ease: "easeInOut" }}
-            className="flex-shrink-0 h-full border-l border-white/10 bg-[#0a0a0a]/95 backdrop-blur-xl z-40 flex flex-col shadow-2xl overflow-hidden"
-          >
+          <motion.div layout initial={{ width: 0, opacity: 0 }} animate={{ width: "420px", opacity: 1 }} exit={{ width: 0, opacity: 0 }} transition={{ duration: 0.35, ease: "easeInOut" }} className="flex-shrink-0 h-full border-l border-white/10 bg-[#0a0a0a]/95 backdrop-blur-xl z-40 flex flex-col shadow-2xl overflow-hidden">
             <div className="w-[420px] h-full p-6 flex flex-col">
               <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
                 <span className="text-white font-bold text-lg">Комментарии</span>
                 <button onClick={() => setIsCommentsOpen(false)} className="text-white/50 hover:text-white transition text-xl">✕</button>
               </div>
-              
               <div className="flex-1 overflow-y-auto space-y-6 pr-2 pb-20 custom-scrollbar">
                 {post.comments?.length === 0 && <p className="text-white/40 text-center mt-10">Нет комментариев</p>}
                 {post.comments?.map((comment) => (
@@ -533,20 +502,10 @@ const ReelsFeed = ({ feedType = 'global' }) => {
                   </div>
                 ))}
               </div>
-
               <div className="p-4 border-t border-white/10 bg-[#0a0a0a]/90 backdrop-blur-md z-10 shrink-0">
                 <div className="flex gap-2 bg-black/40 border border-white/10 rounded-full px-4 py-2 items-center">
-                  <input
-                    type="text"
-                    placeholder="Добавить комментарий..."
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleAddComment(post._id); }}
-                    className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-white/30"
-                  />
-                  <button onClick={() => handleAddComment(post._id)} className="text-accent font-medium text-sm hover:opacity-80 transition">
-                    Опубликовать
-                  </button>
+                  <input type="text" placeholder="Добавить комментарий..." value={commentText} onChange={(e) => setCommentText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleAddComment(post._id); }} className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-white/30" />
+                  <button onClick={() => handleAddComment(post._id)} className="text-accent font-medium text-sm hover:opacity-80 transition">Опубликовать</button>
                 </div>
               </div>
             </div>
