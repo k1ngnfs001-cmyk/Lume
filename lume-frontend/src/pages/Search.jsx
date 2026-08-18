@@ -32,10 +32,11 @@ const Search = () => {
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editCommentText, setEditCommentText] = useState('');
 
+  // ===== ИСПРАВЛЕННАЯ ФУНКЦИЯ =====
   const getMediaUrl = (url) => {
     if (!url) return '';
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    if (url.startsWith('/uploads')) return 'http://localhost:5000' + url;
+    if (url.startsWith('/uploads')) return 'https://lume-5mof.onrender.com' + url;
     return url;
   };
 
@@ -65,7 +66,6 @@ const Search = () => {
     Object.keys(videoRefs.current).forEach((id) => {
       const video = videoRefs.current[id];
       if (!video) return;
-      
       if (id === hoveredId) {
         video.currentTime = 0;
         video.play().catch(() => {});
@@ -116,28 +116,22 @@ const Search = () => {
 
   useEffect(() => {
     if (!viewerPost) return;
-
     const handleScrollBlocker = (e) => {
       const sidebar = document.getElementById('lume-sidebar');
       if (sidebar && sidebar.contains(e.target)) return;
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
       if (isCommentsOpen) {
         const commentsPanel = document.querySelector('.w-\\[420px\\]');
         if (commentsPanel && commentsPanel.contains(e.target)) return;
       }
-
       e.preventDefault();
       const delta = e.deltaY || e.wheelDelta;
       if (Math.abs(delta) < 50) return;
-
       if (delta > 0) goNext();
       else if (delta < 0) goPrev();
     };
-
     window.addEventListener('wheel', handleScrollBlocker, { passive: false });
     window.addEventListener('touchmove', handleScrollBlocker, { passive: false });
-
     return () => {
       window.removeEventListener('wheel', handleScrollBlocker);
       window.removeEventListener('touchmove', handleScrollBlocker);
@@ -371,7 +365,6 @@ const Search = () => {
       </div>
 
       {loading && <p className="text-white/50">Загрузка...</p>}
-
       {!loading && getCurrentResults() === 0 && (
         <p className="text-white/30 text-center mt-10">
           По запросу "{query}" ничего не найдено в разделе "{tabs.find(t => t.key === activeTab)?.label}".
@@ -471,7 +464,6 @@ const Search = () => {
               onClick={(e) => e.stopPropagation()}
             >
               <div className={`flex flex-row items-center justify-center gap-4 md:gap-8 transition-all duration-300 ease-in-out w-full ${isCommentsOpen ? 'translate-x-[-180px]' : 'translate-x-0'}`}>
-                
                 <div className="flex-1 flex items-center justify-center min-w-0 h-full">
                   <div className="relative w-full max-w-[450px] lg:max-w-[650px] aspect-[1/1] max-h-[85vh] rounded-[24px] overflow-hidden bg-black shadow-2xl cursor-pointer">
                     <button onClick={toggleMute} className="absolute top-4 left-4 z-30 bg-black/60 backdrop-blur-sm hover:bg-black/80 p-2 rounded-full text-white transition">
@@ -618,7 +610,6 @@ const Search = () => {
                         const isCommentAuthor = currentUser?._id === comment.user?._id;
                         const isPostAuthor = currentUser?._id === viewerPost.user?._id;
                         const isLikedByMe = comment.likes?.includes(currentUser?._id);
-                        
                         return (
                           <div key={comment._id} className="border-b border-white/5 pb-4">
                             <div className="flex gap-3 mb-2">
@@ -675,15 +666,7 @@ const Search = () => {
                               )}
                             </div>
                             <div className="ml-11 mt-2 flex gap-2">
-                              <input 
-                                id={`reply-input-${comment._id}`}
-                                type="text"
-                                placeholder="Написать ответ..."
-                                value={replyTexts[comment._id] || ''}
-                                onChange={(e) => setReplyTexts(prev => ({ ...prev, [comment._id]: e.target.value }))}
-                                onKeyDown={(e) => { if (e.key === 'Enter') handleReply(viewerPost._id, comment._id); }}
-                                className="flex-1 bg-transparent border-b border-white/10 text-white text-xs outline-none pb-1 placeholder:text-white/30 focus:border-accent/50 transition"
-                              />
+                              <input id={`reply-input-${comment._id}`} type="text" placeholder="Написать ответ..." value={replyTexts[comment._id] || ''} onChange={(e) => setReplyTexts(prev => ({ ...prev, [comment._id]: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') handleReply(viewerPost._id, comment._id); }} className="flex-1 bg-transparent border-b border-white/10 text-white text-xs outline-none pb-1 placeholder:text-white/30 focus:border-accent/50 transition" />
                               <button onClick={() => handleReply(viewerPost._id, comment._id)} className="text-accent text-xs font-medium hover:opacity-80 transition">Отправить</button>
                             </div>
                             {comment.replies?.length > 0 && (
@@ -739,17 +722,8 @@ const Search = () => {
                     </div>
                     <div className="p-4 border-t border-white/10 bg-[#0a0a0a]/90 backdrop-blur-md z-10 shrink-0">
                       <div className="flex gap-2 bg-black/40 border border-white/10 rounded-full px-4 py-2 items-center">
-                        <input
-                          type="text"
-                          placeholder="Добавить комментарий..."
-                          value={commentText}
-                          onChange={(e) => setCommentText(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') handleAddComment(viewerPost._id); }}
-                          className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-white/30"
-                        />
-                        <button onClick={() => handleAddComment(viewerPost._id)} className="text-accent font-medium text-sm hover:opacity-80 transition">
-                          Опубликовать
-                        </button>
+                        <input type="text" placeholder="Добавить комментарий..." value={commentText} onChange={(e) => setCommentText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleAddComment(viewerPost._id); }} className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-white/30" />
+                        <button onClick={() => handleAddComment(viewerPost._id)} className="text-accent font-medium text-sm hover:opacity-80 transition">Опубликовать</button>
                       </div>
                     </div>
                   </motion.div>

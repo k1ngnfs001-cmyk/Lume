@@ -33,13 +33,20 @@ const Profile = () => {
   const [isUpdating, setIsUpdating] = useState(false);
 
   const [editingPost, setEditingPost] = useState(null);
-
   const [replyTexts, setReplyTexts] = useState({});
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editCommentText, setEditCommentText] = useState('');
 
   const [hoveredId, setHoveredId] = useState(null);
   const videoRefs = useRef({});
+
+  // ===== ИСПРАВЛЕННАЯ ФУНКЦИЯ =====
+  const getMediaUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (url.startsWith('/uploads')) return 'https://lume-5mof.onrender.com' + url;
+    return url;
+  };
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -86,13 +93,6 @@ const Profile = () => {
     } catch (error) {
       alert('Ошибка подписки: ' + (error.response?.data?.message || error.message));
     }
-  };
-
-  const getMediaUrl = (url) => {
-    if (!url) return '';
-    if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    if (url.startsWith('/uploads')) return 'http://localhost:5000' + url;
-    return url;
   };
 
   const openViewer = (post) => {
@@ -453,7 +453,6 @@ const Profile = () => {
                     </div>
                   </div>
                 </div>
-
                 <div className="flex flex-col items-center gap-4 py-4 shrink-0 min-w-[60px] md:min-w-[80px]">
                   <div className="relative">
                     <Link to={`/profile/${viewerPost.user?._id}`}>
@@ -664,7 +663,6 @@ const Profile = () => {
               )}
             </div>
           </div>
-
           <div className="grid grid-cols-3 gap-1 md:gap-2">
             {posts.length === 0 && <div className="col-span-3 text-center text-white/40 py-10">У пользователя пока нет постов.</div>}
             {posts.map(post => {

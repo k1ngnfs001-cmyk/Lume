@@ -31,10 +31,12 @@ const ReelsFeed = ({ feedType = 'global' }) => {
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editCommentText, setEditCommentText] = useState('');
 
+  // ===== ИСПРАВЛЕННАЯ ФУНКЦИЯ =====
   const getMediaUrl = (url) => {
     if (!url) return '';
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    if (url.startsWith('/uploads')) return 'http://localhost:5000' + url;
+    // Вместо localhost:5000 теперь бэкенд на Render
+    if (url.startsWith('/uploads')) return 'https://lume-5mof.onrender.com' + url;
     return url;
   };
 
@@ -317,6 +319,7 @@ const ReelsFeed = ({ feedType = 'global' }) => {
     return () => window.removeEventListener('wheel', handleGlobalScroll);
   }, [currentIndex, posts.length, goToNext, goToPrev]);
 
+  // ===== УПРАВЛЕНИЕ С КЛАВИАТУРЫ =====
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
@@ -419,8 +422,6 @@ const ReelsFeed = ({ feedType = 'global' }) => {
               </div>
             </div>
           </div>
-
-          {/* Правая колонка кнопок */}
           <div className="flex flex-col items-center gap-4 py-4 shrink-0 min-w-[60px] md:min-w-[80px]">
             <div className="relative">
               <Link to={`/profile/${post.user?._id}`}>
@@ -442,34 +443,29 @@ const ReelsFeed = ({ feedType = 'global' }) => {
                 </AnimatePresence>
               )}
             </div>
-
             <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={() => handleLike(post._id)}>
               <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
                 <span className={`text-xl transition-colors ${isLiked ? 'text-red-500' : 'text-white/80 hover:text-white'}`}>{isLiked ? <FaHeart /> : <FaRegHeart />}</span>
               </div>
               <span className="text-white/80 text-[11px] font-bold tracking-wide">{post.likes?.length || 0}</span>
             </div>
-
             <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={(e) => { e.stopPropagation(); setIsCommentsOpen(!isCommentsOpen); }}>
               <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
                 <FaComment className="text-white/80 text-xl hover:text-white transition" />
               </div>
               <span className="text-white/80 text-[11px] font-bold tracking-wide">{post.comments?.length || 0}</span>
             </div>
-
             <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={() => handleSave(post._id)}>
               <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
                 {isSaved ? <FaBookmark className="text-yellow-400 text-xl transition-colors" /> : <FiBookmark className="text-white/80 text-xl hover:text-white transition-colors" />}
               </div>
               <span className="text-white/80 text-[11px] font-bold tracking-wide">{post.savedBy?.length || 0}</span>
             </div>
-
             <div className="flex flex-col items-center gap-1 cursor-pointer">
               <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
                 <FaShare className="text-white/80 text-xl hover:text-white transition" />
               </div>
             </div>
-
             <div className="border-t border-white/10 pt-4 mt-4 flex flex-col gap-3 w-full items-center">
               <button onClick={goToPrev} disabled={currentIndex === 0} className="w-10 h-10 bg-black/60 backdrop-blur-md rounded-full border border-white/10 text-white hover:bg-black/80 transition disabled:opacity-30 flex items-center justify-center"><FaChevronUp size={16} /></button>
               <button onClick={goToNext} disabled={currentIndex === posts.length - 1} className="w-10 h-10 bg-black/60 backdrop-blur-md rounded-full border border-white/10 text-white hover:bg-black/80 transition disabled:opacity-30 flex items-center justify-center"><FaChevronDown size={16} /></button>

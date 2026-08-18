@@ -30,7 +30,6 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
   const [isPlaying, setIsPlaying] = useState(true);
   const videoRef = useRef(null);
   
-  // ===== НОВЫЕ СТЕЙТЫ ДЛЯ КОММЕНТАРИЕВ В АДМИН ПЛЕЕРЕ =====
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [replyTexts, setReplyTexts] = useState({});
@@ -40,6 +39,13 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
   const [editMediaFile, setEditMediaFile] = useState(null);
   const [editMediaPreview, setEditMediaPreview] = useState(null);
   const editMediaInputRef = useRef(null);
+
+  const getMediaUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (url.startsWith('/uploads')) return 'https://lume-5mof.onrender.com' + url;
+    return url;
+  };
 
   useEffect(() => {
     fetchData();
@@ -59,13 +65,6 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const getMediaUrl = (url) => {
-    if (!url) return '';
-    if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    if (url.startsWith('/uploads')) return 'http://localhost:5000' + url;
-    return url;
   };
 
   const filteredUsers = users.filter(user => 
@@ -185,7 +184,7 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
     setViewerPost(post);
     setProgress(0);
     setIsMuted(true);
-    setIsCommentsOpen(false); // Закрываем комменты при открытии плеера
+    setIsCommentsOpen(false);
     document.body.style.overflow = 'hidden';
   };
 
@@ -241,16 +240,14 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
     }
   };
 
-  // ===== ИСПРАВЛЕННЫЕ ФУНКЦИИ С ОБНОВЛЕНИЕМ СЕТКИ =====
   const handleLike = async (postId) => {
     if (!postId) return;
     try {
       const response = await axios.post(`/posts/${postId}/like`);
       const { likes, isLiked } = response.data;
       const updatePost = (p) => p._id === postId ? { ...p, likes, isLikedByMe: isLiked } : p;
-      
       setViewerPosts(prev => prev.map(updatePost));
-      setPosts(prev => prev.map(updatePost)); // Обновляем сетку!
+      setPosts(prev => prev.map(updatePost));
     } catch (error) {
       alert('Ошибка лайка: ' + (error.response?.data?.message || error.message));
     }
@@ -265,26 +262,22 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
         ...p, 
         savedBy: isSaved ? [...(p.savedBy || []), currentUser._id] : (p.savedBy || []).filter(id => id !== currentUser._id) 
       } : p;
-      
       setViewerPosts(prev => prev.map(updatePost));
-      setPosts(prev => prev.map(updatePost)); // Обновляем сетку!
+      setPosts(prev => prev.map(updatePost));
     } catch (error) {
       alert('Ошибка сохранения: ' + (error.response?.data?.message || error.message));
     }
   };
 
-  // ===== ФУНКЦИИ ДЛЯ КОММЕНТАРИЕВ В ПЛЕЕРЕ =====
   const handleAddComment = async (postId) => {
     if (!commentText.trim() || !postId) return;
     try {
       const response = await axios.post(`/posts/${postId}/comment`, { text: commentText });
       const newComment = response.data;
-      
       const updatePostComments = (p) => p._id === postId ? { ...p, comments: [...p.comments, newComment] } : p;
-      
       setViewerPost(prev => ({ ...prev, comments: [...prev.comments, newComment] }));
       setViewerPosts(prev => prev.map(updatePostComments));
-      setPosts(prev => prev.map(updatePostComments)); // Обновляем сетку
+      setPosts(prev => prev.map(updatePostComments));
       setCommentText('');
     } catch (error) {
       alert('Ошибка добавления комментария: ' + (error.response?.data?.message || error.message));
@@ -296,7 +289,6 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
       const response = await axios.post(`/posts/${postId}/comments/${commentId}/like`);
       const updatedComment = response.data.comment;
       const updateComments = (comments) => comments.map(c => c._id === commentId ? updatedComment : c);
-      
       setViewerPost(prev => ({ ...prev, comments: updateComments(prev.comments) }));
       setViewerPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: updateComments(p.comments) } : p));
       setPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: updateComments(p.comments) } : p));
@@ -314,7 +306,6 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
       const updateReplies = (comments) => comments.map(c => 
         c._id === parentId ? { ...c, replies: [...c.replies, reply] } : c
       );
-      
       setViewerPost(prev => ({ ...prev, comments: updateReplies(prev.comments) }));
       setViewerPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: updateReplies(p.comments) } : p));
       setPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: updateReplies(p.comments) } : p));
@@ -337,7 +328,6 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
         c._id === commentId ? { ...c, text: editCommentText } : 
         isReply ? { ...c, replies: c.replies.map(r => r._id === commentId ? { ...r, text: editCommentText } : r) } : c
       );
-      
       setViewerPost(prev => ({ ...prev, comments: updateComment(prev.comments) }));
       setViewerPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: updateComment(p.comments) } : p));
       setPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: updateComment(p.comments) } : p));
@@ -355,7 +345,6 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
       const filterComment = (comments) => isReply 
         ? comments.map(c => ({ ...c, replies: c.replies.filter(r => r._id !== commentId) }))
         : comments.filter(c => c._id !== commentId);
-      
       setViewerPost(prev => ({ ...prev, comments: filterComment(prev.comments) }));
       setViewerPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: filterComment(p.comments) } : p));
       setPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: filterComment(p.comments) } : p));
@@ -492,7 +481,7 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
         </div>
       </div>
 
-      {/* ===== ПЛЕЕР С ПОЛНОЦЕННЫМИ КНОПКАМИ И КОММЕНТАРИЯМИ ===== */}
+      {/* ===== ПЛЕЕР ===== */}
       <AnimatePresence>
         {viewerPost && (
           <motion.div
@@ -570,7 +559,7 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
                   </div>
                 </div>
 
-                {/* ПРАВЫЕ КНОПКИ (С РАБОЧИМИ onClick) */}
+                {/* ПРАВЫЕ КНОПКИ */}
                 <div className="flex flex-col items-center gap-4 py-4 shrink-0 min-w-[60px] md:min-w-[80px]">
                   <div className="relative">
                     <Link to={`/profile/${viewerPost.user?._id}`}>
@@ -580,7 +569,6 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
                     </Link>
                   </div>
 
-                  {/* ЛАЙК */}
                   <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={() => handleLike(viewerPost._id)}>
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
                       {viewerPost.isLikedByMe || (viewerPost.likes && viewerPost.likes.includes(currentUser?._id)) ? (
@@ -592,7 +580,6 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
                     <span className="text-white/80 text-[11px] font-bold tracking-wide">{viewerPost.likes?.length || 0}</span>
                   </div>
 
-                  {/* КОММЕНТАРИЙ */}
                   <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={(e) => { e.stopPropagation(); setIsCommentsOpen(!isCommentsOpen); }}>
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
                       <FaComment className="text-white/80 text-xl hover:text-white transition" />
@@ -600,7 +587,6 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
                     <span className="text-white/80 text-[11px] font-bold tracking-wide">{viewerPost.comments?.length || 0}</span>
                   </div>
 
-                  {/* СОХРАНЕНИЕ */}
                   <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={() => handleSave(viewerPost._id)}>
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
                       {viewerPost.savedBy && viewerPost.savedBy.includes(currentUser?._id) ? (
@@ -619,7 +605,6 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
                 </div>
               </div>
 
-              {/* ===== ПАНЕЛЬ КОММЕНТАРИЕВ (ВОССТАНОВЛЕНА) ===== */}
               <AnimatePresence>
                 {isCommentsOpen && (
                   <motion.div
