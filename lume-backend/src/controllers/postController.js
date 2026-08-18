@@ -123,24 +123,34 @@ exports.addComment = async (req, res) => {
 
 exports.toggleSave = async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id);
-    if (!post) return res.status(404).json({ message: 'Пост не найден' });
-
+    const postId = req.params.id;
     const userId = req.user._id;
-    const isSaved = post.savedBy.includes(userId);
 
-    if (isSaved) {
-      post.savedBy = post.savedBy.filter(id => id.toString() !== userId.toString());
-    } else {
-      post.savedBy.push(userId);
+    // Сначала просто проверим, сохранён ли уже пост
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ message: 'Пост не найден' });
     }
 
-    await post.save();
+    const isSaved = post.savedBy.includes(userId);
+    
+    // ===== ГЛАВНОЕ ИСПРАВЛЕНИЕ: Атомарное обновление, а не .save() =====
+    const updatedPost = await Post.findByIdAndUpdate(
+      postId,
+      isSaved 
+        ? { $pull: { savedBy: userId } }     // Убираем из сохранённых
+        : { $addToSet: { savedBy: userId } }, // Добавляем в сохранённые
+      { new: true } // Возвращаем обновлённый документ
+    );
+    // ====================================================================
+
     res.json({ 
       isSaved: !isSaved, 
-      savedCount: post.savedBy.length 
+      savedCount: updatedPost.savedBy.length 
     });
+
   } catch (error) {
+    console.error('Ошибка сохранения:', error);
     res.status(500).json({ message: error.message });
   }
 };
