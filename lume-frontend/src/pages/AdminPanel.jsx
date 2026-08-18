@@ -21,6 +21,9 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
   const [selectedPostComments, setSelectedPostComments] = useState([]);
   const [commentsModalOpen, setCommentsModalOpen] = useState(false);
 
+  // ===== НОВЫЙ СТЕЙТ ДЛЯ ЗАПОМИНАНИЯ ID ПОСТА =====
+  const [activeCommentPostId, setActiveCommentPostId] = useState(null);
+
   const [viewerPost, setViewerPost] = useState(null);
   const [viewerPosts, setViewerPosts] = useState([]);
   const [viewerIndex, setViewerIndex] = useState(0);
@@ -140,16 +143,28 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
 
   const handleOpenComments = async (postId) => {
     try {
+      // ===== ЗАПОМИНАЕМ ID ПОСТА =====
+      setActiveCommentPostId(postId);
       const res = await axios.get(`/admin/posts/${postId}/comments`);
       setSelectedPostComments(res.data);
       setCommentsModalOpen(true);
     } catch (error) { alert('Ошибка загрузки комментариев: ' + error.message); }
   };
 
+  // ===== ОБНОВЛЕННЫЕ ФУНКЦИИ РЕДАКТИРОВАНИЯ И УДАЛЕНИЯ =====
   const handleUpdateComment = async () => {
+    if (!editCommentText.trim()) return;
     try {
-      await axios.put(`/admin/comments/${editingComment._id}`, { text: editingComment.text });
-      setSelectedPostComments(prev => prev.map(c => c._id === editingComment._id ? editingComment : c));
+      const response = await axios.put(`/admin/comments/${editingComment._id}`, { text: editCommentText });
+      
+      // Обновляем список в модалке
+      setSelectedPostComments(prev => prev.map(c => c._id === editingComment._id ? response.data : c));
+      
+      // Обновляем основной список постов, чтобы счетчик обновился
+      setPosts(prev => prev.map(p => 
+        p._id === activeCommentPostId ? { ...p, comments: p.comments.map(c => c._id === editingComment._id ? response.data : c) } : p
+      ));
+      
       setEditingComment(null);
     } catch (error) { alert('Ошибка обновления: ' + error.message); }
   };
@@ -158,8 +173,15 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
     if (!window.confirm('Удалить этот комментарий?')) return;
     try {
       await axios.delete(`/admin/comments/${id}`);
+      
+      // Обновляем список в модалке
       setSelectedPostComments(prev => prev.filter(c => c._id !== id));
-    } catch (error) { alert('Ошибка: ' + error.message); }
+      
+      // ОБНОВЛЯЕМ ОСНОВНОЙ СПИСОК ПОСТОВ, ЧТОБЫ СЧЕТЧИК ОБНОВИЛСЯ!
+      setPosts(prev => prev.map(p => 
+        p._id === activeCommentPostId ? { ...p, comments: p.comments.filter(c => c._id !== id) } : p
+      ));
+    } catch (error) { alert('Ошибка удаления: ' + error.message); }
   };
 
   const openViewer = (post, postsList) => {
@@ -352,14 +374,14 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
                   </div>
                   <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/5 pointer-events-none">
                     
-                    {/* ========== ИСПРАВЛЕННАЯ КНОПКА КОММЕНТАРИЕВ (Добавлен e.stopPropagation) ========== */}
+                    {/* ========== ИСПРАВЛЕННАЯ КНОПКА КОММЕНТАРИЕВ ========== */}
                     <button 
                       onClick={(e) => { e.stopPropagation(); handleOpenComments(post._id); }} 
                       className="text-xs text-white/50 flex items-center gap-1 pointer-events-auto hover:text-white transition"
                     >
                       💬 {post.comments?.length || 0} комментов
                     </button>
-                    {/* ================================================================================== */}
+                    {/* ====================================================== */}
 
                     <div className="space-x-2 pointer-events-auto">
                       <button 
