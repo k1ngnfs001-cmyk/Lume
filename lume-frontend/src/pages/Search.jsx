@@ -40,25 +40,39 @@ const Search = () => {
     return url;
   };
 
+  const sameId = (a, b) => a != null && b != null && String(a?._id || a) === String(b?._id || b);
+  const isIdInArray = (arr, id) => Array.isArray(arr) && arr.some(item => sameId(item, id));
+
   useEffect(() => {
-    if (!query) return;
-    const fetchSearch = async () => {
+    if (!query.trim()) {
+      setResults({ users: [], posts: [], reels: [] });
+      setLoading(false);
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
       setLoading(true);
       try {
         const params = new URLSearchParams();
-        params.append('q', query);
-        if (activeTab !== 'all') {
-          params.append('type', activeTab);
-        }
-        const res = await axios.get(`/search?${params.toString()}`);
+        params.append('q', query.trim());
+        if (activeTab !== 'all') params.append('type', activeTab);
+
+        const res = await axios.get(`/search?${params.toString()}`, { signal: controller.signal });
         setResults(res.data);
       } catch (error) {
-        alert('Ошибка поиска: ' + (error.response?.data?.message || error.message));
+        if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
+          alert('Ошибка поиска: ' + (error.response?.data?.message || error.message));
+        }
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
+    }, 250);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
     };
-    fetchSearch();
   }, [query, activeTab]);
 
   // ======= ЛОГИКА ВОСПРОИЗВЕДЕНИЯ ВИДЕО В СЕТКЕ (HOVER) =======
@@ -159,56 +173,69 @@ const Search = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [goNext, goPrev]);
 
-  // ============= ИСПРАВЛЕННЫЕ ФУНКЦИИ =============
+  // ============= СТАБИЛЬНЫЕ LIKE / SAVE =============
+  const updateSearchPostEverywhere = (postId, updater) => {
+    setViewerPosts(prev => prev.map(p => p._id === postId ? updater(p) : p));
+    setViewerPost(prev => prev && prev._id === postId ? updater(prev) : prev);
+    setResults(prev => ({
+      ...prev,
+      reels: prev.reels.map(p => p._id === postId ? updater(p) : p),
+      posts: prev.posts.map(p => p._id === postId ? updater(p) : p)
+    }));
+  };
+
   const handleLike = async (postId) => {
-    if (!postId) return;
+    if (!postId || !currentUser?._id) return;
+    const targetPost = viewerPosts.find(p => p._id === postId) || viewerPost;
+    if (!targetPost) return;
+    const wasLiked = targetPost.isLikedByMe || isIdInArray(targetPost.likes, currentUser._id);
+    const originalPost = targetPost;
+
+    updateSearchPostEverywhere(postId, p => ({
+      ...p,
+      isLikedByMe: !wasLiked,
+      likes: wasLiked
+        ? (p.likes || []).filter(id => !sameId(id, currentUser._id))
+        : [...(p.likes || []), currentUser._id]
+    }));
+
     try {
       const response = await axios.post(`/posts/${postId}/like`);
-      const resData = response.data;
-      
-      const isLiked = resData.isLiked || resData.liked || false;
-      const likesCount = resData.likes 
-        ? resData.likes.length 
-        : (resData.totalLikes || resData.likesCount || 0);
-
-      const updatePost = (p) => p._id === postId ? { ...p, isLikedByMe: isLiked, likes: resData.likes || [] } : p;
-      
-      setViewerPost(prev => updatePost(prev));
-      setViewerPosts(prev => prev.map(updatePost));
-      setResults(prev => ({
-        ...prev,
-        reels: prev.reels.map(updatePost),
-        posts: prev.posts.map(updatePost)
+      updateSearchPostEverywhere(postId, p => ({
+        ...p,
+        isLikedByMe: Boolean(response.data.isLiked),
+        likes: Array.isArray(response.data.likes) ? response.data.likes : p.likes || []
       }));
     } catch (error) {
+      updateSearchPostEverywhere(postId, () => originalPost);
       alert('Ошибка лайка: ' + (error.response?.data?.message || error.message));
     }
   };
 
   const handleSave = async (postId) => {
-    if (!postId) return;
+    if (!postId || !currentUser?._id) return;
+    const targetPost = viewerPosts.find(p => p._id === postId) || viewerPost;
+    if (!targetPost) return;
+    const wasSaved = targetPost.isSavedByMe || isIdInArray(targetPost.savedBy, currentUser._id);
+    const originalPost = targetPost;
+
+    updateSearchPostEverywhere(postId, p => ({
+      ...p,
+      isSavedByMe: !wasSaved,
+      savedBy: wasSaved
+        ? (p.savedBy || []).filter(id => !sameId(id, currentUser._id))
+        : [...(p.savedBy || []), currentUser._id]
+    }));
+
     try {
       const response = await axios.post(`/posts/${postId}/save`);
-      const resData = response.data;
-      
-      const isSaved = resData.isSaved || resData.saved || false;
-      const savedCount = resData.savedCount || resData.totalSaved || 0;
-
-      const updateSaved = (post) => ({
-        ...post,
-        savedBy: isSaved 
-          ? [...(post.savedBy || []), currentUser._id] 
-          : (post.savedBy || []).filter(id => id !== currentUser._id)
-      });
-
-      setViewerPost(updateSaved);
-      setViewerPosts(prev => prev.map(p => p._id === postId ? updateSaved(p) : p));
-      setResults(prev => ({
-        ...prev,
-        reels: prev.reels.map(p => p._id === postId ? updateSaved(p) : p),
-        posts: prev.posts.map(p => p._id === postId ? updateSaved(p) : p)
+      updateSearchPostEverywhere(postId, p => ({
+        ...p,
+        isSavedByMe: Boolean(response.data.isSaved),
+        savedBy: Array.isArray(response.data.savedBy) ? response.data.savedBy : p.savedBy || []
       }));
     } catch (error) {
+      updateSearchPostEverywhere(postId, () => originalPost);
       alert('Ошибка сохранения: ' + (error.response?.data?.message || error.message));
     }
   };
@@ -576,7 +603,7 @@ const Search = () => {
 
                   <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={(e) => { e.stopPropagation(); handleLike(viewerPost._id); }}>
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
-                      {viewerPost.isLikedByMe || (viewerPost.likes && viewerPost.likes.includes(currentUser?._id)) ? (
+                      {viewerPost.isLikedByMe || isIdInArray(viewerPost.likes, currentUser?._id) ? (
                         <FaHeart className="text-red-500 text-xl transition-colors" />
                       ) : (
                         <FaRegHeart className="text-white/80 text-xl hover:text-white transition-colors" />
@@ -594,7 +621,7 @@ const Search = () => {
 
                   <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={(e) => { e.stopPropagation(); handleSave(viewerPost._id); }}>
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
-                      {viewerPost.savedBy && viewerPost.savedBy.includes(currentUser?._id) ? (
+                      {viewerPost.isSavedByMe || isIdInArray(viewerPost.savedBy, currentUser?._id) ? (
                         <FaBookmark className="text-yellow-400 text-xl transition-colors" />
                       ) : (
                         <FiBookmark className="text-white/80 text-xl hover:text-white transition-colors" />
@@ -629,7 +656,7 @@ const Search = () => {
                       {viewerPost.comments?.map((comment) => {
                         const isCommentAuthor = currentUser?._id === comment.user?._id;
                         const isPostAuthor = currentUser?._id === viewerPost.user?._id;
-                        const isLikedByMe = comment.likes?.includes(currentUser?._id);
+                        const isLikedByMe = isIdInArray(comment.likes, currentUser?._id);
                         return (
                           <div key={comment._id} className="border-b border-white/5 pb-4">
                             <div className="flex gap-3 mb-2">

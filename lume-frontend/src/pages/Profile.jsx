@@ -47,6 +47,9 @@ const Profile = () => {
     return url;
   };
 
+  const sameId = (a, b) => a != null && b != null && String(a?._id || a) === String(b?._id || b);
+  const isIdInArray = (arr, id) => Array.isArray(arr) && arr.some(item => sameId(item, id));
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -103,6 +106,8 @@ const Profile = () => {
     setProgress(0);
     setIsMuted(true);
     setIsCommentsOpen(false);
+    setIsEditMenuOpen(false);
+    setIsUpdating(false);
     document.body.style.overflow = 'hidden';
   };
 
@@ -112,6 +117,8 @@ const Profile = () => {
     setProgress(0);
     setIsMuted(true);
     setIsCommentsOpen(false);
+    setIsEditMenuOpen(false);
+    setIsEditModalOpen(false);
     document.body.style.overflow = '';
   };
 
@@ -171,56 +178,74 @@ const Profile = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [goNext, goPrev]);
 
-  // ===== ИСПРАВЛЕННЫЕ ФУНКЦИИ (добавлено setViewerPost) =====
+  // ===== СТАБИЛЬНЫЕ LIKE / SAVE =====
+  const updatePostEverywhere = (postId, updater) => {
+    setViewerPosts(prev => prev.map(p => p._id === postId ? updater(p) : p));
+    setProfileData(prev => prev ? { ...prev, posts: prev.posts.map(p => p._id === postId ? updater(p) : p) } : prev);
+    setViewerPost(prev => prev && prev._id === postId ? updater(prev) : prev);
+  };
+
   const handleLike = async (postId) => {
-    if (!postId) return;
-    const isLiked = (item) => item.isLikedByMe || false;
+    if (!postId || isUpdating || !currentUser?._id) return;
+    const targetPost = viewerPosts.find(p => p._id === postId) || viewerPost;
+    if (!targetPost) return;
 
-    const updateLikes = (item) => item._id === postId ? {
-      ...item,
-      isLikedByMe: !isLiked(item),
-      likes: !isLiked(item) ? [...(item.likes || []), currentUser._id] : (item.likes || []).filter(id => id !== currentUser._id)
-    } : item;
+    setIsUpdating(true);
+    const wasLiked = targetPost.isLikedByMe || isIdInArray(targetPost.likes, currentUser._id);
+    const originalPost = targetPost;
 
-    setViewerPosts(prev => prev.map(updateLikes));
-    setProfileData(prev => ({ ...prev, posts: prev.posts.map(updateLikes) }));
-    setViewerPost(prev => prev && prev._id === postId ? updateLikes(prev) : prev); // ОБНОВЛЯЕМ ПЛЕЕР
+    updatePostEverywhere(postId, p => ({
+      ...p,
+      isLikedByMe: !wasLiked,
+      likes: wasLiked
+        ? (p.likes || []).filter(id => !sameId(id, currentUser._id))
+        : [...(p.likes || []), currentUser._id]
+    }));
 
     try {
       const res = await axios.post(`/posts/${postId}/like`);
-      const { likes, isLiked } = res.data;
-      const syncLikes = (item) => item._id === postId ? { ...item, isLikedByMe: isLiked, likes: likes || [] } : item;
-      setViewerPosts(prev => prev.map(syncLikes));
-      setProfileData(prev => ({ ...prev, posts: prev.posts.map(syncLikes) }));
-      setViewerPost(prev => prev && prev._id === postId ? syncLikes(prev) : prev); // СИНХРОНИЗИРУЕМ ПЛЕЕР
+      updatePostEverywhere(postId, p => ({
+        ...p,
+        isLikedByMe: Boolean(res.data.isLiked),
+        likes: Array.isArray(res.data.likes) ? res.data.likes : p.likes || []
+      }));
     } catch (error) {
-      alert('Ошибка лайка');
+      updatePostEverywhere(postId, () => originalPost);
+      alert('Ошибка лайка: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setIsUpdating(false);
     }
   };
 
   const handleSave = async (postId) => {
-    if (!postId) return;
-    const isSaved = (item) => item.isSavedByMe || false;
+    if (!postId || isUpdating || !currentUser?._id) return;
+    const targetPost = viewerPosts.find(p => p._id === postId) || viewerPost;
+    if (!targetPost) return;
 
-    const updateSaves = (item) => item._id === postId ? {
-      ...item,
-      isSavedByMe: !isSaved(item),
-      savedBy: !isSaved(item) ? [...(item.savedBy || []), currentUser._id] : (item.savedBy || []).filter(id => id !== currentUser._id)
-    } : item;
+    setIsUpdating(true);
+    const wasSaved = targetPost.isSavedByMe || isIdInArray(targetPost.savedBy, currentUser._id);
+    const originalPost = targetPost;
 
-    setViewerPosts(prev => prev.map(updateSaves));
-    setProfileData(prev => ({ ...prev, posts: prev.posts.map(updateSaves) }));
-    setViewerPost(prev => prev && prev._id === postId ? updateSaves(prev) : prev); // ОБНОВЛЯЕМ ПЛЕЕР
+    updatePostEverywhere(postId, p => ({
+      ...p,
+      isSavedByMe: !wasSaved,
+      savedBy: wasSaved
+        ? (p.savedBy || []).filter(id => !sameId(id, currentUser._id))
+        : [...(p.savedBy || []), currentUser._id]
+    }));
 
     try {
       const res = await axios.post(`/posts/${postId}/save`);
-      const { isSaved, savedBy } = res.data;
-      const syncSaves = (item) => item._id === postId ? { ...item, isSavedByMe: isSaved, savedBy: savedBy || [] } : item;
-      setViewerPosts(prev => prev.map(syncSaves));
-      setProfileData(prev => ({ ...prev, posts: prev.posts.map(syncSaves) }));
-      setViewerPost(prev => prev && prev._id === postId ? syncSaves(prev) : prev); // СИНХРОНИЗИРУЕМ ПЛЕЕР
+      updatePostEverywhere(postId, p => ({
+        ...p,
+        isSavedByMe: Boolean(res.data.isSaved),
+        savedBy: Array.isArray(res.data.savedBy) ? res.data.savedBy : p.savedBy || []
+      }));
     } catch (error) {
-      alert('Ошибка сохранения');
+      updatePostEverywhere(postId, () => originalPost);
+      alert('Ошибка сохранения: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -229,13 +254,14 @@ const Profile = () => {
     try {
       const response = await axios.post(`/posts/${postId}/comment`, { text: commentText });
       const newComment = response.data;
-      setViewerPosts(prev => prev.map(p => 
-        p._id === postId ? { ...p, comments: [...p.comments, newComment] } : p
+      setViewerPosts(prev => prev.map(p =>
+        p._id === postId ? { ...p, comments: [...(p.comments || []), newComment] } : p
       ));
-      setProfileData(prev => ({
+      setProfileData(prev => prev ? {
         ...prev,
-        posts: prev.posts.map(p => p._id === postId ? { ...p, comments: [...p.comments, newComment] } : p)
-      }));
+        posts: prev.posts.map(p => p._id === postId ? { ...p, comments: [...(p.comments || []), newComment] } : p)
+      } : prev);
+      setViewerPost(prev => prev && prev._id === postId ? { ...prev, comments: [...(prev.comments || []), newComment] } : prev);
       setCommentText('');
     } catch (error) {
       alert('Ошибка добавления комментария: ' + (error.response?.data?.message || error.message));
@@ -319,7 +345,37 @@ const Profile = () => {
   const openEditModal = () => { setEditingPost(null); setEditContent(viewerPost.content || ''); setEditFile(null); setEditPreview(null); setIsEditModalOpen(true); closeEditMenu(); };
   const openEditModalFromGrid = (post) => { setEditingPost(post); setEditContent(post.content || ''); setEditFile(null); setEditPreview(null); setIsEditModalOpen(true); };
   const handleEditFileChange = (e) => { const file = e.target.files[0]; if (file) { setEditFile(file); setEditPreview(URL.createObjectURL(file)); } };
-  const handleUpdatePost = async () => { const post = editingPost || viewerPost; if (!post) return; if (!editContent.trim()) { alert('Пожалуйста, введите название поста!'); return; } setIsUpdating(true); const formData = new FormData(); formData.append('content', editContent); if (editFile) { formData.append('media', editFile); } try { const response = await axios.put(`/posts/${post._id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }); setViewerPosts(prev => prev.map(p => p._id === post._id ? response.data : p)); setProfileData(prev => ({ ...prev, posts: prev.posts.map(p => p._id === post._id ? response.data : p) })); setIsEditModalOpen(false); setEditingPost(null); alert('Пост успешно обновлён!'); } catch (error) { alert('Ошибка обновления: ' + (error.response?.data?.message || 'Сервер не отвечает')); } finally { setIsUpdating(false); } };
+  const handleUpdatePost = async () => {
+    const post = editingPost || viewerPost;
+    if (!post || !editContent.trim() || isUpdating) return;
+
+    setIsUpdating(true);
+    const formData = new FormData();
+    formData.append('content', editContent.trim());
+    if (editFile) formData.append('media', editFile);
+
+    try {
+      const response = await axios.put(`/posts/${post._id}`, formData);
+      const updatedPost = {
+        ...post,
+        ...response.data,
+        isLikedByMe: response.data.isLikedByMe ?? post.isLikedByMe,
+        isSavedByMe: response.data.isSavedByMe ?? post.isSavedByMe
+      };
+      setViewerPosts(prev => prev.map(p => p._id === post._id ? updatedPost : p));
+      setProfileData(prev => prev ? { ...prev, posts: prev.posts.map(p => p._id === post._id ? updatedPost : p) } : prev);
+      setViewerPost(prev => prev && prev._id === post._id ? updatedPost : prev);
+      setIsEditModalOpen(false);
+      setIsEditMenuOpen(false);
+      setEditingPost(null);
+      setEditFile(null);
+      setEditPreview(null);
+    } catch (error) {
+      alert('Ошибка обновления: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setIsUpdating(false);
+    }
+  };
   if (loading) return <div className="text-center p-10 text-white/50">Загрузка профиля...</div>;
   if (!profileData) return <div className="text-center p-10 text-white/50">Пользователь не найден</div>;
 
@@ -412,8 +468,8 @@ const Profile = () => {
                   </div>
                   <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={() => handleLike(viewerPost._id)}>
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
-                      <span className={`text-xl transition-colors ${viewerPost.isLikedByMe || viewerPost.likes?.includes(currentUser?._id) ? 'text-red-500' : 'text-white/80 hover:text-white'}`}>
-                        {viewerPost.isLikedByMe || viewerPost.likes?.includes(currentUser?._id) ? <FaHeart /> : <FaRegHeart />}
+                      <span className={`text-xl transition-colors ${viewerPost.isLikedByMe || isIdInArray(viewerPost.likes, currentUser?._id) ? 'text-red-500' : 'text-white/80 hover:text-white'}`}>
+                        {viewerPost.isLikedByMe || isIdInArray(viewerPost.likes, currentUser?._id) ? <FaHeart /> : <FaRegHeart />}
                       </span>
                     </div>
                     <span className="text-white/80 text-[11px] font-bold tracking-wide">{viewerPost.likes?.length || 0}</span>
@@ -426,7 +482,7 @@ const Profile = () => {
                   </div>
                   <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={(e) => { e.stopPropagation(); handleSave(viewerPost._id); }}>
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
-                      {viewerPost.savedBy?.includes(currentUser?._id) ? <FaBookmark className="text-yellow-400 text-xl transition-colors" /> : <FiBookmark className="text-white/80 text-xl hover:text-white transition-colors" />}
+                      {viewerPost.isSavedByMe || isIdInArray(viewerPost.savedBy, currentUser?._id) ? <FaBookmark className="text-yellow-400 text-xl transition-colors" /> : <FiBookmark className="text-white/80 text-xl hover:text-white transition-colors" />}
                     </div>
                     <span className="text-white/80 text-[11px] font-bold tracking-wide">{viewerPost.savedBy?.length || 0}</span>
                   </div>
@@ -456,7 +512,7 @@ const Profile = () => {
                       {viewerPost.comments?.map((comment) => {
                         const isCommentAuthor = currentUser?._id === comment.user?._id;
                         const isPostAuthor = currentUser?._id === viewerPost.user?._id;
-                        const isLikedByMe = comment.likes?.includes(currentUser?._id);
+                        const isLikedByMe = isIdInArray(comment.likes, currentUser?._id);
                         return (
                           <div key={comment._id} className="border-b border-white/5 pb-4">
                             <div className="flex gap-3 mb-2">

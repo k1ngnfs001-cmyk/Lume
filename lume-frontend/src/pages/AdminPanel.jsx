@@ -50,6 +50,9 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
     return url;
   };
 
+  const sameId = (a, b) => a != null && b != null && String(a?._id || a) === String(b?._id || b);
+  const isIdInArray = (arr, id) => Array.isArray(arr) && arr.some(item => sameId(item, id));
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -197,6 +200,7 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
     setProgress(0);
     setIsMuted(true);
     setIsCommentsOpen(false);
+    setIsUpdating(false);
     document.body.style.overflow = '';
   };
 
@@ -243,30 +247,39 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
     }
   };
 
-  // ================= ИСПРАВЛЕННЫЕ ФУНКЦИИ (Добавлен setViewerPost и защита от повторных нажатий) =================
+  // ================= СТАБИЛЬНЫЕ LIKE / SAVE =================
+  const updateViewerPostEverywhere = (postId, updater) => {
+    setViewerPosts(prev => prev.map(p => p._id === postId ? updater(p) : p));
+    setPosts(prev => prev.map(p => p._id === postId ? updater(p) : p));
+    setViewerPost(prev => prev && prev._id === postId ? updater(prev) : prev);
+  };
+
   const handleLike = async (postId) => {
-    if (!postId || isUpdating) return;
+    if (!postId || isUpdating || !currentUser?._id) return;
+    const targetPost = viewerPosts.find(p => p._id === postId) || viewerPost;
+    if (!targetPost) return;
+
     setIsUpdating(true);
-    const isLiked = (p) => p.isLikedByMe || false;
+    const wasLiked = targetPost.isLikedByMe || isIdInArray(targetPost.likes, currentUser._id);
+    const originalPost = targetPost;
 
-    const updateLikes = (p) => p._id === postId ? {
+    updateViewerPostEverywhere(postId, p => ({
       ...p,
-      isLikedByMe: !isLiked(p),
-      likes: !isLiked(p) ? [...(p.likes || []), currentUser._id] : (p.likes || []).filter(id => id !== currentUser._id)
-    } : p;
-
-    setViewerPosts(prev => prev.map(updateLikes));
-    setPosts(prev => prev.map(updateLikes));
-    setViewerPost(prev => prev && prev._id === postId ? updateLikes(prev) : prev); // ОБНОВЛЯЕМ ПЛЕЕР
+      isLikedByMe: !wasLiked,
+      likes: wasLiked
+        ? (p.likes || []).filter(id => !sameId(id, currentUser._id))
+        : [...(p.likes || []), currentUser._id]
+    }));
 
     try {
       const res = await axios.post(`/posts/${postId}/like`);
-      const { likes, isLiked } = res.data;
-      const syncLikes = (p) => p._id === postId ? { ...p, isLikedByMe: isLiked, likes: likes || [] } : p;
-      setViewerPosts(prev => prev.map(syncLikes));
-      setPosts(prev => prev.map(syncLikes));
-      setViewerPost(prev => prev && prev._id === postId ? syncLikes(prev) : prev); // СИНХРОНИЗИРУЕМ ПЛЕЕР
+      updateViewerPostEverywhere(postId, p => ({
+        ...p,
+        isLikedByMe: Boolean(res.data.isLiked),
+        likes: Array.isArray(res.data.likes) ? res.data.likes : p.likes || []
+      }));
     } catch (error) {
+      updateViewerPostEverywhere(postId, () => originalPost);
       alert('Ошибка лайка: ' + (error.response?.data?.message || error.message));
     } finally {
       setIsUpdating(false);
@@ -274,28 +287,31 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
   };
 
   const handleSave = async (postId) => {
-    if (!postId || isUpdating) return;
+    if (!postId || isUpdating || !currentUser?._id) return;
+    const targetPost = viewerPosts.find(p => p._id === postId) || viewerPost;
+    if (!targetPost) return;
+
     setIsUpdating(true);
-    const isSaved = (p) => p.isSavedByMe || false;
+    const wasSaved = targetPost.isSavedByMe || isIdInArray(targetPost.savedBy, currentUser._id);
+    const originalPost = targetPost;
 
-    const updateSaves = (p) => p._id === postId ? {
+    updateViewerPostEverywhere(postId, p => ({
       ...p,
-      isSavedByMe: !isSaved(p),
-      savedBy: !isSaved(p) ? [...(p.savedBy || []), currentUser._id] : (p.savedBy || []).filter(id => id !== currentUser._id)
-    } : p;
-
-    setViewerPosts(prev => prev.map(updateSaves));
-    setPosts(prev => prev.map(updateSaves));
-    setViewerPost(prev => prev && prev._id === postId ? updateSaves(prev) : prev); // ОБНОВЛЯЕМ ПЛЕЕР
+      isSavedByMe: !wasSaved,
+      savedBy: wasSaved
+        ? (p.savedBy || []).filter(id => !sameId(id, currentUser._id))
+        : [...(p.savedBy || []), currentUser._id]
+    }));
 
     try {
       const res = await axios.post(`/posts/${postId}/save`);
-      const { isSaved, savedBy } = res.data;
-      const syncSaves = (p) => p._id === postId ? { ...p, isSavedByMe: isSaved, savedBy: savedBy || [] } : p;
-      setViewerPosts(prev => prev.map(syncSaves));
-      setPosts(prev => prev.map(syncSaves));
-      setViewerPost(prev => prev && prev._id === postId ? syncSaves(prev) : prev); // СИНХРОНИЗИРУЕМ ПЛЕЕР
+      updateViewerPostEverywhere(postId, p => ({
+        ...p,
+        isSavedByMe: Boolean(res.data.isSaved),
+        savedBy: Array.isArray(res.data.savedBy) ? res.data.savedBy : p.savedBy || []
+      }));
     } catch (error) {
+      updateViewerPostEverywhere(postId, () => originalPost);
       alert('Ошибка сохранения: ' + (error.response?.data?.message || error.message));
     } finally {
       setIsUpdating(false);
@@ -604,7 +620,7 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
 
                   <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={() => handleLike(viewerPost._id)}>
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
-                      {viewerPost.isLikedByMe || (viewerPost.likes && viewerPost.likes.includes(currentUser?._id)) ? (
+                      {viewerPost.isLikedByMe || (isIdInArray(viewerPost.likes, currentUser?._id)) ? (
                         <FaHeart className="text-red-500 text-xl transition-colors" />
                       ) : (
                         <FaRegHeart className="text-white/80 text-xl hover:text-white transition-colors" />
@@ -622,7 +638,7 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
 
                   <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={() => handleSave(viewerPost._id)}>
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
-                      {viewerPost.savedBy && viewerPost.savedBy.includes(currentUser?._id) ? (
+                      {viewerPost.isSavedByMe || isIdInArray(viewerPost.savedBy, currentUser?._id) ? (
                         <FaBookmark className="text-yellow-400 text-xl transition-colors" />
                       ) : (
                         <FiBookmark className="text-white/80 text-xl hover:text-white transition-colors" />
@@ -659,7 +675,7 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
                       {viewerPost.comments?.map((comment) => {
                         const isCommentAuthor = currentUser?._id === comment.user?._id;
                         const isPostAuthor = currentUser?._id === viewerPost.user?._id;
-                        const isLikedByMe = comment.likes?.includes(currentUser?._id);
+                        const isLikedByMe = isIdInArray(comment.likes, currentUser?._id);
                         
                         return (
                           <div key={comment._id} className="border-b border-white/5 pb-4">
