@@ -38,7 +38,7 @@ const ReelsFeed = ({ feedType = 'global' }) => {
     return url;
   };
 
-  // Защита от перезагрузок: убрал location.key
+  // Защита от перезагрузок – убрали location.key
   useEffect(() => {
     const fetchPosts = async () => {
       try {
@@ -65,9 +65,7 @@ const ReelsFeed = ({ feedType = 'global' }) => {
     }
   }, [isMuted, currentIndex]);
 
-  // ==========================================================
-  // ИСПРАВЛЕННЫЕ ФУНКЦИИ (защита от null массивов и двойных кликов)
-  // ==========================================================
+  // ===== ИСПРАВЛЕННЫЕ ФУНКЦИИ (защита от null и двойных кликов) =====
   const handleLike = async (postId) => {
     if (!postId || isUpdating) return;
     setIsUpdating(true);
@@ -115,7 +113,6 @@ const ReelsFeed = ({ feedType = 'global' }) => {
       setIsUpdating(false);
     }
   };
-  // ==========================================================
 
   const handleFollow = async (targetUserId) => {
     if (!user || !targetUserId || targetUserId === user._id) return;

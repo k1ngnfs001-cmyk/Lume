@@ -171,7 +171,7 @@ const Profile = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [goNext, goPrev]);
 
-  // ================= ИСПРАВЛЕННЫЕ ФУНКЦИИ (Добавлен setViewerPost) =================
+  // ===== ИСПРАВЛЕННЫЕ ФУНКЦИИ (добавлено setViewerPost) =====
   const handleLike = async (postId) => {
     if (!postId) return;
     const isLiked = (item) => item.isLikedByMe || false;

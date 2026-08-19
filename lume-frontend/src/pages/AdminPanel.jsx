@@ -40,6 +40,9 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
   const [editMediaPreview, setEditMediaPreview] = useState(null);
   const editMediaInputRef = useRef(null);
 
+  // Защита от повторных нажатий
+  const [isUpdating, setIsUpdating] = useState(false);
+
   const getMediaUrl = (url) => {
     if (!url) return '';
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
@@ -240,9 +243,10 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
     }
   };
 
-  // ================= ИСПРАВЛЕННЫЕ ФУНКЦИИ (Добавлен setViewerPost) =================
+  // ================= ИСПРАВЛЕННЫЕ ФУНКЦИИ (Добавлен setViewerPost и защита от повторных нажатий) =================
   const handleLike = async (postId) => {
-    if (!postId) return;
+    if (!postId || isUpdating) return;
+    setIsUpdating(true);
     const isLiked = (p) => p.isLikedByMe || false;
 
     const updateLikes = (p) => p._id === postId ? {
@@ -264,11 +268,14 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
       setViewerPost(prev => prev && prev._id === postId ? syncLikes(prev) : prev); // СИНХРОНИЗИРУЕМ ПЛЕЕР
     } catch (error) {
       alert('Ошибка лайка: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setIsUpdating(false);
     }
   };
 
   const handleSave = async (postId) => {
-    if (!postId) return;
+    if (!postId || isUpdating) return;
+    setIsUpdating(true);
     const isSaved = (p) => p.isSavedByMe || false;
 
     const updateSaves = (p) => p._id === postId ? {
@@ -290,6 +297,8 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
       setViewerPost(prev => prev && prev._id === postId ? syncSaves(prev) : prev); // СИНХРОНИЗИРУЕМ ПЛЕЕР
     } catch (error) {
       alert('Ошибка сохранения: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setIsUpdating(false);
     }
   };
 
