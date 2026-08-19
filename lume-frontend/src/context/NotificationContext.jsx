@@ -9,7 +9,7 @@ export const NotificationProvider = ({ children }) => {
 
   const fetchNotifications = async () => {
     const token = localStorage.getItem('lumeToken');
-    // Не стучимся без токена (убираем 401)
+    // Если токена нет, не стучимся в бэкенд (убираем ошибку 401)
     if (!token) return; 
 
     try {
@@ -19,7 +19,6 @@ export const NotificationProvider = ({ children }) => {
       const unread = data.filter(n => !n.isRead).length;
       setUnreadCount(unread);
     } catch (error) {
-      // Игнорируем 401
       if (error.response?.status !== 401) {
         console.error('Ошибка загрузки уведомлений:', error);
       }

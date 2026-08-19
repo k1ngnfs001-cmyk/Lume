@@ -9,11 +9,11 @@ export const SocketProvider = ({ children }) => {
   const { user } = useAuth();
 
   useEffect(() => {
-    // Подключаем сокет только если пользователь авторизован
     const token = localStorage.getItem('lumeToken');
+    // НЕ подключаем сокет, пока нет токена и пользователя (убираем ошибки подключения)
     if (!token || !user) return;
 
-    const newSocket = io('https://lume-5mof.onrender.com', { // При деплое замени на Render URL
+    const newSocket = io('https://lume-5mof.onrender.com', {
       auth: { token }
     });
 
