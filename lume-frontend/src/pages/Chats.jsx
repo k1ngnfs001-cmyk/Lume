@@ -40,7 +40,6 @@ const Chats = () => {
     const handleNewMessage = (newMsg) => {
       if (activeChatId && (newMsg.sender._id === activeChatId || newMsg.receiver._id === activeChatId)) {
         setMessages(prev => {
-          // Xabar dublikat bo'lishining oldini olish
           if (prev.some(m => m._id === newMsg._id)) return prev;
           return [...prev, newMsg];
         });
@@ -98,8 +97,6 @@ const Chats = () => {
         
         const savedMsg = uploadRes.data;
         
-        // CHATGPT FIX: socket.emit('private-message') ni qilib o'tirmaymiz, server o'zi yuboradi.
-        // O'z ekranimizga qo'shib qo'yamiz xolos:
         setMessages(prev => [...prev, savedMsg]);
         setSelectedFile(null);
         setInputText('');
@@ -109,7 +106,6 @@ const Chats = () => {
         alert('Не удалось загрузить файл: ' + (error.response?.data?.message || error.message));
       }
     } else {
-      // Oddiy text xabarni esa socket orqali jo'natamiz
       socket.emit('private-message', {
         receiverId: activeChatId,
         content: inputText,
@@ -124,7 +120,6 @@ const Chats = () => {
     if (!window.confirm('Вы уверены, что хотите удалить это сообщение?')) return;
     try {
       await axios.delete(`/chats/messages/${messageId}`);
-      // O'z ekranimizdan o'chiramiz, boshqalarnikidan server o'zi o'chiradi
       setMessages(prev => prev.filter(m => m._id !== messageId));
     } catch (error) {
       alert('Не удалось удалить сообщение: ' + (error.response?.data?.message || error.message));
@@ -135,7 +130,6 @@ const Chats = () => {
     if (!editText.trim()) return;
     try {
       const res = await axios.put(`/chats/messages/${messageId}`, { text: editText.trim() });
-      // O'z ekranimizda tahrirlaymiz, boshqalarnikida server o'zi tahrirlaydi
       setMessages(prev => prev.map(m => m._id === messageId ? res.data : m));
       setEditingMessageId(null);
       setEditText('');
@@ -188,90 +182,95 @@ const Chats = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2">
-        <AnimatePresence>
-          {messages.length === 0 && <p className="text-white/30 text-center mt-10">Нет сообщений. Напишите первое!</p>}
-          {messages.map((msg, idx) => {
-            const isMe = msg.sender._id === user._id;
-            const isEditing = editingMessageId === msg._id;
-            
-            return (
-              <motion.div 
-                key={idx}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} gap-1 group`}
-              >
-                <div className={`flex items-center gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                  
-                  <div className={`max-w-[70%] p-3 rounded-2xl relative ${isMe ? 'bg-accent/70 text-white' : 'bg-white/10 text-white/90'}`}>
-                    {isEditing ? (
-                      <div className="flex flex-col gap-2 min-w-[140px]">
-                        <input
-                          type="text"
-                          value={editText}
-                          onChange={(e) => setEditText(e.target.value)}
-                          className="w-full bg-black/40 text-white border border-white/20 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-accent/50 text-sm placeholder:text-white/40"
-                          autoFocus
-                        />
-                        <div className="flex justify-end gap-2 mt-1">
-                          <button 
-                            onClick={() => handleSaveEdit(msg._id)} 
-                            className="text-xs font-medium text-green-400 hover:text-green-300 bg-white/5 hover:bg-white/10 px-3 py-1 rounded-lg transition flex items-center gap-1"
-                          >
-                            <FaCheck size={11} /> Сохр.
-                          </button>
-                          <button 
-                            onClick={() => { setEditingMessageId(null); setEditText(''); }} 
-                            className="text-xs font-medium text-white/50 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1 rounded-lg transition flex items-center gap-1"
-                          >
-                            <FaTimes size={11} /> Отмена
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        {msg.content && <p>{msg.content}</p>}
-                        {msg.mediaUrl && (
-                          <div className="mt-2 rounded-lg overflow-hidden border border-white/10">
-                            {msg.mediaType === 'video' ? (
-                              <video src={msg.mediaUrl} className="w-full max-h-60 object-contain" controls crossOrigin="anonymous" />
-                            ) : (
-                              <img src={msg.mediaUrl} alt="Image" className="w-full max-h-60 object-contain" />
-                            )}
+        {/* BO'SH CHAT VA XABARLARNI TO'G'RI CHIQARISH MANTIQI */}
+        {messages.length === 0 ? (
+          <p className="text-white/30 text-center mt-10">Нет сообщений. Напишите первое!</p>
+        ) : (
+          <AnimatePresence>
+            {messages.map((msg, idx) => {
+              const isMe = msg.sender._id === user._id;
+              const isEditing = editingMessageId === msg._id;
+              
+              return (
+                <motion.div 
+                  key={msg._id || idx}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} gap-1 group`}
+                >
+                  <div className={`flex items-center gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                    
+                    {/* MATN SIG'IShI UCHUN break-words VA overflow-hidden QO'SHILDI */}
+                    <div className={`max-w-[70%] p-3 rounded-2xl relative break-words [overflow-wrap:anywhere] ${isMe ? 'bg-accent/70 text-white' : 'bg-white/10 text-white/90'}`}>
+                      {isEditing ? (
+                        <div className="flex flex-col gap-2 min-w-[140px]">
+                          <input
+                            type="text"
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                            className="w-full bg-black/40 text-white border border-white/20 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-accent/50 text-sm placeholder:text-white/40"
+                            autoFocus
+                          />
+                          <div className="flex justify-end gap-2 mt-1">
+                            <button 
+                              onClick={() => handleSaveEdit(msg._id)} 
+                              className="text-xs font-medium text-green-400 hover:text-green-300 bg-white/5 hover:bg-white/10 px-3 py-1 rounded-lg transition flex items-center gap-1"
+                            >
+                              <FaCheck size={11} /> Сохр.
+                            </button>
+                            <button 
+                              onClick={() => { setEditingMessageId(null); setEditText(''); }} 
+                              className="text-xs font-medium text-white/50 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1 rounded-lg transition flex items-center gap-1"
+                            >
+                              <FaTimes size={11} /> Отмена
+                            </button>
                           </div>
-                        )}
-                        <div className={`text-[10px] mt-1 ${isMe ? 'text-white/50' : 'text-white/30'}`}>
-                          {new Date(msg.createdAt).toLocaleTimeString()}
                         </div>
-                      </>
+                      ) : (
+                        <>
+                          {msg.content && <p className="break-words [overflow-wrap:anywhere] whitespace-pre-wrap">{msg.content}</p>}
+                          {msg.mediaUrl && (
+                            <div className="mt-2 rounded-lg overflow-hidden border border-white/10">
+                              {msg.mediaType === 'video' ? (
+                                <video src={msg.mediaUrl} className="w-full max-h-60 object-contain" controls crossOrigin="anonymous" />
+                              ) : (
+                                <img src={msg.mediaUrl} alt="Image" className="w-full max-h-60 object-contain" />
+                              )}
+                            </div>
+                          )}
+                          <div className={`text-[10px] mt-1 ${isMe ? 'text-white/50' : 'text-white/30'}`}>
+                            {new Date(msg.createdAt).toLocaleTimeString()}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {isMe && !isEditing && (
+                      <div className={`flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${isMe ? 'mr-1' : 'ml-1'} bg-black/40 backdrop-blur-sm p-1 rounded-xl`}>
+                        <button 
+                          onClick={() => { setEditingMessageId(msg._id); setEditText(msg.content || ''); }}
+                          className="text-white/70 hover:text-white p-1.5 rounded-lg transition hover:bg-white/10"
+                          title="Редактировать"
+                        >
+                          <FaPencilAlt size={14} />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteMessage(msg._id)}
+                          className="text-red-400/70 hover:text-red-400 p-1.5 rounded-lg transition hover:bg-red-500/10"
+                          title="Удалить"
+                        >
+                          <FaTrash size={14} />
+                        </button>
+                      </div>
                     )}
                   </div>
-
-                  {isMe && !isEditing && (
-                    <div className={`flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${isMe ? 'mr-1' : 'ml-1'} bg-black/40 backdrop-blur-sm p-1 rounded-xl`}>
-                      <button 
-                        onClick={() => { setEditingMessageId(msg._id); setEditText(msg.content || ''); }}
-                        className="text-white/70 hover:text-white p-1.5 rounded-lg transition hover:bg-white/10"
-                        title="Редактировать"
-                      >
-                        <FaPencilAlt size={14} />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteMessage(msg._id)}
-                        className="text-red-400/70 hover:text-red-400 p-1.5 rounded-lg transition hover:bg-red-500/10"
-                        title="Удалить"
-                      >
-                        <FaTrash size={14} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            );
-          })}
-          <div ref={messagesEndRef} />
-        </AnimatePresence>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        )}
+        <div ref={messagesEndRef} />
       </div>
 
       <form onSubmit={handleSend} className="flex gap-2 items-center bg-white/5 border border-white/10 rounded-2xl p-2">
