@@ -27,7 +27,7 @@ const upload =
 
 
 // =========================================================
-// POSTS
+// CREATE / GET POSTS
 // =========================================================
 
 router
@@ -55,7 +55,7 @@ router.get(
 
 
 // =========================================================
-// LIKE / SAVE
+// LIKE
 // =========================================================
 
 router.post(
@@ -63,6 +63,11 @@ router.post(
   protect,
   toggleLike
 );
+
+
+// =========================================================
+// SAVE
+// =========================================================
 
 router.post(
   '/:id/save',
@@ -72,37 +77,13 @@ router.post(
 
 
 // =========================================================
-// COMMENTS
+// ADD COMMENT
 // =========================================================
 
 router.post(
   '/:id/comment',
   protect,
   addComment
-);
-
-router.post(
-  '/:postId/comments/:commentId/like',
-  protect,
-  toggleCommentLike
-);
-
-router.post(
-  '/:postId/comments/:commentId/reply',
-  protect,
-  addCommentReply
-);
-
-router.put(
-  '/:postId/comments/:commentId',
-  protect,
-  editComment
-);
-
-router.delete(
-  '/:postId/comments/:commentId',
-  protect,
-  deleteComment
 );
 
 
@@ -126,6 +107,50 @@ router.delete(
   '/:id',
   protect,
   deletePost
+);
+
+
+// =========================================================
+// COMMENT LIKE
+// =========================================================
+
+router.post(
+  '/:postId/comments/:commentId/like',
+  protect,
+  toggleCommentLike
+);
+
+
+// =========================================================
+// REPLY
+// =========================================================
+
+router.post(
+  '/:postId/comments/:commentId/reply',
+  protect,
+  addCommentReply
+);
+
+
+// =========================================================
+// EDIT COMMENT
+// =========================================================
+
+router.put(
+  '/:postId/comments/:commentId',
+  protect,
+  editComment
+);
+
+
+// =========================================================
+// DELETE COMMENT
+// =========================================================
+
+router.delete(
+  '/:postId/comments/:commentId',
+  protect,
+  deleteComment
 );
 
 

@@ -16,7 +16,6 @@ const sameId = (a, b) => {
   return a.toString() === b.toString();
 };
 
-
 const emitNotification = async (
   req,
   notification
@@ -41,7 +40,6 @@ const emitNotification = async (
   );
 };
 
-
 const getProcessedPost = (
   post,
   userId
@@ -57,21 +55,13 @@ const getProcessedPost = (
     isLikedByMe:
       Array.isArray(obj.likes) &&
       obj.likes.some(
-        id =>
-          sameId(
-            id,
-            userId
-          )
+        id => sameId(id, userId)
       ),
 
     isSavedByMe:
       Array.isArray(obj.savedBy) &&
       obj.savedBy.some(
-        id =>
-          sameId(
-            id,
-            userId
-          )
+        id => sameId(id, userId)
       )
   };
 };
@@ -81,10 +71,7 @@ const getProcessedPost = (
 // CREATE POST
 // =========================================================
 
-exports.createPost = async (
-  req,
-  res
-) => {
+exports.createPost = async (req, res) => {
   try {
     const {
       content = ''
@@ -109,26 +96,18 @@ exports.createPost = async (
       await cloudinary.uploader.upload(
         dataURI,
         {
-          folder:
-            'lume_posts',
-          resource_type:
-            'auto'
+          folder: 'lume_posts',
+          resource_type: 'auto'
         }
       );
 
     const post =
       await Post.create({
-        user:
-          req.user._id,
-
+        user: req.user._id,
         content,
-
-        mediaUrl:
-          result.secure_url,
-
+        mediaUrl: result.secure_url,
         mediaType:
-          result.resource_type ===
-          'video'
+          result.resource_type === 'video'
             ? 'video'
             : 'image'
       });
@@ -157,7 +136,6 @@ exports.createPost = async (
         req.user._id
       )
     );
-
   } catch (error) {
     console.error(
       'Ошибка создания поста:',
@@ -165,8 +143,7 @@ exports.createPost = async (
     );
 
     res.status(500).json({
-      message:
-        error.message
+      message: error.message
     });
   }
 };
@@ -176,10 +153,7 @@ exports.createPost = async (
 // GET FEED
 // =========================================================
 
-exports.getFeed = async (
-  req,
-  res
-) => {
+exports.getFeed = async (req, res) => {
   try {
     const userId =
       req.user._id;
@@ -211,7 +185,6 @@ exports.getFeed = async (
           )
       )
     );
-
   } catch (error) {
     console.error(
       'Ошибка загрузки ленты:',
@@ -219,8 +192,7 @@ exports.getFeed = async (
     );
 
     res.status(500).json({
-      message:
-        error.message
+      message: error.message
     });
   }
 };
@@ -241,13 +213,10 @@ exports.getFollowingPosts = async (
     const currentUser =
       await User.findById(
         userId
-      ).select(
-        'following'
-      );
+      ).select('following');
 
     const followingIds =
-      currentUser?.following ||
-      [];
+      currentUser?.following || [];
 
     const posts =
       await Post.find({
@@ -280,7 +249,6 @@ exports.getFollowingPosts = async (
           )
       )
     );
-
   } catch (error) {
     console.error(
       'Ошибка загрузки подписок:',
@@ -288,8 +256,7 @@ exports.getFollowingPosts = async (
     );
 
     res.status(500).json({
-      message:
-        error.message
+      message: error.message
     });
   }
 };
@@ -339,21 +306,17 @@ exports.toggleLike = async (
     const updatedPost =
       await Post.findByIdAndUpdate(
         postId,
-
         isLiked
           ? {
               $pull: {
-                likes:
-                  userId
+                likes: userId
               }
             }
           : {
               $addToSet: {
-                likes:
-                  userId
+                likes: userId
               }
             },
-
         {
           new: true,
           select:
@@ -379,16 +342,12 @@ exports.toggleLike = async (
         await Notification.create({
           recipient:
             post.user,
-
           sender:
             userId,
-
           type:
             'like',
-
           referenceId:
             post._id,
-
           text:
             'Понравился ваш пост'
         });
@@ -400,14 +359,14 @@ exports.toggleLike = async (
     }
 
     res.json({
-      success: true,
+      success:
+        true,
 
       isLiked:
         !isLiked,
 
       likes:
-        updatedPost.likes ||
-        [],
+        updatedPost.likes || [],
 
       likesCount:
         (
@@ -415,7 +374,6 @@ exports.toggleLike = async (
           []
         ).length
     });
-
   } catch (error) {
     console.error(
       'Ошибка лайка:',
@@ -423,8 +381,7 @@ exports.toggleLike = async (
     );
 
     res.status(500).json({
-      message:
-        error.message
+      message: error.message
     });
   }
 };
@@ -474,21 +431,17 @@ exports.toggleSave = async (
     const updatedPost =
       await Post.findByIdAndUpdate(
         postId,
-
         isSaved
           ? {
               $pull: {
-                savedBy:
-                  userId
+                savedBy: userId
               }
             }
           : {
               $addToSet: {
-                savedBy:
-                  userId
+                savedBy: userId
               }
             },
-
         {
           new: true,
           select:
@@ -504,14 +457,14 @@ exports.toggleSave = async (
     }
 
     res.json({
-      success: true,
+      success:
+        true,
 
       isSaved:
         !isSaved,
 
       savedBy:
-        updatedPost.savedBy ||
-        [],
+        updatedPost.savedBy || [],
 
       savedCount:
         (
@@ -519,7 +472,6 @@ exports.toggleSave = async (
           []
         ).length
     });
-
   } catch (error) {
     console.error(
       'Ошибка сохранения:',
@@ -527,8 +479,7 @@ exports.toggleSave = async (
     );
 
     res.status(500).json({
-      message:
-        error.message
+      message: error.message
     });
   }
 };
@@ -563,7 +514,6 @@ exports.addComment = async (
     const newComment = {
       user:
         req.user._id,
-
       text:
         trimmed
     };
@@ -571,21 +521,18 @@ exports.addComment = async (
     const updatedPost =
       await Post.findByIdAndUpdate(
         postId,
-
         {
           $push: {
             comments:
               newComment
           }
         },
-
         {
           new: true
         }
       ).populate({
         path:
           'comments.user',
-
         select:
           'username avatar isVerified'
       });
@@ -612,16 +559,12 @@ exports.addComment = async (
         await Notification.create({
           recipient:
             updatedPost.user,
-
           sender:
             req.user._id,
-
           type:
             'comment',
-
           referenceId:
             updatedPost._id,
-
           text:
             `Комментарий: "${trimmed.substring(
               0,
@@ -642,7 +585,6 @@ exports.addComment = async (
     res.status(201).json(
       addedComment
     );
-
   } catch (error) {
     console.error(
       'Ошибка добавления комментария:',
@@ -650,8 +592,7 @@ exports.addComment = async (
     );
 
     res.status(500).json({
-      message:
-        error.message
+      message: error.message
     });
   }
 };
@@ -713,13 +654,10 @@ exports.toggleCommentLike =
 
       await Post.updateOne(
         {
-          _id:
-            postId,
-
+          _id: postId,
           'comments._id':
             commentId
         },
-
         isLiked
           ? {
               $pull: {
@@ -751,14 +689,11 @@ exports.toggleCommentLike =
       res.json({
         success:
           true,
-
         isLiked:
           !isLiked,
-
         comment:
           updatedComment
       });
-
     } catch (error) {
       console.error(
         'Ошибка лайка комментария:',
@@ -766,8 +701,7 @@ exports.toggleCommentLike =
       );
 
       res.status(500).json({
-        message:
-          error.message
+        message: error.message
       });
     }
   };
@@ -805,7 +739,6 @@ exports.addCommentReply =
       const newReply = {
         user:
           req.user._id,
-
         text:
           trimmed
       };
@@ -813,23 +746,18 @@ exports.addCommentReply =
       const updatedPost =
         await Post.findOneAndUpdate(
           {
-            _id:
-              postId,
-
+            _id: postId,
             'comments._id':
               commentId
           },
-
           {
             $push: {
               'comments.$.replies':
                 newReply
             }
           },
-
           {
-            new:
-              true
+            new: true
           }
         ).populate(
           'comments.user comments.replies.user',
@@ -856,13 +784,10 @@ exports.addCommentReply =
       res.status(201).json({
         success:
           true,
-
         reply:
           addedReply,
-
         commentId
       });
-
     } catch (error) {
       console.error(
         'Ошибка добавления ответа:',
@@ -870,8 +795,7 @@ exports.addCommentReply =
       );
 
       res.status(500).json({
-        message:
-          error.message
+        message: error.message
       });
     }
   };
@@ -925,7 +849,7 @@ exports.editComment =
       if (isReply) {
         for (
           const comment
-            of post.comments
+          of post.comments
         ) {
           const reply =
             comment.replies.id(
@@ -935,7 +859,6 @@ exports.editComment =
           if (reply) {
             targetComment =
               reply;
-
             break;
           }
         }
@@ -984,7 +907,7 @@ exports.editComment =
       if (isReply) {
         for (
           const comment
-            of post.comments
+          of post.comments
         ) {
           const reply =
             comment.replies.id(
@@ -994,7 +917,6 @@ exports.editComment =
           if (reply) {
             updatedComment =
               reply;
-
             break;
           }
         }
@@ -1008,11 +930,9 @@ exports.editComment =
       res.json({
         success:
           true,
-
         comment:
           updatedComment
       });
-
     } catch (error) {
       console.error(
         'Ошибка редактирования:',
@@ -1020,8 +940,7 @@ exports.editComment =
       );
 
       res.status(500).json({
-        message:
-          error.message
+        message: error.message
       });
     }
   };
@@ -1059,6 +978,7 @@ exports.deleteComment =
       }
 
       if (isReply) {
+
         let parentComment =
           null;
 
@@ -1067,7 +987,7 @@ exports.deleteComment =
 
         for (
           const comment
-            of post.comments
+          of post.comments
         ) {
           const found =
             comment.replies.id(
@@ -1113,6 +1033,7 @@ exports.deleteComment =
         );
 
       } else {
+
         const comment =
           post.comments.id(
             commentId
@@ -1149,7 +1070,6 @@ exports.deleteComment =
         success:
           true
       });
-
     } catch (error) {
       console.error(
         'Ошибка удаления:',
@@ -1157,8 +1077,7 @@ exports.deleteComment =
       );
 
       res.status(500).json({
-        message:
-          error.message
+        message: error.message
       });
     }
   };
@@ -1213,12 +1132,8 @@ exports.updatePost =
       if (req.file) {
         const b64 =
           Buffer
-            .from(
-              req.file.buffer
-            )
-            .toString(
-              'base64'
-            );
+            .from(req.file.buffer)
+            .toString('base64');
 
         const dataURI =
           `data:${req.file.mimetype};base64,${b64}`;
@@ -1250,21 +1165,18 @@ exports.updatePost =
         {
           path:
             'user',
-
           select:
             'username avatar isVerified'
         },
         {
           path:
             'comments.user',
-
           select:
             'username avatar isVerified'
         },
         {
           path:
             'comments.replies.user',
-
           select:
             'username avatar isVerified'
         }
@@ -1276,7 +1188,6 @@ exports.updatePost =
           req.user._id
         )
       );
-
     } catch (error) {
       console.error(
         'Ошибка обновления поста:',
@@ -1304,6 +1215,11 @@ exports.deletePost =
       const postId =
         req.params.id;
 
+      console.log(
+        'DELETE POST REQUEST:',
+        postId
+      );
+
       const post =
         await Post.findById(
           postId
@@ -1317,7 +1233,7 @@ exports.deletePost =
       }
 
       // Только владелец поста или админ
-      // может удалить пост
+      // может его удалить
       if (
         !sameId(
           post.user,
@@ -1331,8 +1247,12 @@ exports.deletePost =
         });
       }
 
-      // Удаляем пост из MongoDB
       await post.deleteOne();
+
+      console.log(
+        'POST DELETED:',
+        postId
+      );
 
       res.json({
         success:
@@ -1345,6 +1265,7 @@ exports.deletePost =
       });
 
     } catch (error) {
+
       console.error(
         'Ошибка удаления поста:',
         error
