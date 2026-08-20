@@ -19,7 +19,7 @@ const Chats = () => {
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // ===== СТЕЙТЫ ДЛЯ РЕДАКТИРОВАНИЯ =====
+  // ===== TAHRIRLASH UCHUN STATE'LAR =====
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editText, setEditText] = useState('');
 
@@ -35,9 +35,12 @@ const Chats = () => {
     });
   }, [activeChatId]);
 
+  // ===== SOCKET LISTENERS (O'CHIRISH VA TAHRIRLASH QO'SHILDI) =====
   useEffect(() => {
     if (!socket) return;
-    socket.on('private-message', (newMsg) => {
+
+    // Yangi xabar kelsa
+    const handleNewMessage = (newMsg) => {
       if (activeChatId && (newMsg.sender._id === activeChatId || newMsg.receiver._id === activeChatId)) {
         setMessages(prev => [...prev, newMsg]);
         scrollToBottom();
@@ -47,8 +50,27 @@ const Chats = () => {
         const updated = prev.map(c => c.user._id === otherUser._id ? { ...c, lastMessage: newMsg.content || 'Медиа', lastMessageTime: newMsg.createdAt } : c);
         return updated.sort((a,b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
       });
-    });
-    return () => socket.off('private-message');
+    };
+
+    // Xabar o'chirilsa (Ikkinchi odamdan signal kelganda)
+    const handleMessageDeleted = ({ messageId }) => {
+      setMessages(prev => prev.filter(m => m._id !== messageId));
+    };
+
+    // Xabar tahrirlansa (Ikkinchi odamdan signal kelganda)
+    const handleMessageEdited = ({ updatedMessage }) => {
+      setMessages(prev => prev.map(m => m._id === updatedMessage._id ? updatedMessage : m));
+    };
+
+    socket.on('private-message', handleNewMessage);
+    socket.on('messageDeleted', handleMessageDeleted);
+    socket.on('messageEdited', handleMessageEdited);
+
+    return () => {
+      socket.off('private-message', handleNewMessage);
+      socket.off('messageDeleted', handleMessageDeleted);
+      socket.off('messageEdited', handleMessageEdited);
+    };
   }, [socket, activeChatId, user]);
 
   const scrollToBottom = () => {
@@ -63,9 +85,6 @@ const Chats = () => {
       alert('Ошибка: Соединение с чатом разорвано. Перезагрузите страницу.');
       return;
     }
-
-    let mediaUrl = '';
-    let mediaType = 'none';
 
     if (selectedFile) {
       try {
@@ -105,25 +124,33 @@ const Chats = () => {
     }
   };
 
-  // ===== ЛОГИКА УДАЛЕНИЯ И РЕДАКТИРОВАНИЯ =====
+  // ===== XABARNI O'CHIRISH =====
   const handleDeleteMessage = async (messageId) => {
     if (!window.confirm('Вы уверены, что хотите удалить это сообщение?')) return;
     try {
       await axios.delete(`/chats/messages/${messageId}`);
       setMessages(prev => prev.filter(m => m._id !== messageId));
+      
+      // SUHBATDOSHGA SIGNAL YUBORISH:
+      socket.emit('deleteMessage', { messageId, receiverId: activeChatId });
+      
     } catch (error) {
       alert('Не удалось удалить сообщение: ' + (error.response?.data?.message || error.message));
     }
   };
 
+  // ===== XABARNI TAHRIRLASH =====
   const handleSaveEdit = async (messageId) => {
     if (!editText.trim()) return;
     try {
       const res = await axios.put(`/chats/messages/${messageId}`, { text: editText });
-      // После обновления бэкенда res.data будет содержать полные данные автора!
       setMessages(prev => prev.map(m => m._id === messageId ? res.data : m));
       setEditingMessageId(null);
       setEditText('');
+
+      // SUHBATDOSHGA SIGNAL YUBORISH:
+      socket.emit('editMessage', { updatedMessage: res.data, receiverId: activeChatId });
+
     } catch (error) {
       alert('Не удалось отредактировать сообщение: ' + (error.response?.data?.message || error.message));
     }
@@ -184,6 +211,7 @@ const Chats = () => {
                 key={idx}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9 }}
                 className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} gap-1 group`}
               >
                 <div className={`flex items-center gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -191,7 +219,6 @@ const Chats = () => {
                   {/* Основной блок сообщения */}
                   <div className={`max-w-[70%] p-3 rounded-2xl relative ${isMe ? 'bg-accent/70 text-white' : 'bg-white/10 text-white/90'}`}>
                     {isEditing ? (
-                      // ===== ИСПРАВЛЕННЫЙ ДИЗАЙН РЕДАКТИРОВАНИЯ =====
                       <div className="flex flex-col gap-2 min-w-[140px]">
                         <input
                           type="text"
@@ -234,7 +261,7 @@ const Chats = () => {
                     )}
                   </div>
 
-                  {/* Кнопки редактирования/удаления (только для своих) */}
+                  {/* Кнопки редактирования/удаления */}
                   {isMe && !isEditing && (
                     <div className={`flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${isMe ? 'mr-1' : 'ml-1'} bg-black/40 backdrop-blur-sm p-1 rounded-xl`}>
                       <button 

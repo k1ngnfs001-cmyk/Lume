@@ -52,8 +52,11 @@ io.use((socket, next) => {
 
 io.on('connection', (socket) => {
   console.log(`Пользователь ${socket.userId} подключился к сокету`);
+  
+  // Foydalanuvchini o'z ID si nomidagi xonaga kiritamiz
   socket.join(socket.userId);
 
+  // Yangi xabar yuborish
   socket.on('private-message', async (data) => {
     const { receiverId, content, mediaUrl, mediaType } = data;
     const Message = require('./models/Message');
@@ -66,12 +69,29 @@ io.on('connection', (socket) => {
         mediaType
       });
       const populatedMsg = await message.populate('sender receiver', 'username avatar');
+      // Suhbatdoshga ham, o'ziga ham yuborish
       io.to(receiverId).emit('private-message', populatedMsg);
       socket.emit('private-message', populatedMsg);
     } catch (error) {
       console.error('Ошибка сохранения сообщения:', error);
     }
   });
+
+  // ==========================================================
+  //  YANGI QO'SHILGAN QISM: O'chirish va Tahrirlash signallari
+  // ==========================================================
+  
+  // Xabar o'chirilganda suhbatdoshga xabar berish
+  socket.on('deleteMessage', ({ messageId, receiverId }) => {
+    io.to(receiverId).emit('messageDeleted', { messageId });
+  });
+
+  // Xabar tahrirlanganda suhbatdoshga xabar berish
+  socket.on('editMessage', ({ updatedMessage, receiverId }) => {
+    io.to(receiverId).emit('messageEdited', { updatedMessage });
+  });
+  
+  // ==========================================================
 
   socket.on('disconnect', () => {
     console.log(`Пользователь ${socket.userId} отключился`);
