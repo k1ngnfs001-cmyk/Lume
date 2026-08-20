@@ -3,40 +3,77 @@ const Notification = require('../models/Notification');
 const cloudinary = require('../config/cloudinary');
 const User = require('../models/User');
 
-const sameId = (a, b) =>
-  a != null &&
-  b != null &&
-  a.toString() === b.toString();
 
-const getProcessedPost = (post, userId) => {
-  const obj = post.toObject ? post.toObject() : post;
+// =========================================================
+// HELPERS
+// =========================================================
 
-  return {
-    ...obj,
-    isLikedByMe:
-      Array.isArray(obj.likes) &&
-      obj.likes.some((id) => sameId(id, userId)),
+const sameId = (a, b) => {
+  if (a == null || b == null) {
+    return false;
+  }
 
-    isSavedByMe:
-      Array.isArray(obj.savedBy) &&
-      obj.savedBy.some((id) => sameId(id, userId)),
-  };
+  return a.toString() === b.toString();
 };
 
-const emitNotification = async (req, notification) => {
+
+const emitNotification = async (
+  req,
+  notification
+) => {
   const io = req.app.get('io');
 
-  if (!io) return;
+  if (!io) {
+    return;
+  }
 
-  const populated = await notification.populate(
-    'sender',
-    'username avatar'
-  );
+  const populated =
+    await notification.populate(
+      'sender',
+      'username avatar'
+    );
 
-  io.to(notification.recipient.toString()).emit(
+  io.to(
+    notification.recipient.toString()
+  ).emit(
     'new_notification',
     populated
   );
+};
+
+
+const getProcessedPost = (
+  post,
+  userId
+) => {
+  const obj =
+    post.toObject
+      ? post.toObject()
+      : post;
+
+  return {
+    ...obj,
+
+    isLikedByMe:
+      Array.isArray(obj.likes) &&
+      obj.likes.some(
+        id =>
+          sameId(
+            id,
+            userId
+          )
+      ),
+
+    isSavedByMe:
+      Array.isArray(obj.savedBy) &&
+      obj.savedBy.some(
+        id =>
+          sameId(
+            id,
+            userId
+          )
+      )
+  };
 };
 
 
@@ -44,91 +81,137 @@ const emitNotification = async (req, notification) => {
 // CREATE POST
 // =========================================================
 
-exports.createPost = async (req, res) => {
+exports.createPost = async (
+  req,
+  res
+) => {
   try {
-    const { content = '' } = req.body;
+    const {
+      content = ''
+    } = req.body;
 
     if (!req.file) {
       return res.status(400).json({
-        message: 'Медиа-файл не найден или не загружен.',
+        message:
+          'Медиа-файл не найден или не загружен.'
       });
     }
 
-    const b64 = Buffer.from(req.file.buffer).toString('base64');
+    const b64 =
+      Buffer
+        .from(req.file.buffer)
+        .toString('base64');
 
-    const dataURI = `data:${req.file.mimetype};base64,${b64}`;
+    const dataURI =
+      `data:${req.file.mimetype};base64,${b64}`;
 
-    const result = await cloudinary.uploader.upload(dataURI, {
-      folder: 'lume_posts',
-      resource_type: 'auto',
-    });
+    const result =
+      await cloudinary.uploader.upload(
+        dataURI,
+        {
+          folder:
+            'lume_posts',
+          resource_type:
+            'auto'
+        }
+      );
 
-    const post = await Post.create({
-      user: req.user._id,
-      content,
-      mediaUrl: result.secure_url,
-      mediaType:
-        result.resource_type === 'video'
-          ? 'video'
-          : 'image',
-    });
+    const post =
+      await Post.create({
+        user:
+          req.user._id,
+
+        content,
+
+        mediaUrl:
+          result.secure_url,
+
+        mediaType:
+          result.resource_type ===
+          'video'
+            ? 'video'
+            : 'image'
+      });
 
     await post.populate([
       {
         path: 'user',
-        select: 'username avatar isVerified',
+        select:
+          'username avatar isVerified'
       },
       {
         path: 'comments.user',
-        select: 'username avatar isVerified',
+        select:
+          'username avatar isVerified'
       },
       {
         path: 'comments.replies.user',
-        select: 'username avatar isVerified',
-      },
+        select:
+          'username avatar isVerified'
+      }
     ]);
 
     res.status(201).json(
-      getProcessedPost(post, req.user._id)
+      getProcessedPost(
+        post,
+        req.user._id
+      )
     );
+
   } catch (error) {
-    console.error('Ошибка создания поста:', error);
+    console.error(
+      'Ошибка создания поста:',
+      error
+    );
 
     res.status(500).json({
-      message: error.message,
+      message:
+        error.message
     });
   }
 };
 
 
 // =========================================================
-// GET ALL FEED
+// GET FEED
 // =========================================================
 
-exports.getFeed = async (req, res) => {
+exports.getFeed = async (
+  req,
+  res
+) => {
   try {
-    const userId = req.user._id;
+    const userId =
+      req.user._id;
 
-    const posts = await Post.find()
-      .sort({ createdAt: -1 })
-      .populate(
-        'user',
-        'username avatar isVerified'
-      )
-      .populate(
-        'comments.user',
-        'username avatar isVerified'
-      )
-      .populate(
-        'comments.replies.user',
-        'username avatar isVerified'
-      );
+    const posts =
+      await Post.find()
+        .sort({
+          createdAt: -1
+        })
+        .populate(
+          'user',
+          'username avatar isVerified'
+        )
+        .populate(
+          'comments.user',
+          'username avatar isVerified'
+        )
+        .populate(
+          'comments.replies.user',
+          'username avatar isVerified'
+        );
 
     res.json(
-      posts.map((post) =>
-        getProcessedPost(post, userId)
+      posts.map(
+        post =>
+          getProcessedPost(
+            post,
+            userId
+          )
       )
     );
+
   } catch (error) {
     console.error(
       'Ошибка загрузки ленты:',
@@ -136,7 +219,8 @@ exports.getFeed = async (req, res) => {
     );
 
     res.status(500).json({
-      message: error.message,
+      message:
+        error.message
     });
   }
 };
@@ -146,40 +230,57 @@ exports.getFeed = async (req, res) => {
 // GET FOLLOWING POSTS
 // =========================================================
 
-exports.getFollowingPosts = async (req, res) => {
+exports.getFollowingPosts = async (
+  req,
+  res
+) => {
   try {
-    const userId = req.user._id;
+    const userId =
+      req.user._id;
 
-    const currentUser = await User.findById(userId)
-      .select('following');
-
-    const followingIds =
-      currentUser?.following || [];
-
-    const posts = await Post.find({
-      user: {
-        $in: followingIds,
-      },
-    })
-      .sort({ createdAt: -1 })
-      .populate(
-        'user',
-        'username avatar isVerified'
-      )
-      .populate(
-        'comments.user',
-        'username avatar isVerified'
-      )
-      .populate(
-        'comments.replies.user',
-        'username avatar isVerified'
+    const currentUser =
+      await User.findById(
+        userId
+      ).select(
+        'following'
       );
 
+    const followingIds =
+      currentUser?.following ||
+      [];
+
+    const posts =
+      await Post.find({
+        user: {
+          $in: followingIds
+        }
+      })
+        .sort({
+          createdAt: -1
+        })
+        .populate(
+          'user',
+          'username avatar isVerified'
+        )
+        .populate(
+          'comments.user',
+          'username avatar isVerified'
+        )
+        .populate(
+          'comments.replies.user',
+          'username avatar isVerified'
+        );
+
     res.json(
-      posts.map((post) =>
-        getProcessedPost(post, userId)
+      posts.map(
+        post =>
+          getProcessedPost(
+            post,
+            userId
+          )
       )
     );
+
   } catch (error) {
     console.error(
       'Ошибка загрузки подписок:',
@@ -187,7 +288,8 @@ exports.getFollowingPosts = async (req, res) => {
     );
 
     res.status(500).json({
-      message: error.message,
+      message:
+        error.message
     });
   }
 };
@@ -197,62 +299,98 @@ exports.getFollowingPosts = async (req, res) => {
 // LIKE POST
 // =========================================================
 
-exports.toggleLike = async (req, res) => {
+exports.toggleLike = async (
+  req,
+  res
+) => {
   try {
-    const postId = req.params.id;
-    const userId = req.user._id;
+    const postId =
+      req.params.id;
 
-    const post = await Post.findById(postId)
-      .select('user likes');
+    const userId =
+      req.user._id;
+
+    const post =
+      await Post.findById(
+        postId
+      ).select(
+        'user likes'
+      );
 
     if (!post) {
       return res.status(404).json({
-        message: 'Пост не найден',
+        message:
+          'Пост не найден'
       });
     }
 
-    const isLiked = (post.likes || []).some(
-      (id) => sameId(id, userId)
-    );
+    const isLiked =
+      Array.isArray(
+        post.likes
+      ) &&
+      post.likes.some(
+        id =>
+          sameId(
+            id,
+            userId
+          )
+      );
 
     const updatedPost =
       await Post.findByIdAndUpdate(
         postId,
+
         isLiked
           ? {
               $pull: {
-                likes: userId,
-              },
+                likes:
+                  userId
+              }
             }
           : {
               $addToSet: {
-                likes: userId,
-              },
+                likes:
+                  userId
+              }
             },
+
         {
           new: true,
-          select: 'user likes',
+          select:
+            'user likes'
         }
       );
 
     if (!updatedPost) {
       return res.status(404).json({
-        message: 'Пост не найден',
+        message:
+          'Пост не найден'
       });
     }
 
-    // Создаем уведомление только при добавлении лайка
     if (
       !isLiked &&
-      !sameId(post.user, userId)
+      !sameId(
+        post.user,
+        userId
+      )
     ) {
       const notification =
         await Notification.create({
-          recipient: post.user,
-          sender: userId,
-          type: 'like',
-          referenceId: post._id,
-          text: 'Понравился ваш пост',
+          recipient:
+            post.user,
+
+          sender:
+            userId,
+
+          type:
+            'like',
+
+          referenceId:
+            post._id,
+
+          text:
+            'Понравился ваш пост'
         });
 
       await emitNotification(
@@ -263,11 +401,21 @@ exports.toggleLike = async (req, res) => {
 
     res.json({
       success: true,
-      isLiked: !isLiked,
-      likes: updatedPost.likes || [],
+
+      isLiked:
+        !isLiked,
+
+      likes:
+        updatedPost.likes ||
+        [],
+
       likesCount:
-        (updatedPost.likes || []).length,
+        (
+          updatedPost.likes ||
+          []
+        ).length
     });
+
   } catch (error) {
     console.error(
       'Ошибка лайка:',
@@ -275,7 +423,8 @@ exports.toggleLike = async (req, res) => {
     );
 
     res.status(500).json({
-      message: error.message,
+      message:
+        error.message
     });
   }
 };
@@ -285,57 +434,92 @@ exports.toggleLike = async (req, res) => {
 // SAVE POST
 // =========================================================
 
-exports.toggleSave = async (req, res) => {
+exports.toggleSave = async (
+  req,
+  res
+) => {
   try {
-    const postId = req.params.id;
-    const userId = req.user._id;
+    const postId =
+      req.params.id;
 
-    const post = await Post.findById(postId)
-      .select('savedBy');
+    const userId =
+      req.user._id;
+
+    const post =
+      await Post.findById(
+        postId
+      ).select(
+        'savedBy'
+      );
 
     if (!post) {
       return res.status(404).json({
-        message: 'Пост не найден',
+        message:
+          'Пост не найден'
       });
     }
 
-    const isSaved = (post.savedBy || []).some(
-      (id) => sameId(id, userId)
-    );
+    const isSaved =
+      Array.isArray(
+        post.savedBy
+      ) &&
+      post.savedBy.some(
+        id =>
+          sameId(
+            id,
+            userId
+          )
+      );
 
     const updatedPost =
       await Post.findByIdAndUpdate(
         postId,
+
         isSaved
           ? {
               $pull: {
-                savedBy: userId,
-              },
+                savedBy:
+                  userId
+              }
             }
           : {
               $addToSet: {
-                savedBy: userId,
-              },
+                savedBy:
+                  userId
+              }
             },
+
         {
           new: true,
-          select: 'savedBy',
+          select:
+            'savedBy'
         }
       );
 
     if (!updatedPost) {
       return res.status(404).json({
-        message: 'Пост не найден',
+        message:
+          'Пост не найден'
       });
     }
 
     res.json({
       success: true,
-      isSaved: !isSaved,
-      savedBy: updatedPost.savedBy || [],
+
+      isSaved:
+        !isSaved,
+
+      savedBy:
+        updatedPost.savedBy ||
+        [],
+
       savedCount:
-        (updatedPost.savedBy || []).length,
+        (
+          updatedPost.savedBy ||
+          []
+        ).length
     });
+
   } catch (error) {
     console.error(
       'Ошибка сохранения:',
@@ -343,92 +527,8 @@ exports.toggleSave = async (req, res) => {
     );
 
     res.status(500).json({
-      message: error.message,
-    });
-  }
-};
-
-
-// =========================================================
-// LIKE COMMENT
-// =========================================================
-
-exports.toggleCommentLike = async (
-  req,
-  res
-) => {
-  try {
-    const {
-      postId,
-      commentId,
-    } = req.params;
-
-    const userId = req.user._id;
-
-    const post = await Post.findById(postId);
-
-    if (!post) {
-      return res.status(404).json({
-        message: 'Пост не найден',
-      });
-    }
-
-    const comment =
-      post.comments.id(commentId);
-
-    if (!comment) {
-      return res.status(404).json({
-        message: 'Комментарий не найден',
-      });
-    }
-
-    const isLiked =
-      (comment.likes || []).some(
-        (id) => sameId(id, userId)
-      );
-
-    await Post.updateOne(
-      {
-        _id: postId,
-        'comments._id': commentId,
-      },
-      isLiked
-        ? {
-            $pull: {
-              'comments.$.likes':
-                userId,
-            },
-          }
-        : {
-            $addToSet: {
-              'comments.$.likes':
-                userId,
-            },
-          }
-    );
-
-    const updatedPost =
-      await Post.findById(postId).populate(
-        'comments.user comments.replies.user',
-        'username avatar isVerified'
-      );
-
-    const updatedComment =
-      updatedPost.comments.id(commentId);
-
-    res.json({
-      success: true,
-      isLiked: !isLiked,
-      comment: updatedComment,
-    });
-  } catch (error) {
-    console.error(
-      'Ошибка лайка комментария:',
-      error
-    );
-
-    res.status(500).json({
-      message: error.message,
+      message:
+        error.message
     });
   }
 };
@@ -438,47 +538,62 @@ exports.toggleCommentLike = async (
 // ADD COMMENT
 // =========================================================
 
-exports.addComment = async (req, res) => {
+exports.addComment = async (
+  req,
+  res
+) => {
   try {
     const {
-      text = '',
+      text = ''
     } = req.body;
 
-    const postId = req.params.id;
+    const postId =
+      req.params.id;
 
-    const trimmed = text.trim();
+    const trimmed =
+      text.trim();
 
     if (!trimmed) {
       return res.status(400).json({
-        message: 'Комментарий пустой',
+        message:
+          'Комментарий пустой'
       });
     }
 
     const newComment = {
-      user: req.user._id,
-      text: trimmed,
+      user:
+        req.user._id,
+
+      text:
+        trimmed
     };
 
     const updatedPost =
       await Post.findByIdAndUpdate(
         postId,
+
         {
           $push: {
-            comments: newComment,
-          },
+            comments:
+              newComment
+          }
         },
+
         {
-          new: true,
+          new: true
         }
       ).populate({
-        path: 'comments.user',
+        path:
+          'comments.user',
+
         select:
-          'username avatar isVerified',
+          'username avatar isVerified'
       });
 
     if (!updatedPost) {
       return res.status(404).json({
-        message: 'Пост не найден',
+        message:
+          'Пост не найден'
       });
     }
 
@@ -495,19 +610,27 @@ exports.addComment = async (req, res) => {
     ) {
       const notification =
         await Notification.create({
-          recipient: updatedPost.user,
-          sender: req.user._id,
-          type: 'comment',
+          recipient:
+            updatedPost.user,
+
+          sender:
+            req.user._id,
+
+          type:
+            'comment',
+
           referenceId:
             updatedPost._id,
-          text: `Комментарий: "${trimmed.substring(
-            0,
-            30
-          )}${
-            trimmed.length > 30
-              ? '...'
-              : ''
-          }"`,
+
+          text:
+            `Комментарий: "${trimmed.substring(
+              0,
+              30
+            )}${
+              trimmed.length > 30
+                ? '...'
+                : ''
+            }"`
         });
 
       await emitNotification(
@@ -519,6 +642,7 @@ exports.addComment = async (req, res) => {
     res.status(201).json(
       addedComment
     );
+
   } catch (error) {
     console.error(
       'Ошибка добавления комментария:',
@@ -526,324 +650,43 @@ exports.addComment = async (req, res) => {
     );
 
     res.status(500).json({
-      message: error.message,
+      message:
+        error.message
     });
   }
 };
 
 
 // =========================================================
-// ADD REPLY
+// LIKE COMMENT
 // =========================================================
 
-exports.addCommentReply = async (
-  req,
-  res
-) => {
-  try {
-    const {
-      postId,
-      commentId,
-    } = req.params;
-
-    const {
-      text = '',
-    } = req.body;
-
-    const trimmed = text.trim();
-
-    if (!trimmed) {
-      return res.status(400).json({
-        message: 'Ответ пустой',
-      });
-    }
-
-    const newReply = {
-      user: req.user._id,
-      text: trimmed,
-    };
-
-    const updatedPost =
-      await Post.findOneAndUpdate(
-        {
-          _id: postId,
-          'comments._id': commentId,
-        },
-        {
-          $push: {
-            'comments.$.replies':
-              newReply,
-          },
-        },
-        {
-          new: true,
-        }
-      ).populate(
-        'comments.user comments.replies.user',
-        'username avatar isVerified'
-      );
-
-    if (!updatedPost) {
-      return res.status(404).json({
-        message:
-          'Пост или комментарий не найден',
-      });
-    }
-
-    const parentComment =
-      updatedPost.comments.id(
+exports.toggleCommentLike =
+  async (
+    req,
+    res
+  ) => {
+    try {
+      const {
+        postId,
         commentId
-      );
+      } = req.params;
 
-    const addedReply =
-      parentComment.replies[
-        parentComment.replies.length - 1
-      ];
+      const userId =
+        req.user._id;
 
-    res.status(201).json({
-      success: true,
-      reply: addedReply,
-      commentId,
-    });
-  } catch (error) {
-    console.error(
-      'Ошибка добавления ответа:',
-      error
-    );
-
-    res.status(500).json({
-      message: error.message,
-    });
-  }
-};
-
-
-// =========================================================
-// EDIT COMMENT / REPLY
-// =========================================================
-
-exports.editComment = async (
-  req,
-  res
-) => {
-  try {
-    const {
-      postId,
-      commentId,
-    } = req.params;
-
-    const {
-      text = '',
-      isReply = false,
-    } = req.body;
-
-    const trimmed = text.trim();
-
-    if (!trimmed) {
-      return res.status(400).json({
-        message:
-          'Текст не может быть пустым',
-      });
-    }
-
-    const post =
-      await Post.findById(postId);
-
-    if (!post) {
-      return res.status(404).json({
-        message: 'Пост не найден',
-      });
-    }
-
-    let targetComment = null;
-
-    // -------------------------
-    // REPLY
-    // -------------------------
-
-    if (isReply) {
-      for (
-        const comment of post.comments
-      ) {
-        const reply =
-          comment.replies.id(
-            commentId
-          );
-
-        if (reply) {
-          targetComment = reply;
-          break;
-        }
-      }
-    }
-
-    // -------------------------
-    // COMMENT
-    // -------------------------
-
-    else {
-      targetComment =
-        post.comments.id(
-          commentId
+      const post =
+        await Post.findById(
+          postId
         );
-    }
 
-    if (!targetComment) {
-      return res.status(404).json({
-        message: isReply
-          ? 'Ответ не найден'
-          : 'Комментарий не найден',
-      });
-    }
-
-    if (
-      !sameId(
-        targetComment.user,
-        req.user._id
-      ) &&
-      !req.user.isAdmin
-    ) {
-      return res.status(403).json({
-        message:
-          'Вы не можете редактировать чужой комментарий',
-      });
-    }
-
-    targetComment.text =
-      trimmed;
-
-    await post.save();
-
-    await post.populate(
-      'comments.user comments.replies.user',
-      'username avatar isVerified'
-    );
-
-    let updatedComment;
-
-    if (isReply) {
-      for (
-        const comment of post.comments
-      ) {
-        const reply =
-          comment.replies.id(
-            commentId
-          );
-
-        if (reply) {
-          updatedComment =
-            reply;
-          break;
-        }
-      }
-    } else {
-      updatedComment =
-        post.comments.id(
-          commentId
-        );
-    }
-
-    res.json({
-      success: true,
-      comment: updatedComment,
-    });
-  } catch (error) {
-    console.error(
-      'Ошибка редактирования:',
-      error
-    );
-
-    res.status(500).json({
-      message: error.message,
-    });
-  }
-};
-
-
-// =========================================================
-// DELETE COMMENT / REPLY
-// =========================================================
-
-exports.deleteComment = async (
-  req,
-  res
-) => {
-  try {
-    const {
-      postId,
-      commentId,
-    } = req.params;
-
-    const {
-      isReply = false,
-    } = req.body;
-
-    const post =
-      await Post.findById(postId);
-
-    if (!post) {
-      return res.status(404).json({
-        message: 'Пост не найден',
-      });
-    }
-
-    // -------------------------
-    // DELETE REPLY
-    // -------------------------
-
-    if (isReply) {
-      let parentComment = null;
-      let reply = null;
-
-      for (
-        const comment of post.comments
-      ) {
-        const found =
-          comment.replies.id(
-            commentId
-          );
-
-        if (found) {
-          parentComment =
-            comment;
-          reply = found;
-          break;
-        }
-      }
-
-      if (
-        !reply ||
-        !parentComment
-      ) {
+      if (!post) {
         return res.status(404).json({
           message:
-            'Ответ не найден',
+            'Пост не найден'
         });
       }
 
-      if (
-        !sameId(
-          reply.user,
-          req.user._id
-        ) &&
-        !req.user.isAdmin
-      ) {
-        return res.status(403).json({
-          message:
-            'Вы не можете удалить чужой ответ',
-        });
-      }
-
-      parentComment.replies.pull(
-        commentId
-      );
-    }
-
-    // -------------------------
-    // DELETE COMMENT
-    // -------------------------
-
-    else {
       const comment =
         post.comments.id(
           commentId
@@ -852,154 +695,664 @@ exports.deleteComment = async (
       if (!comment) {
         return res.status(404).json({
           message:
-            'Комментарий не найден',
+            'Комментарий не найден'
+        });
+      }
+
+      const isLiked =
+        Array.isArray(
+          comment.likes
+        ) &&
+        comment.likes.some(
+          id =>
+            sameId(
+              id,
+              userId
+            )
+        );
+
+      await Post.updateOne(
+        {
+          _id:
+            postId,
+
+          'comments._id':
+            commentId
+        },
+
+        isLiked
+          ? {
+              $pull: {
+                'comments.$.likes':
+                  userId
+              }
+            }
+          : {
+              $addToSet: {
+                'comments.$.likes':
+                  userId
+              }
+            }
+      );
+
+      const updatedPost =
+        await Post.findById(
+          postId
+        ).populate(
+          'comments.user comments.replies.user',
+          'username avatar isVerified'
+        );
+
+      const updatedComment =
+        updatedPost.comments.id(
+          commentId
+        );
+
+      res.json({
+        success:
+          true,
+
+        isLiked:
+          !isLiked,
+
+        comment:
+          updatedComment
+      });
+
+    } catch (error) {
+      console.error(
+        'Ошибка лайка комментария:',
+        error
+      );
+
+      res.status(500).json({
+        message:
+          error.message
+      });
+    }
+  };
+
+
+// =========================================================
+// ADD REPLY
+// =========================================================
+
+exports.addCommentReply =
+  async (
+    req,
+    res
+  ) => {
+    try {
+      const {
+        postId,
+        commentId
+      } = req.params;
+
+      const {
+        text = ''
+      } = req.body;
+
+      const trimmed =
+        text.trim();
+
+      if (!trimmed) {
+        return res.status(400).json({
+          message:
+            'Ответ пустой'
+        });
+      }
+
+      const newReply = {
+        user:
+          req.user._id,
+
+        text:
+          trimmed
+      };
+
+      const updatedPost =
+        await Post.findOneAndUpdate(
+          {
+            _id:
+              postId,
+
+            'comments._id':
+              commentId
+          },
+
+          {
+            $push: {
+              'comments.$.replies':
+                newReply
+            }
+          },
+
+          {
+            new:
+              true
+          }
+        ).populate(
+          'comments.user comments.replies.user',
+          'username avatar isVerified'
+        );
+
+      if (!updatedPost) {
+        return res.status(404).json({
+          message:
+            'Пост или комментарий не найден'
+        });
+      }
+
+      const parentComment =
+        updatedPost.comments.id(
+          commentId
+        );
+
+      const addedReply =
+        parentComment.replies[
+          parentComment.replies.length - 1
+        ];
+
+      res.status(201).json({
+        success:
+          true,
+
+        reply:
+          addedReply,
+
+        commentId
+      });
+
+    } catch (error) {
+      console.error(
+        'Ошибка добавления ответа:',
+        error
+      );
+
+      res.status(500).json({
+        message:
+          error.message
+      });
+    }
+  };
+
+
+// =========================================================
+// EDIT COMMENT / REPLY
+// =========================================================
+
+exports.editComment =
+  async (
+    req,
+    res
+  ) => {
+    try {
+      const {
+        postId,
+        commentId
+      } = req.params;
+
+      const {
+        text = '',
+        isReply = false
+      } = req.body;
+
+      const trimmed =
+        text.trim();
+
+      if (!trimmed) {
+        return res.status(400).json({
+          message:
+            'Текст не может быть пустым'
+        });
+      }
+
+      const post =
+        await Post.findById(
+          postId
+        );
+
+      if (!post) {
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+      }
+
+      let targetComment =
+        null;
+
+      if (isReply) {
+        for (
+          const comment
+            of post.comments
+        ) {
+          const reply =
+            comment.replies.id(
+              commentId
+            );
+
+          if (reply) {
+            targetComment =
+              reply;
+
+            break;
+          }
+        }
+      } else {
+        targetComment =
+          post.comments.id(
+            commentId
+          );
+      }
+
+      if (!targetComment) {
+        return res.status(404).json({
+          message:
+            isReply
+              ? 'Ответ не найден'
+              : 'Комментарий не найден'
         });
       }
 
       if (
         !sameId(
-          comment.user,
+          targetComment.user,
           req.user._id
         ) &&
         !req.user.isAdmin
       ) {
         return res.status(403).json({
           message:
-            'Вы не можете удалить чужой комментарий',
+            'Вы не можете редактировать чужой комментарий'
         });
       }
 
-      post.comments.pull(
-        commentId
+      targetComment.text =
+        trimmed;
+
+      await post.save();
+
+      await post.populate(
+        'comments.user comments.replies.user',
+        'username avatar isVerified'
       );
+
+      let updatedComment =
+        null;
+
+      if (isReply) {
+        for (
+          const comment
+            of post.comments
+        ) {
+          const reply =
+            comment.replies.id(
+              commentId
+            );
+
+          if (reply) {
+            updatedComment =
+              reply;
+
+            break;
+          }
+        }
+      } else {
+        updatedComment =
+          post.comments.id(
+            commentId
+          );
+      }
+
+      res.json({
+        success:
+          true,
+
+        comment:
+          updatedComment
+      });
+
+    } catch (error) {
+      console.error(
+        'Ошибка редактирования:',
+        error
+      );
+
+      res.status(500).json({
+        message:
+          error.message
+      });
     }
+  };
 
-    await post.save();
 
-    res.json({
-      success: true,
-    });
-  } catch (error) {
-    console.error(
-      'Ошибка удаления:',
-      error
-    );
+// =========================================================
+// DELETE COMMENT / REPLY
+// =========================================================
 
-    res.status(500).json({
-      message: error.message,
-    });
-  }
-};
+exports.deleteComment =
+  async (
+    req,
+    res
+  ) => {
+    try {
+      const {
+        postId,
+        commentId
+      } = req.params;
+
+      const {
+        isReply = false
+      } = req.body;
+
+      const post =
+        await Post.findById(
+          postId
+        );
+
+      if (!post) {
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+      }
+
+      if (isReply) {
+        let parentComment =
+          null;
+
+        let reply =
+          null;
+
+        for (
+          const comment
+            of post.comments
+        ) {
+          const found =
+            comment.replies.id(
+              commentId
+            );
+
+          if (found) {
+            parentComment =
+              comment;
+
+            reply =
+              found;
+
+            break;
+          }
+        }
+
+        if (
+          !reply ||
+          !parentComment
+        ) {
+          return res.status(404).json({
+            message:
+              'Ответ не найден'
+          });
+        }
+
+        if (
+          !sameId(
+            reply.user,
+            req.user._id
+          ) &&
+          !req.user.isAdmin
+        ) {
+          return res.status(403).json({
+            message:
+              'Вы не можете удалить чужой ответ'
+          });
+        }
+
+        parentComment.replies.pull(
+          commentId
+        );
+
+      } else {
+        const comment =
+          post.comments.id(
+            commentId
+          );
+
+        if (!comment) {
+          return res.status(404).json({
+            message:
+              'Комментарий не найден'
+          });
+        }
+
+        if (
+          !sameId(
+            comment.user,
+            req.user._id
+          ) &&
+          !req.user.isAdmin
+        ) {
+          return res.status(403).json({
+            message:
+              'Вы не можете удалить чужой комментарий'
+          });
+        }
+
+        post.comments.pull(
+          commentId
+        );
+      }
+
+      await post.save();
+
+      res.json({
+        success:
+          true
+      });
+
+    } catch (error) {
+      console.error(
+        'Ошибка удаления:',
+        error
+      );
+
+      res.status(500).json({
+        message:
+          error.message
+      });
+    }
+  };
 
 
 // =========================================================
 // UPDATE POST
 // =========================================================
 
-exports.updatePost = async (
-  req,
-  res
-) => {
-  try {
-    const post =
-      await Post.findById(
-        req.params.id
-      );
-
-    if (!post) {
-      return res.status(404).json({
-        message: 'Пост не найден',
-      });
-    }
-
-    if (
-      !sameId(
-        post.user,
-        req.user._id
-      ) &&
-      !req.user.isAdmin
-    ) {
-      return res.status(403).json({
-        message:
-          'Нет прав для редактирования',
-      });
-    }
-
-    const {
-      content,
-    } = req.body;
-
-    if (
-      content !== undefined
-    ) {
-      post.content =
-        content;
-    }
-
-    if (req.file) {
-      const b64 =
-        Buffer
-          .from(req.file.buffer)
-          .toString('base64');
-
-      const dataURI =
-        `data:${req.file.mimetype};base64,${b64}`;
-
-      const result =
-        await cloudinary.uploader.upload(
-          dataURI,
-          {
-            folder:
-              'lume_posts',
-            resource_type:
-              'auto',
-          }
+exports.updatePost =
+  async (
+    req,
+    res
+  ) => {
+    try {
+      const post =
+        await Post.findById(
+          req.params.id
         );
 
-      post.mediaUrl =
-        result.secure_url;
+      if (!post) {
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+      }
 
-      post.mediaType =
-        result.resource_type ===
-        'video'
-          ? 'video'
-          : 'image';
+      if (
+        !sameId(
+          post.user,
+          req.user._id
+        ) &&
+        !req.user.isAdmin
+      ) {
+        return res.status(403).json({
+          message:
+            'Нет прав для редактирования'
+        });
+      }
+
+      const {
+        content
+      } = req.body;
+
+      if (
+        content !== undefined
+      ) {
+        post.content =
+          content;
+      }
+
+      if (req.file) {
+        const b64 =
+          Buffer
+            .from(
+              req.file.buffer
+            )
+            .toString(
+              'base64'
+            );
+
+        const dataURI =
+          `data:${req.file.mimetype};base64,${b64}`;
+
+        const result =
+          await cloudinary.uploader.upload(
+            dataURI,
+            {
+              folder:
+                'lume_posts',
+              resource_type:
+                'auto'
+            }
+          );
+
+        post.mediaUrl =
+          result.secure_url;
+
+        post.mediaType =
+          result.resource_type ===
+          'video'
+            ? 'video'
+            : 'image';
+      }
+
+      await post.save();
+
+      await post.populate([
+        {
+          path:
+            'user',
+
+          select:
+            'username avatar isVerified'
+        },
+        {
+          path:
+            'comments.user',
+
+          select:
+            'username avatar isVerified'
+        },
+        {
+          path:
+            'comments.replies.user',
+
+          select:
+            'username avatar isVerified'
+        }
+      ]);
+
+      res.json(
+        getProcessedPost(
+          post,
+          req.user._id
+        )
+      );
+
+    } catch (error) {
+      console.error(
+        'Ошибка обновления поста:',
+        error
+      );
+
+      res.status(500).json({
+        message:
+          error.message
+      });
     }
+  };
 
-    await post.save();
 
-    await post.populate([
-      {
-        path: 'user',
-        select:
-          'username avatar isVerified',
-      },
-      {
-        path: 'comments.user',
-        select:
-          'username avatar isVerified',
-      },
-      {
-        path: 'comments.replies.user',
-        select:
-          'username avatar isVerified',
-      },
-    ]);
+// =========================================================
+// DELETE POST
+// =========================================================
 
-    res.json(
-      getProcessedPost(
-        post,
-        req.user._id
-      )
-    );
-  } catch (error) {
-    console.error(
-      'Ошибка обновления поста:',
-      error
-    );
+exports.deletePost =
+  async (
+    req,
+    res
+  ) => {
+    try {
+      const postId =
+        req.params.id;
 
-    res.status(500).json({
-      message: error.message,
-    });
-  }
-};
+      const post =
+        await Post.findById(
+          postId
+        );
+
+      if (!post) {
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+      }
+
+      // Только владелец поста или админ
+      // может удалить пост
+      if (
+        !sameId(
+          post.user,
+          req.user._id
+        ) &&
+        !req.user.isAdmin
+      ) {
+        return res.status(403).json({
+          message:
+            'Нет прав для удаления этого поста'
+        });
+      }
+
+      // Удаляем пост из MongoDB
+      await post.deleteOne();
+
+      res.json({
+        success:
+          true,
+
+        message:
+          'Пост удалён',
+
+        postId
+      });
+
+    } catch (error) {
+      console.error(
+        'Ошибка удаления поста:',
+        error
+      );
+
+      res.status(500).json({
+        message:
+          error.message
+      });
+    }
+  };

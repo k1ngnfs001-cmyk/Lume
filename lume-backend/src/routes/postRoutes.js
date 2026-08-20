@@ -1,5 +1,7 @@
 const express = require('express');
-const router = express.Router();
+
+const router =
+  express.Router();
 
 const {
   createPost,
@@ -13,10 +15,11 @@ const {
   addCommentReply,
   editComment,
   deleteComment,
+  deletePost
 } = require('../controllers/postController');
 
 const {
-  protect,
+  protect
 } = require('../middleware/authMiddleware');
 
 const upload =
@@ -41,7 +44,7 @@ router
 
 
 // =========================================================
-// FOLLOWING FEED
+// FOLLOWING
 // =========================================================
 
 router.get(
@@ -115,4 +118,16 @@ router.put(
 );
 
 
-module.exports = router;
+// =========================================================
+// DELETE POST
+// =========================================================
+
+router.delete(
+  '/:id',
+  protect,
+  deletePost
+);
+
+
+module.exports =
+  router;

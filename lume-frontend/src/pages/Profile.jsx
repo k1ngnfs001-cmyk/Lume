@@ -25,7 +25,6 @@ import {
   FaHeart,
   FaRegHeart,
   FaComment,
-  FaPlay,
   FaChevronUp,
   FaChevronDown,
   FaBookmark,
@@ -42,6 +41,7 @@ import {
 
 
 const Profile = () => {
+
   const {
     id
   } = useParams();
@@ -50,7 +50,8 @@ const Profile = () => {
     user: currentUser
   } = useAuth();
 
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
 
   // =========================================================
@@ -180,7 +181,17 @@ const Profile = () => {
 
 
   // =========================================================
-  // GRID VIDEO HOVER
+  // GRID MENU
+  // =========================================================
+
+  const [
+    openGridMenuId,
+    setOpenGridMenuId
+  ] = useState(null);
+
+
+  // =========================================================
+  // VIDEO HOVER
   // =========================================================
 
   const [
@@ -193,23 +204,31 @@ const Profile = () => {
 
 
   // =========================================================
-  // MEDIA URL
+  // HELPERS
   // =========================================================
 
-  const getMediaUrl = (url) => {
+  const getMediaUrl = (
+    url
+  ) => {
     if (!url) {
       return '';
     }
 
     if (
-      url.startsWith('http://') ||
-      url.startsWith('https://')
+      url.startsWith(
+        'http://'
+      ) ||
+      url.startsWith(
+        'https://'
+      )
     ) {
       return url;
     }
 
     if (
-      url.startsWith('/uploads')
+      url.startsWith(
+        '/uploads'
+      )
     ) {
       return (
         'https://lume-5mof.onrender.com' +
@@ -221,12 +240,14 @@ const Profile = () => {
   };
 
 
-  // =========================================================
-  // ID HELPERS
-  // =========================================================
-
-  const sameId = (a, b) => {
-    if (a == null || b == null) {
+  const sameId = (
+    a,
+    b
+  ) => {
+    if (
+      a == null ||
+      b == null
+    ) {
       return false;
     }
 
@@ -247,65 +268,83 @@ const Profile = () => {
     }
 
     return arr.some(
-      item => sameId(item, id)
+      item =>
+        sameId(
+          item,
+          id
+        )
     );
   };
 
 
   // =========================================================
   // LOAD PROFILE
-  // IMPORTANT:
-  // /users/profile/:id returns BOTH user and posts
   // =========================================================
 
   useEffect(() => {
+
     let cancelled = false;
 
-    const fetchProfile = async () => {
-      try {
-        setLoading(true);
+    const fetchProfile =
+      async () => {
 
-        const res =
-          await axios.get(
-            `/users/profile/${id}`
+        try {
+
+          setLoading(
+            true
           );
 
-        if (cancelled) {
-          return;
+          const res =
+            await axios.get(
+              `/users/profile/${id}`
+            );
+
+          if (cancelled) {
+            return;
+          }
+
+          setProfileData(
+            res.data
+          );
+
+          setIsFollowing(
+            Boolean(
+              res.data?.isFollowing
+            )
+          );
+
+        } catch (error) {
+
+          if (
+            cancelled
+          ) {
+            return;
+          }
+
+          console.error(
+            'Ошибка загрузки профиля:',
+            error
+          );
+
+          alert(
+            'Ошибка загрузки профиля: ' +
+            (
+              error.response?.data?.message ||
+              error.message
+            )
+          );
+
+        } finally {
+
+          if (!cancelled) {
+            setLoading(
+              false
+            );
+          }
+
         }
 
-        setProfileData(
-          res.data
-        );
-
-        setIsFollowing(
-          Boolean(
-            res.data?.isFollowing
-          )
-        );
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-
-        console.error(
-          'Ошибка загрузки профиля:',
-          error
-        );
-
-        alert(
-          'Ошибка загрузки профиля: ' +
-          (
-            error.response?.data?.message ||
-            error.message
-          )
-        );
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
+      };
 
     if (id) {
       fetchProfile();
@@ -314,35 +353,54 @@ const Profile = () => {
     return () => {
       cancelled = true;
     };
+
   }, [id]);
 
 
   // =========================================================
-  // GRID VIDEO HOVER
+  // VIDEO HOVER
   // =========================================================
 
   useEffect(() => {
+
     Object.keys(
       videoRefs.current
-    ).forEach((postId) => {
-      const video =
-        videoRefs.current[postId];
+    ).forEach(
+      postId => {
 
-      if (!video) {
-        return;
+        const video =
+          videoRefs.current[
+            postId
+          ];
+
+        if (!video) {
+          return;
+        }
+
+        if (
+          postId ===
+          hoveredId
+        ) {
+
+          video.currentTime = 0;
+
+          video
+            .play()
+            .catch(
+              () => {}
+            );
+
+        } else {
+
+          video.pause();
+
+          video.currentTime = 0;
+
+        }
+
       }
+    );
 
-      if (postId === hoveredId) {
-        video.currentTime = 0;
-
-        video
-          .play()
-          .catch(() => {});
-      } else {
-        video.pause();
-        video.currentTime = 0;
-      }
-    });
   }, [hoveredId]);
 
 
@@ -350,102 +408,109 @@ const Profile = () => {
   // FOLLOW
   // =========================================================
 
-  const handleFollow = async () => {
-    if (
-      !currentUser ||
-      !id ||
-      sameId(
-        currentUser._id,
-        id
-      )
-    ) {
-      return;
-    }
+  const handleFollow =
+    async () => {
 
-    try {
-      const res =
-        await axios.post(
-          `/users/follow/${id}`
-        );
-
-      const nextFollowing =
-        Boolean(
-          res.data.isFollowing
-        );
-
-      setIsFollowing(
-        nextFollowing
-      );
-
-      setProfileData(
-        prev => {
-          if (!prev) {
-            return prev;
-          }
-
-          const oldFollowers =
-            Array.isArray(
-              prev.user?.followers
-            )
-              ? prev.user.followers
-              : [];
-
-          const nextFollowers =
-            nextFollowing
-              ? oldFollowers.some(
-                  follower =>
-                    sameId(
-                      follower,
-                      currentUser._id
-                    )
-                )
-                ? oldFollowers
-                : [
-                    ...oldFollowers,
-                    currentUser._id
-                  ]
-              : oldFollowers.filter(
-                  follower =>
-                    !sameId(
-                      follower,
-                      currentUser._id
-                    )
-                );
-
-          return {
-            ...prev,
-
-            user: {
-              ...prev.user,
-
-              followers:
-                nextFollowers
-            }
-          };
-        }
-      );
-    } catch (error) {
-      console.error(
-        'Ошибка подписки:',
-        error
-      );
-
-      alert(
-        'Ошибка подписки: ' +
-        (
-          error.response?.data?.message ||
-          error.message
+      if (
+        !currentUser ||
+        !id ||
+        sameId(
+          currentUser._id,
+          id
         )
-      );
-    }
-  };
+      ) {
+        return;
+      }
+
+      try {
+
+        const res =
+          await axios.post(
+            `/users/follow/${id}`
+          );
+
+        const nextFollowing =
+          Boolean(
+            res.data.isFollowing
+          );
+
+        setIsFollowing(
+          nextFollowing
+        );
+
+        setProfileData(
+          prev => {
+
+            if (!prev) {
+              return prev;
+            }
+
+            const oldFollowers =
+              Array.isArray(
+                prev.user?.followers
+              )
+                ? prev.user.followers
+                : [];
+
+            const nextFollowers =
+              nextFollowing
+                ? oldFollowers.some(
+                    follower =>
+                      sameId(
+                        follower,
+                        currentUser._id
+                      )
+                  )
+                  ? oldFollowers
+                  : [
+                      ...oldFollowers,
+                      currentUser._id
+                    ]
+                : oldFollowers.filter(
+                    follower =>
+                      !sameId(
+                        follower,
+                        currentUser._id
+                      )
+                  );
+
+            return {
+              ...prev,
+
+              user: {
+                ...prev.user,
+
+                followers:
+                  nextFollowers
+              }
+            };
+
+          }
+        );
+
+      } catch (error) {
+
+        alert(
+          'Ошибка подписки: ' +
+          (
+            error.response?.data?.message ||
+            error.message
+          )
+        );
+
+      }
+
+    };
 
 
   // =========================================================
   // OPEN VIEWER
   // =========================================================
 
-  const openViewer = (post) => {
+  const openViewer = (
+    post
+  ) => {
+
     if (!profileData) {
       return;
     }
@@ -482,12 +547,19 @@ const Profile = () => {
 
     setProgress(0);
     setIsMuted(true);
-    setIsCommentsOpen(false);
-    setIsEditMenuOpen(false);
-    setIsUpdating(false);
+    setIsCommentsOpen(
+      false
+    );
+    setIsEditMenuOpen(
+      false
+    );
+    setOpenGridMenuId(
+      null
+    );
 
     document.body.style.overflow =
       'hidden';
+
   };
 
 
@@ -495,26 +567,51 @@ const Profile = () => {
   // CLOSE VIEWER
   // =========================================================
 
-  const closeViewer = () => {
-    setViewerPost(null);
-    setViewerPosts([]);
-    setProgress(0);
-    setIsMuted(true);
-    setIsCommentsOpen(false);
-    setIsEditMenuOpen(false);
-    setIsEditModalOpen(false);
-    setEditingPost(null);
+  const closeViewer =
+    () => {
 
-    document.body.style.overflow =
-      '';
-  };
+      setViewerPost(
+        null
+      );
+
+      setViewerPosts(
+        []
+      );
+
+      setProgress(0);
+
+      setIsMuted(
+        true
+      );
+
+      setIsCommentsOpen(
+        false
+      );
+
+      setIsEditMenuOpen(
+        false
+      );
+
+      setIsEditModalOpen(
+        false
+      );
+
+      setEditingPost(
+        null
+      );
+
+      document.body.style.overflow =
+        '';
+
+    };
 
 
   // =========================================================
-  // NEXT POST
+  // NEXT
   // =========================================================
 
   const goNext = () => {
+
     if (
       viewerIndex >=
       viewerPosts.length - 1
@@ -525,28 +622,31 @@ const Profile = () => {
     const nextIndex =
       viewerIndex + 1;
 
-    const nextPost =
-      viewerPosts[nextIndex];
-
     setViewerIndex(
       nextIndex
     );
 
     setViewerPost(
-      nextPost
+      viewerPosts[
+        nextIndex
+      ]
     );
 
     setProgress(0);
-    setIsCommentsOpen(false);
-    setIsEditMenuOpen(false);
+
+    setIsCommentsOpen(
+      false
+    );
+
   };
 
 
   // =========================================================
-  // PREVIOUS POST
+  // PREVIOUS
   // =========================================================
 
   const goPrev = () => {
+
     if (
       viewerIndex <= 0
     ) {
@@ -556,20 +656,22 @@ const Profile = () => {
     const prevIndex =
       viewerIndex - 1;
 
-    const prevPost =
-      viewerPosts[prevIndex];
-
     setViewerIndex(
       prevIndex
     );
 
     setViewerPost(
-      prevPost
+      viewerPosts[
+        prevIndex
+      ]
     );
 
     setProgress(0);
-    setIsCommentsOpen(false);
-    setIsEditMenuOpen(false);
+
+    setIsCommentsOpen(
+      false
+    );
+
   };
 
 
@@ -578,84 +680,76 @@ const Profile = () => {
   // =========================================================
 
   useEffect(() => {
+
     if (!viewerPost) {
       return;
     }
 
-    const handleScrollBlocker = (
-      e
-    ) => {
-      const sidebar =
-        document.getElementById(
-          'lume-sidebar'
-        );
+    const handleScroll =
+      e => {
 
-      if (
-        sidebar &&
-        sidebar.contains(
-          e.target
-        )
-      ) {
-        return;
-      }
+        const sidebar =
+          document.getElementById(
+            'lume-sidebar'
+          );
 
-      if (
-        e.target.tagName ===
-          'INPUT' ||
-        e.target.tagName ===
-          'TEXTAREA'
-      ) {
-        return;
-      }
+        if (
+          sidebar &&
+          sidebar.contains(
+            e.target
+          )
+        ) {
+          return;
+        }
 
-      e.preventDefault();
+        if (
+          e.target.tagName ===
+            'INPUT' ||
+          e.target.tagName ===
+            'TEXTAREA'
+        ) {
+          return;
+        }
 
-      const delta =
-        e.deltaY ||
-        e.wheelDelta ||
-        0;
+        e.preventDefault();
 
-      if (
-        Math.abs(delta) <
-        50
-      ) {
-        return;
-      }
+        const delta =
+          e.deltaY ||
+          e.wheelDelta ||
+          0;
 
-      if (delta > 0) {
-        goNext();
-      } else {
-        goPrev();
-      }
-    };
+        if (
+          Math.abs(delta) <
+          50
+        ) {
+          return;
+        }
+
+        if (delta > 0) {
+          goNext();
+        } else {
+          goPrev();
+        }
+
+      };
 
     window.addEventListener(
       'wheel',
-      handleScrollBlocker,
-      {
-        passive: false
-      }
-    );
-
-    window.addEventListener(
-      'touchmove',
-      handleScrollBlocker,
+      handleScroll,
       {
         passive: false
       }
     );
 
     return () => {
-      window.removeEventListener(
-        'wheel',
-        handleScrollBlocker
-      );
 
       window.removeEventListener(
-        'touchmove',
-        handleScrollBlocker
+        'wheel',
+        handleScroll
       );
+
     };
+
   }, [
     viewerPost,
     viewerIndex,
@@ -664,60 +758,83 @@ const Profile = () => {
 
 
   // =========================================================
-  // KEYBOARD NAVIGATION
+  // KEYBOARD
   // =========================================================
 
   useEffect(() => {
-    const handleKeyDown = (
-      e
-    ) => {
-      if (
-        e.target.tagName ===
-          'INPUT' ||
-        e.target.tagName ===
-          'TEXTAREA'
-      ) {
-        return;
-      }
 
-      if (
-        e.key ===
-        'ArrowDown'
-      ) {
-        e.preventDefault();
-        goNext();
-      }
+    const handleKeyDown =
+      e => {
 
-      if (
-        e.key ===
-        'ArrowUp'
-      ) {
-        e.preventDefault();
-        goPrev();
-      }
-
-      if (
-        e.key === 'Escape'
-      ) {
-        if (isEditModalOpen) {
-          setIsEditModalOpen(
-            false
-          );
+        if (
+          e.target.tagName ===
+            'INPUT' ||
+          e.target.tagName ===
+            'TEXTAREA'
+        ) {
           return;
         }
 
-        if (viewerPost) {
-          closeViewer();
+        if (
+          e.key ===
+          'ArrowDown'
+        ) {
+          e.preventDefault();
+          goNext();
         }
-      }
 
-      if (
-        e.key === ' '
-      ) {
-        e.preventDefault();
-        handleVideoClick();
-      }
-    };
+        if (
+          e.key ===
+          'ArrowUp'
+        ) {
+          e.preventDefault();
+          goPrev();
+        }
+
+        if (
+          e.key ===
+          'Escape'
+        ) {
+
+          if (
+            isEditModalOpen
+          ) {
+
+            setIsEditModalOpen(
+              false
+            );
+
+          } else if (
+            viewerPost
+          ) {
+
+            closeViewer();
+
+          } else {
+
+            setOpenGridMenuId(
+              null
+            );
+
+          }
+
+        }
+
+        if (
+          e.key ===
+          ' '
+        ) {
+
+          if (
+            viewerPost
+          ) {
+            e.preventDefault();
+            handleVideoClick();
+          }
+
+        }
+
+      };
 
     window.addEventListener(
       'keydown',
@@ -725,15 +842,16 @@ const Profile = () => {
     );
 
     return () => {
+
       window.removeEventListener(
         'keydown',
         handleKeyDown
       );
+
     };
+
   }, [
     viewerPost,
-    viewerIndex,
-    viewerPosts.length,
     isEditModalOpen
   ]);
 
@@ -746,20 +864,23 @@ const Profile = () => {
     postId,
     updater
   ) => {
+
     setViewerPosts(
       prev =>
-        prev.map(post =>
-          sameId(
-            post._id,
-            postId
-          )
-            ? updater(post)
-            : post
+        prev.map(
+          post =>
+            sameId(
+              post._id,
+              postId
+            )
+              ? updater(post)
+              : post
         )
     );
 
     setProfileData(
       prev => {
+
         if (!prev) {
           return prev;
         }
@@ -782,6 +903,7 @@ const Profile = () => {
                 )
               : []
         };
+
       }
     );
 
@@ -795,6 +917,7 @@ const Profile = () => {
           ? updater(prev)
           : prev
     );
+
   };
 
 
@@ -802,246 +925,286 @@ const Profile = () => {
   // LIKE
   // =========================================================
 
-  const handleLike = async (
-    postId
-  ) => {
-    if (
-      !postId ||
-      isUpdating ||
-      !currentUser?._id
-    ) {
-      return;
-    }
+  const handleLike =
+    async (
+      postId
+    ) => {
 
-    const targetPost =
-      viewerPosts.find(
-        post =>
+      if (
+        !postId ||
+        isUpdating ||
+        !currentUser?._id
+      ) {
+        return;
+      }
+
+      const targetPost =
+        viewerPosts.find(
+          post =>
+            sameId(
+              post._id,
+              postId
+            )
+        ) ||
+        (
+          viewerPost &&
           sameId(
-            post._id,
+            viewerPost._id,
             postId
           )
-      ) ||
-      (
-        viewerPost &&
-        sameId(
-          viewerPost._id,
-          postId
-        )
-          ? viewerPost
-          : null
-      );
-
-    if (!targetPost) {
-      return;
-    }
-
-    const wasLiked =
-      Boolean(
-        targetPost.isLikedByMe
-      ) ||
-      isIdInArray(
-        targetPost.likes,
-        currentUser._id
-      );
-
-    const originalPost =
-      targetPost;
-
-    setIsUpdating(true);
-
-    updatePostEverywhere(
-      postId,
-      post => ({
-        ...post,
-
-        isLikedByMe:
-          !wasLiked,
-
-        likes:
-          wasLiked
-            ? (
-                post.likes || []
-              ).filter(
-                id =>
-                  !sameId(
-                    id,
-                    currentUser._id
-                  )
-              )
-            : [
-                ...(post.likes || []),
-                currentUser._id
-              ]
-      })
-    );
-
-    try {
-      const res =
-        await axios.post(
-          `/posts/${postId}/like`
+            ? viewerPost
+            : null
         );
+
+      if (!targetPost) {
+        return;
+      }
+
+      const wasLiked =
+        Boolean(
+          targetPost.isLikedByMe
+        ) ||
+        isIdInArray(
+          targetPost.likes,
+          currentUser._id
+        );
+
+      const originalPost =
+        targetPost;
+
+      setIsUpdating(
+        true
+      );
 
       updatePostEverywhere(
         postId,
         post => ({
+
           ...post,
 
           isLikedByMe:
-            Boolean(
-              res.data.isLiked
-            ),
+            !wasLiked,
 
           likes:
-            Array.isArray(
-              res.data.likes
-            )
-              ? res.data.likes
-              : (
-                  post.likes || []
+            wasLiked
+              ? (
+                  post.likes ||
+                  []
+                ).filter(
+                  id =>
+                    !sameId(
+                      id,
+                      currentUser._id
+                    )
                 )
+              : [
+                  ...(post.likes ||
+                    []),
+                  currentUser._id
+                ]
+
         })
       );
-    } catch (error) {
-      updatePostEverywhere(
-        postId,
-        () => originalPost
-      );
 
-      alert(
-        'Ошибка лайка: ' +
-        (
-          error.response?.data?.message ||
-          error.message
-        )
-      );
-    } finally {
-      setIsUpdating(false);
-    }
-  };
+      try {
+
+        const res =
+          await axios.post(
+            `/posts/${postId}/like`
+          );
+
+        updatePostEverywhere(
+          postId,
+          post => ({
+
+            ...post,
+
+            isLikedByMe:
+              Boolean(
+                res.data.isLiked
+              ),
+
+            likes:
+              Array.isArray(
+                res.data.likes
+              )
+                ? res.data.likes
+                : (
+                    post.likes ||
+                    []
+                  )
+
+          })
+        );
+
+      } catch (error) {
+
+        updatePostEverywhere(
+          postId,
+          () =>
+            originalPost
+        );
+
+        alert(
+          'Ошибка лайка: ' +
+          (
+            error.response?.data?.message ||
+            error.message
+          )
+        );
+
+      } finally {
+
+        setIsUpdating(
+          false
+        );
+
+      }
+
+    };
 
 
   // =========================================================
   // SAVE
   // =========================================================
 
-  const handleSave = async (
-    postId
-  ) => {
-    if (
-      !postId ||
-      isUpdating ||
-      !currentUser?._id
-    ) {
-      return;
-    }
+  const handleSave =
+    async (
+      postId
+    ) => {
 
-    const targetPost =
-      viewerPosts.find(
-        post =>
+      if (
+        !postId ||
+        isUpdating ||
+        !currentUser?._id
+      ) {
+        return;
+      }
+
+      const targetPost =
+        viewerPosts.find(
+          post =>
+            sameId(
+              post._id,
+              postId
+            )
+        ) ||
+        (
+          viewerPost &&
           sameId(
-            post._id,
+            viewerPost._id,
             postId
           )
-      ) ||
-      (
-        viewerPost &&
-        sameId(
-          viewerPost._id,
-          postId
-        )
-          ? viewerPost
-          : null
-      );
-
-    if (!targetPost) {
-      return;
-    }
-
-    const wasSaved =
-      Boolean(
-        targetPost.isSavedByMe
-      ) ||
-      isIdInArray(
-        targetPost.savedBy,
-        currentUser._id
-      );
-
-    const originalPost =
-      targetPost;
-
-    setIsUpdating(true);
-
-    updatePostEverywhere(
-      postId,
-      post => ({
-        ...post,
-
-        isSavedByMe:
-          !wasSaved,
-
-        savedBy:
-          wasSaved
-            ? (
-                post.savedBy ||
-                []
-              ).filter(
-                id =>
-                  !sameId(
-                    id,
-                    currentUser._id
-                  )
-              )
-            : [
-                ...(post.savedBy || []),
-                currentUser._id
-              ]
-      })
-    );
-
-    try {
-      const res =
-        await axios.post(
-          `/posts/${postId}/save`
+            ? viewerPost
+            : null
         );
+
+      if (!targetPost) {
+        return;
+      }
+
+      const wasSaved =
+        Boolean(
+          targetPost.isSavedByMe
+        ) ||
+        isIdInArray(
+          targetPost.savedBy,
+          currentUser._id
+        );
+
+      const originalPost =
+        targetPost;
+
+      setIsUpdating(
+        true
+      );
 
       updatePostEverywhere(
         postId,
         post => ({
+
           ...post,
 
           isSavedByMe:
-            Boolean(
-              res.data.isSaved
-            ),
+            !wasSaved,
 
           savedBy:
-            Array.isArray(
-              res.data.savedBy
-            )
-              ? res.data.savedBy
-              : (
+            wasSaved
+              ? (
                   post.savedBy ||
                   []
+                ).filter(
+                  id =>
+                    !sameId(
+                      id,
+                      currentUser._id
+                    )
                 )
+              : [
+                  ...(post.savedBy ||
+                    []),
+                  currentUser._id
+                ]
+
         })
       );
-    } catch (error) {
-      updatePostEverywhere(
-        postId,
-        () => originalPost
-      );
 
-      alert(
-        'Ошибка сохранения: ' +
-        (
-          error.response?.data?.message ||
-          error.message
-        )
-      );
-    } finally {
-      setIsUpdating(false);
-    }
-  };
+      try {
+
+        const res =
+          await axios.post(
+            `/posts/${postId}/save`
+          );
+
+        updatePostEverywhere(
+          postId,
+          post => ({
+
+            ...post,
+
+            isSavedByMe:
+              Boolean(
+                res.data.isSaved
+              ),
+
+            savedBy:
+              Array.isArray(
+                res.data.savedBy
+              )
+                ? res.data.savedBy
+                : (
+                    post.savedBy ||
+                    []
+                  )
+
+          })
+        );
+
+      } catch (error) {
+
+        updatePostEverywhere(
+          postId,
+          () =>
+            originalPost
+        );
+
+        alert(
+          'Ошибка сохранения: ' +
+          (
+            error.response?.data?.message ||
+            error.message
+          )
+        );
+
+      } finally {
+
+        setIsUpdating(
+          false
+        );
+
+      }
+
+    };
 
 
   // =========================================================
@@ -1049,7 +1212,10 @@ const Profile = () => {
   // =========================================================
 
   const handleAddComment =
-    async (postId) => {
+    async (
+      postId
+    ) => {
+
       const text =
         commentText.trim();
 
@@ -1061,6 +1227,7 @@ const Profile = () => {
       }
 
       try {
+
         const response =
           await axios.post(
             `/posts/${postId}/comment`,
@@ -1072,79 +1239,27 @@ const Profile = () => {
         const newComment =
           response.data;
 
-        setViewerPosts(
-          prev =>
-            prev.map(
-              post =>
-                sameId(
-                  post._id,
-                  postId
-                )
-                  ? {
-                      ...post,
+        updatePostEverywhere(
+          postId,
+          post => ({
 
-                      comments: [
-                        ...(post.comments ||
-                          []),
-                        newComment
-                      ]
-                    }
-                  : post
-            )
+            ...post,
+
+            comments: [
+              ...(post.comments ||
+                []),
+              newComment
+            ]
+
+          })
         );
 
-        setProfileData(
-          prev => {
-            if (!prev) {
-              return prev;
-            }
-
-            return {
-              ...prev,
-
-              posts:
-                prev.posts.map(
-                  post =>
-                    sameId(
-                      post._id,
-                      postId
-                    )
-                      ? {
-                          ...post,
-
-                          comments: [
-                            ...(post.comments ||
-                              []),
-                            newComment
-                          ]
-                        }
-                      : post
-                )
-            };
-          }
+        setCommentText(
+          ''
         );
 
-        setViewerPost(
-          prev =>
-            prev &&
-            sameId(
-              prev._id,
-              postId
-            )
-              ? {
-                  ...prev,
-
-                  comments: [
-                    ...(prev.comments ||
-                      []),
-                    newComment
-                  ]
-                }
-              : prev
-        );
-
-        setCommentText('');
       } catch (error) {
+
         alert(
           'Ошибка добавления комментария: ' +
           (
@@ -1152,281 +1267,200 @@ const Profile = () => {
             error.message
           )
         );
+
       }
+
     };
 
 
   // =========================================================
-  // LIKE COMMENT
+  // COMMENT LIKE
   // =========================================================
 
-  const handleCommentLike = async (
-    postId,
-    commentId
-  ) => {
-    try {
-      const response =
-        await axios.post(
-          `/posts/${postId}/comments/${commentId}/like`
+  const handleCommentLike =
+    async (
+      postId,
+      commentId
+    ) => {
+
+      try {
+
+        const response =
+          await axios.post(
+            `/posts/${postId}/comments/${commentId}/like`
+          );
+
+        const updatedComment =
+          response.data.comment;
+
+        const updateComments =
+          comments => {
+
+            if (
+              !Array.isArray(
+                comments
+              )
+            ) {
+              return [];
+            }
+
+            return comments.map(
+              comment =>
+                sameId(
+                  comment._id,
+                  commentId
+                )
+                  ? updatedComment
+                  : comment
+            );
+
+          };
+
+        updatePostEverywhere(
+          postId,
+          post => ({
+
+            ...post,
+
+            comments:
+              updateComments(
+                post.comments
+              )
+
+          })
         );
 
-      const updatedComment =
-        response.data.comment;
+      } catch (error) {
 
-      const updateComments =
-        comments =>
-          Array.isArray(comments)
-            ? comments.map(
-                comment =>
-                  sameId(
-                    comment._id,
-                    commentId
-                  )
-                    ? updatedComment
-                    : comment
-              )
-            : [];
-
-      setViewerPost(
-        prev =>
-          prev &&
-          sameId(
-            prev._id,
-            postId
+        alert(
+          'Ошибка лайка комментария: ' +
+          (
+            error.response?.data?.message ||
+            error.message
           )
-            ? {
-                ...prev,
+        );
 
-                comments:
-                  updateComments(
-                    prev.comments
-                  )
-              }
-            : prev
-      );
+      }
 
-      setViewerPosts(
-        prev =>
-          prev.map(
-            post =>
-              sameId(
-                post._id,
-                postId
-              )
-                ? {
-                    ...post,
-
-                    comments:
-                      updateComments(
-                        post.comments
-                      )
-                  }
-                : post
-          )
-      );
-
-      setProfileData(
-        prev => {
-          if (!prev) {
-            return prev;
-          }
-
-          return {
-            ...prev,
-
-            posts:
-              prev.posts.map(
-                post =>
-                  sameId(
-                    post._id,
-                    postId
-                  )
-                    ? {
-                        ...post,
-
-                        comments:
-                          updateComments(
-                            post.comments
-                          )
-                      }
-                    : post
-              )
-          };
-        }
-      );
-    } catch (error) {
-      alert(
-        'Ошибка лайка комментария: ' +
-        (
-          error.response?.data?.message ||
-          error.message
-        )
-      );
-    }
-  };
+    };
 
 
   // =========================================================
   // REPLY
   // =========================================================
 
-  const handleReply = async (
-    postId,
-    commentId
-  ) => {
-    const text =
-      replyTexts[
-        commentId
-      ];
+  const handleReply =
+    async (
+      postId,
+      commentId
+    ) => {
 
-    if (
-      !text ||
-      !text.trim()
-    ) {
-      return;
-    }
+      const text =
+        replyTexts[
+          commentId
+        ];
 
-    try {
-      const response =
-        await axios.post(
-          `/posts/${postId}/comments/${commentId}/reply`,
-          {
-            text:
-              text.trim()
-          }
+      if (
+        !text ||
+        !text.trim()
+      ) {
+        return;
+      }
+
+      try {
+
+        const response =
+          await axios.post(
+            `/posts/${postId}/comments/${commentId}/reply`,
+            {
+              text:
+                text.trim()
+            }
+          );
+
+        const {
+          reply,
+          commentId:
+            parentId
+        } = response.data;
+
+        updatePostEverywhere(
+          postId,
+          post => ({
+
+            ...post,
+
+            comments:
+              Array.isArray(
+                post.comments
+              )
+                ? post.comments.map(
+                    comment =>
+                      sameId(
+                        comment._id,
+                        parentId
+                      )
+                        ? {
+                            ...comment,
+
+                            replies: [
+                              ...(comment.replies ||
+                                []),
+                              reply
+                            ]
+                          }
+                        : comment
+                  )
+                : []
+
+          })
         );
 
-      const {
-        reply,
-        commentId: parentId
-      } = response.data;
+        setReplyTexts(
+          prev => ({
 
-      const updateReplies =
-        comments =>
-          Array.isArray(comments)
-            ? comments.map(
-                comment =>
-                  sameId(
-                    comment._id,
-                    parentId
-                  )
-                    ? {
-                        ...comment,
-
-                        replies: [
-                          ...(comment.replies ||
-                            []),
-                          reply
-                        ]
-                      }
-                    : comment
-              )
-            : [];
-
-      setViewerPost(
-        prev =>
-          prev &&
-          sameId(
-            prev._id,
-            postId
-          )
-            ? {
-                ...prev,
-
-                comments:
-                  updateReplies(
-                    prev.comments
-                  )
-              }
-            : prev
-      );
-
-      setViewerPosts(
-        prev =>
-          prev.map(
-            post =>
-              sameId(
-                post._id,
-                postId
-              )
-                ? {
-                    ...post,
-
-                    comments:
-                      updateReplies(
-                        post.comments
-                      )
-                  }
-                : post
-          )
-      );
-
-      setProfileData(
-        prev => {
-          if (!prev) {
-            return prev;
-          }
-
-          return {
             ...prev,
 
-            posts:
-              prev.posts.map(
-                post =>
-                  sameId(
-                    post._id,
-                    postId
-                  )
-                    ? {
-                        ...post,
+            [commentId]:
+              ''
 
-                        comments:
-                          updateReplies(
-                            post.comments
-                          )
-                      }
-                    : post
-              )
-          };
-        }
-      );
+          })
+        );
 
-      setReplyTexts(
-        prev => ({
-          ...prev,
+      } catch (error) {
 
-          [commentId]:
-            ''
-        })
-      );
-    } catch (error) {
-      alert(
-        'Ошибка добавления ответа: ' +
-        (
-          error.response?.data?.message ||
-          error.message
-        )
-      );
-    }
-  };
+        alert(
+          'Ошибка добавления ответа: ' +
+          (
+            error.response?.data?.message ||
+            error.message
+          )
+        );
+
+      }
+
+    };
 
 
   // =========================================================
   // START EDIT COMMENT
   // =========================================================
 
-  const startEditComment = (
-    commentId,
-    currentText
-  ) => {
-    setEditingCommentId(
-      commentId
-    );
+  const startEditComment =
+    (
+      commentId,
+      currentText
+    ) => {
 
-    setEditCommentText(
-      currentText || ''
-    );
-  };
+      setEditingCommentId(
+        commentId
+      );
+
+      setEditCommentText(
+        currentText || ''
+      );
+
+    };
 
 
   // =========================================================
@@ -1439,6 +1473,7 @@ const Profile = () => {
       commentId,
       isReply = false
     ) => {
+
       const text =
         editCommentText.trim();
 
@@ -1447,6 +1482,7 @@ const Profile = () => {
       }
 
       try {
+
         const response =
           await axios.put(
             `/posts/${postId}/comments/${commentId}`,
@@ -1461,13 +1497,17 @@ const Profile = () => {
 
         const updateComments =
           comments => {
-            if (!Array.isArray(
-              comments
-            )) {
+
+            if (
+              !Array.isArray(
+                comments
+              )
+            ) {
               return [];
             }
 
             if (!isReply) {
+
               return comments.map(
                 comment =>
                   sameId(
@@ -1477,10 +1517,12 @@ const Profile = () => {
                     ? serverComment
                     : comment
               );
+
             }
 
             return comments.map(
               comment => ({
+
                 ...comment,
 
                 replies:
@@ -1497,76 +1539,24 @@ const Profile = () => {
                             : reply
                       )
                     : []
+
               })
             );
+
           };
 
-        setViewerPost(
-          prev =>
-            prev &&
-            sameId(
-              prev._id,
-              postId
-            )
-              ? {
-                  ...prev,
+        updatePostEverywhere(
+          postId,
+          post => ({
 
-                  comments:
-                    updateComments(
-                      prev.comments
-                    )
-                }
-              : prev
-        );
+            ...post,
 
-        setViewerPosts(
-          prev =>
-            prev.map(
-              post =>
-                sameId(
-                  post._id,
-                  postId
-                )
-                  ? {
-                      ...post,
+            comments:
+              updateComments(
+                post.comments
+              )
 
-                      comments:
-                        updateComments(
-                          post.comments
-                        )
-                    }
-                  : post
-            )
-        );
-
-        setProfileData(
-          prev => {
-            if (!prev) {
-              return prev;
-            }
-
-            return {
-              ...prev,
-
-              posts:
-                prev.posts.map(
-                  post =>
-                    sameId(
-                      post._id,
-                      postId
-                    )
-                      ? {
-                          ...post,
-
-                          comments:
-                            updateComments(
-                              post.comments
-                            )
-                        }
-                      : post
-                )
-            };
-          }
+          })
         );
 
         setEditingCommentId(
@@ -1576,7 +1566,9 @@ const Profile = () => {
         setEditCommentText(
           ''
         );
+
       } catch (error) {
+
         alert(
           'Ошибка редактирования: ' +
           (
@@ -1584,7 +1576,9 @@ const Profile = () => {
             error.message
           )
         );
+
       }
+
     };
 
 
@@ -1592,190 +1586,156 @@ const Profile = () => {
   // DELETE COMMENT
   // =========================================================
 
-  const deleteComment = async (
-    postId,
-    commentId,
-    isReply = false
-  ) => {
-    if (
-      !window.confirm(
-        'Вы уверены, что хотите удалить этот комментарий?'
-      )
-    ) {
-      return;
-    }
+  const deleteComment =
+    async (
+      postId,
+      commentId,
+      isReply = false
+    ) => {
 
-    try {
-      await axios.delete(
-        `/posts/${postId}/comments/${commentId}`,
-        {
-          data: {
-            isReply
+      if (
+        !window.confirm(
+          'Вы уверены, что хотите удалить этот комментарий?'
+        )
+      ) {
+        return;
+      }
+
+      try {
+
+        await axios.delete(
+          `/posts/${postId}/comments/${commentId}`,
+          {
+            data: {
+              isReply
+            }
           }
-        }
-      );
+        );
 
-      const filterComments =
-        comments => {
-          if (
-            !Array.isArray(
-              comments
-            )
-          ) {
-            return [];
-          }
+        updatePostEverywhere(
+          postId,
+          post => {
 
-          if (isReply) {
-            return comments.map(
-              comment => ({
-                ...comment,
-
-                replies:
-                  Array.isArray(
-                    comment.replies
-                  )
-                    ? comment.replies.filter(
-                        reply =>
-                          !sameId(
-                            reply._id,
-                            commentId
-                          )
-                      )
-                    : []
-              })
-            );
-          }
-
-          return comments.filter(
-            comment =>
-              !sameId(
-                comment._id,
-                commentId
+            const comments =
+              Array.isArray(
+                post.comments
               )
-          );
-        };
+                ? post.comments
+                : [];
 
-      setViewerPost(
-        prev =>
-          prev &&
-          sameId(
-            prev._id,
-            postId
-          )
-            ? {
-                ...prev,
+            if (isReply) {
+
+              return {
+
+                ...post,
 
                 comments:
-                  filterComments(
-                    prev.comments
+                  comments.map(
+                    comment => ({
+
+                      ...comment,
+
+                      replies:
+                        Array.isArray(
+                          comment.replies
+                        )
+                          ? comment.replies.filter(
+                              reply =>
+                                !sameId(
+                                  reply._id,
+                                  commentId
+                                )
+                            )
+                          : []
+
+                    })
                   )
-              }
-            : prev
-      );
 
-      setViewerPosts(
-        prev =>
-          prev.map(
-            post =>
-              sameId(
-                post._id,
-                postId
-              )
-                ? {
-                    ...post,
+              };
 
-                    comments:
-                      filterComments(
-                        post.comments
-                      )
-                  }
-                : post
-          )
-      );
+            }
 
-      setProfileData(
-        prev => {
-          if (!prev) {
-            return prev;
+            return {
+
+              ...post,
+
+              comments:
+                comments.filter(
+                  comment =>
+                    !sameId(
+                      comment._id,
+                      commentId
+                    )
+                )
+
+            };
+
           }
+        );
 
-          return {
-            ...prev,
+      } catch (error) {
 
-            posts:
-              prev.posts.map(
-                post =>
-                  sameId(
-                    post._id,
-                    postId
-                  )
-                    ? {
-                        ...post,
+        alert(
+          'Ошибка удаления: ' +
+          (
+            error.response?.data?.message ||
+            error.message
+          )
+        );
 
-                        comments:
-                          filterComments(
-                            post.comments
-                          )
-                      }
-                    : post
-              )
-          };
-        }
+      }
+
+    };
+
+
+  // =========================================================
+  // VIDEO
+  // =========================================================
+
+  const toggleMute =
+    e => {
+
+      e.stopPropagation();
+
+      setIsMuted(
+        prev =>
+          !prev
       );
-    } catch (error) {
-      alert(
-        'Ошибка удаления: ' +
-        (
-          error.response?.data?.message ||
-          error.message
-        )
-      );
-    }
-  };
+
+    };
 
 
-  // =========================================================
-  // MUTE
-  // =========================================================
+  const handleVideoClick =
+    () => {
 
-  const toggleMute = (
-    e
-  ) => {
-    e.stopPropagation();
+      if (
+        !videoRef.current
+      ) {
+        return;
+      }
 
-    setIsMuted(
-      prev => !prev
-    );
-  };
+      if (
+        videoRef.current.paused
+      ) {
 
+        videoRef.current
+          .play()
+          .catch(
+            () => {}
+          );
 
-  // =========================================================
-  // VIDEO CLICK
-  // =========================================================
+      } else {
 
-  const handleVideoClick = () => {
-    if (!videoRef.current) {
-      return;
-    }
+        videoRef.current.pause();
 
-    if (
-      videoRef.current.paused
-    ) {
-      videoRef.current
-        .play()
-        .catch(() => {});
-    } else {
-      videoRef.current.pause();
-    }
-  };
+      }
 
+    };
 
-  // =========================================================
-  // VIDEO PROGRESS
-  // =========================================================
 
   const handleTimeUpdate =
     () => {
+
       if (
         !videoRef.current
       ) {
@@ -1794,13 +1754,16 @@ const Profile = () => {
         duration &&
         duration > 0
       ) {
+
         setProgress(
           (
             currentTime /
             duration
           ) * 100
         );
+
       }
+
     };
 
 
@@ -1808,65 +1771,33 @@ const Profile = () => {
   // VIEWER EDIT MENU
   // =========================================================
 
-  const openEditMenu = (
-    e
-  ) => {
-    e.stopPropagation();
+  const openEditMenu =
+    e => {
 
-    setIsEditMenuOpen(
-      prev => !prev
-    );
-  };
+      e.stopPropagation();
 
-
-  const closeEditMenu =
-    () => {
       setIsEditMenuOpen(
-        false
+        prev =>
+          !prev
       );
+
     };
 
 
-  // =========================================================
-  // OPEN EDIT MODAL
-  // =========================================================
+  const openEditModal =
+    () => {
 
-  const openEditModal = () => {
-    if (!viewerPost) {
-      return;
-    }
+      if (!viewerPost) {
+        return;
+      }
 
-    setEditingPost(
-      null
-    );
-
-    setEditContent(
-      viewerPost.content ||
-        ''
-    );
-
-    setEditFile(null);
-    setEditPreview(null);
-    setIsEditModalOpen(
-      true
-    );
-
-    closeEditMenu();
-  };
-
-
-  // =========================================================
-  // OPEN EDIT FROM GRID
-  // =========================================================
-
-  const openEditModalFromGrid =
-    (post) => {
       setEditingPost(
-        post
+        null
       );
 
       setEditContent(
-        post.content || ''
+        viewerPost.content ||
+          ''
       );
 
       setEditFile(null);
@@ -1875,15 +1806,56 @@ const Profile = () => {
       setIsEditModalOpen(
         true
       );
+
+      setIsEditMenuOpen(
+        false
+      );
+
     };
 
 
   // =========================================================
-  // EDIT MEDIA
+  // GRID EDIT
+  // =========================================================
+
+  const openEditModalFromGrid =
+    post => {
+
+      setEditingPost(
+        post
+      );
+
+      setEditContent(
+        post.content ||
+          ''
+      );
+
+      setEditFile(
+        null
+      );
+
+      setEditPreview(
+        null
+      );
+
+      setOpenGridMenuId(
+        null
+      );
+
+      setIsEditModalOpen(
+        true
+      );
+
+    };
+
+
+  // =========================================================
+  // EDIT FILE
   // =========================================================
 
   const handleEditFileChange =
-    (e) => {
+    e => {
+
       const file =
         e.target.files?.[0];
 
@@ -1891,21 +1863,22 @@ const Profile = () => {
         return;
       }
 
-      setEditFile(
-        file
-      );
-
       if (editPreview) {
         URL.revokeObjectURL(
           editPreview
         );
       }
 
+      setEditFile(
+        file
+      );
+
       setEditPreview(
         URL.createObjectURL(
           file
         )
       );
+
     };
 
 
@@ -1915,6 +1888,7 @@ const Profile = () => {
 
   const handleUpdatePost =
     async () => {
+
       const post =
         editingPost ||
         viewerPost;
@@ -1940,13 +1914,16 @@ const Profile = () => {
       );
 
       if (editFile) {
+
         formData.append(
           'media',
           editFile
         );
+
       }
 
       try {
+
         const response =
           await axios.put(
             `/posts/${post._id}`,
@@ -1954,7 +1931,9 @@ const Profile = () => {
           );
 
         const updatedPost = {
+
           ...post,
+
           ...response.data,
 
           isLikedByMe:
@@ -1966,53 +1945,13 @@ const Profile = () => {
             response.data
               .isSavedByMe ??
             post.isSavedByMe
+
         };
 
-        setViewerPosts(
-          prev =>
-            prev.map(
-              item =>
-                sameId(
-                  item._id,
-                  post._id
-                )
-                  ? updatedPost
-                  : item
-            )
-        );
-
-        setProfileData(
-          prev => {
-            if (!prev) {
-              return prev;
-            }
-
-            return {
-              ...prev,
-
-              posts:
-                prev.posts.map(
-                  item =>
-                    sameId(
-                      item._id,
-                      post._id
-                    )
-                      ? updatedPost
-                      : item
-                )
-            };
-          }
-        );
-
-        setViewerPost(
-          prev =>
-            prev &&
-            sameId(
-              prev._id,
-              post._id
-            )
-              ? updatedPost
-              : prev
+        updatePostEverywhere(
+          post._id,
+          () =>
+            updatedPost
         );
 
         setIsEditModalOpen(
@@ -2032,15 +1971,19 @@ const Profile = () => {
         );
 
         if (editPreview) {
+
           URL.revokeObjectURL(
             editPreview
           );
+
         }
 
         setEditPreview(
           null
         );
+
       } catch (error) {
+
         alert(
           'Ошибка обновления: ' +
           (
@@ -2048,29 +1991,205 @@ const Profile = () => {
             error.message
           )
         );
+
       } finally {
+
         setIsUpdating(
           false
         );
+
       }
+
     };
 
 
   // =========================================================
-  // REMOVE OBJECT URL ON UNMOUNT
+  // DELETE POST
+  // =========================================================
+
+  const handleDeletePost =
+    async (
+      postId
+    ) => {
+
+      if (
+        !postId ||
+        isUpdating
+      ) {
+        return;
+      }
+
+      const confirmed =
+        window.confirm(
+          'Вы уверены, что хотите удалить этот пост?'
+        );
+
+      if (!confirmed) {
+        return;
+      }
+
+      setIsUpdating(
+        true
+      );
+
+      try {
+
+        await axios.delete(
+          `/posts/${postId}`
+        );
+
+        // ---------------------------------------------------
+        // Remove from profile posts
+        // ---------------------------------------------------
+
+        setProfileData(
+          prev => {
+
+            if (!prev) {
+              return prev;
+            }
+
+            return {
+
+              ...prev,
+
+              posts:
+                Array.isArray(
+                  prev.posts
+                )
+                  ? prev.posts.filter(
+                      post =>
+                        !sameId(
+                          post._id,
+                          postId
+                        )
+                    )
+                  : []
+
+            };
+
+          }
+        );
+
+
+        // ---------------------------------------------------
+        // Remove from viewer posts
+        // ---------------------------------------------------
+
+        setViewerPosts(
+          prev =>
+            prev.filter(
+              post =>
+                !sameId(
+                  post._id,
+                  postId
+                )
+            )
+        );
+
+
+        // ---------------------------------------------------
+        // If deleted post is opened in viewer
+        // close viewer
+        // ---------------------------------------------------
+
+        if (
+          viewerPost &&
+          sameId(
+            viewerPost._id,
+            postId
+          )
+        ) {
+
+          setViewerPost(
+            null
+          );
+
+          setViewerIndex(
+            0
+          );
+
+          setProgress(
+            0
+          );
+
+          setIsCommentsOpen(
+            false
+          );
+
+          setIsEditMenuOpen(
+            false
+          );
+
+          document.body.style.overflow =
+            '';
+
+        }
+
+
+        // ---------------------------------------------------
+        // Close menus
+        // ---------------------------------------------------
+
+        setOpenGridMenuId(
+          null
+        );
+
+        setEditingPost(
+          null
+        );
+
+        alert(
+          'Пост удалён!'
+        );
+
+      } catch (error) {
+
+        console.error(
+          'Ошибка удаления поста:',
+          error
+        );
+
+        alert(
+          'Ошибка удаления: ' +
+          (
+            error.response?.data?.message ||
+            error.message
+          )
+        );
+
+      } finally {
+
+        setIsUpdating(
+          false
+        );
+
+      }
+
+    };
+
+
+  // =========================================================
+  // CLEANUP
   // =========================================================
 
   useEffect(() => {
+
     return () => {
-      if (editPreview) {
-        URL.revokeObjectURL(
-          editPreview
-        );
-      }
 
       document.body.style.overflow =
         '';
+
+      if (editPreview) {
+
+        URL.revokeObjectURL(
+          editPreview
+        );
+
+      }
+
     };
+
   }, [editPreview]);
 
 
@@ -2079,24 +2198,24 @@ const Profile = () => {
   // =========================================================
 
   if (loading) {
+
     return (
       <div className="text-center p-10 text-white/50">
         Загрузка профиля...
       </div>
     );
+
   }
 
 
-  // =========================================================
-  // NOT FOUND
-  // =========================================================
-
   if (!profileData) {
+
     return (
       <div className="text-center p-10 text-white/50">
         Пользователь не найден
       </div>
     );
+
   }
 
 
@@ -2125,7 +2244,9 @@ const Profile = () => {
       ====================================================== */}
 
       <AnimatePresence>
+
         {viewerPost && (
+
           <motion.div
             initial={{
               opacity: 0
@@ -2141,17 +2262,15 @@ const Profile = () => {
 
             <div
               className="flex flex-row items-center justify-center gap-4 md:gap-8 w-full h-full max-w-[1000px] mx-auto px-4"
-              onClick={(e) =>
+              onClick={e =>
                 e.stopPropagation()
               }
             >
 
-              {/* CLOSE */}
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  closeViewer();
-                }}
+                onClick={() =>
+                  closeViewer()
+                }
                 className="absolute top-4 right-4 z-50 text-white/80 hover:text-white p-2 bg-black/60 rounded-full backdrop-blur-sm transition"
               >
                 ✕
@@ -2166,17 +2285,16 @@ const Profile = () => {
                 }`}
               >
 
-                {/* =================================================
-                    MEDIA
-                ================================================== */}
+                {/* MEDIA */}
 
                 <div className="flex-1 flex items-center justify-center min-w-0 h-full">
 
-                  <div className="relative w-full max-w-[450px] lg:max-w-[650px] aspect-[1/1] max-h-[85vh] rounded-[24px] overflow-hidden bg-black shadow-2xl cursor-pointer">
+                  <div className="relative w-full max-w-[450px] lg:max-w-[650px] aspect-[1/1] max-h-[85vh] rounded-[24px] overflow-hidden bg-black shadow-2xl">
 
-                    {/* MUTE */}
                     <button
-                      onClick={toggleMute}
+                      onClick={
+                        toggleMute
+                      }
                       className="absolute top-4 left-4 z-30 bg-black/60 backdrop-blur-sm hover:bg-black/80 p-2 rounded-full text-white transition"
                     >
                       {isMuted
@@ -2185,7 +2303,6 @@ const Profile = () => {
                     </button>
 
 
-                    {/* TOP ACTIONS */}
                     <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
 
                       {currentUser &&
@@ -2193,7 +2310,9 @@ const Profile = () => {
                           currentUser._id,
                           viewerPost.user?._id
                         ) && (
+
                           <>
+
                             <button
                               onClick={
                                 openEditMenu
@@ -2205,8 +2324,11 @@ const Profile = () => {
                               />
                             </button>
 
+
                             <AnimatePresence>
+
                               {isEditMenuOpen && (
+
                                 <motion.div
                                   initial={{
                                     opacity: 0,
@@ -2225,6 +2347,7 @@ const Profile = () => {
                                   }}
                                   className="absolute right-0 top-12 bg-black/90 backdrop-blur-md border border-white/10 rounded-xl p-2 min-w-[140px] shadow-2xl"
                                 >
+
                                   <button
                                     onClick={
                                       openEditModal
@@ -2239,19 +2362,21 @@ const Profile = () => {
                                       Изменить
                                     </span>
                                   </button>
+
                                 </motion.div>
+
                               )}
+
                             </AnimatePresence>
+
                           </>
+
                         )}
 
                       <button
-                        onClick={(
-                          e
-                        ) => {
-                          e.stopPropagation();
-                          closeViewer();
-                        }}
+                        onClick={
+                          closeViewer
+                        }
                         className="bg-black/60 backdrop-blur-sm hover:bg-black/80 p-2 rounded-full text-white transition"
                       >
                         ✕
@@ -2260,7 +2385,6 @@ const Profile = () => {
                     </div>
 
 
-                    {/* MEDIA */}
                     <div
                       onClick={
                         handleVideoClick
@@ -2300,9 +2424,11 @@ const Profile = () => {
                                 ref={
                                   videoRef
                                 }
-                                src={getMediaUrl(
-                                  viewerPost.mediaUrl
-                                )}
+                                src={
+                                  getMediaUrl(
+                                    viewerPost.mediaUrl
+                                  )
+                                }
                                 className="w-full h-full object-cover"
                                 autoPlay
                                 loop
@@ -2318,9 +2444,11 @@ const Profile = () => {
                             ) : (
 
                               <img
-                                src={getMediaUrl(
-                                  viewerPost.mediaUrl
-                                )}
+                                src={
+                                  getMediaUrl(
+                                    viewerPost.mediaUrl
+                                  )
+                                }
                                 className="w-full h-full object-cover"
                                 alt="Post"
                               />
@@ -2337,12 +2465,8 @@ const Profile = () => {
 
                           )}
 
-
-                          {/* GRADIENT */}
                           <div className="absolute bottom-0 left-0 right-0 h-[40%] bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none rounded-b-[24px]" />
 
-
-                          {/* AUTHOR */}
                           <div className="absolute bottom-6 left-4 z-10 text-left">
 
                             <Link
@@ -2365,40 +2489,42 @@ const Profile = () => {
                                 ) : (
 
                                   viewerPost.user?.username
-                                    ?.charAt(0)
+                                    ?.charAt(
+                                      0
+                                    )
                                     .toUpperCase()
 
                                 )}
 
                               </div>
 
-                              <span className="text-white font-bold text-base drop-shadow-lg flex items-center gap-1">
-                                @{viewerPost.user?.username}
-
-                                {viewerPost.user?.isVerified && (
-                                  <span className="text-blue-500 text-lg ml-1">
-                                    ✓
-                                  </span>
-                                )}
+                              <span className="text-white font-bold text-base drop-shadow-lg">
+                                @
+                                {
+                                  viewerPost.user?.username
+                                }
                               </span>
 
                             </Link>
 
                             <p className="text-white/90 text-sm drop-shadow-md leading-relaxed max-w-[80%]">
-                              {viewerPost.content}
+                              {
+                                viewerPost.content
+                              }
                             </p>
 
                           </div>
 
 
-                          {/* PROGRESS */}
-                          <div className="absolute bottom-0 left-0 w-full h-1 bg-white/20 z-20 pointer-events-none">
+                          <div className="absolute bottom-0 left-0 w-full h-1 bg-white/20 z-20">
+
                             <div
-                              className="h-full bg-red-500 transition-all duration-100 ease-linear"
+                              className="h-full bg-red-500 transition-all duration-100"
                               style={{
                                 width: `${progress}%`
                               }}
                             />
+
                           </div>
 
                         </motion.div>
@@ -2412,18 +2538,16 @@ const Profile = () => {
                 </div>
 
 
-                {/* =================================================
-                    ACTIONS
-                ================================================== */}
+                {/* ACTIONS */}
 
                 <div className="flex flex-col items-center gap-4 py-4 shrink-0 min-w-[60px] md:min-w-[80px]">
 
-                  {/* AVATAR */}
                   <div className="relative">
 
                     <Link
                       to={`/profile/${viewerPost.user?._id}`}
                     >
+
                       <div className="w-12 h-12 rounded-full border-[2px] border-white/30 bg-gray-800 flex items-center justify-center overflow-hidden cursor-pointer hover:border-accent transition">
 
                         {viewerPost.user?.avatar ? (
@@ -2449,19 +2573,14 @@ const Profile = () => {
                         )}
 
                       </div>
-                    </Link>
 
-                    {viewerPost.user?._id !==
-                      currentUser?._id && (
-                      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-xs border-[2px] border-[#0a0a0a] cursor-pointer hover:scale-110 transition">
-                        +
-                      </div>
-                    )}
+                    </Link>
 
                   </div>
 
 
                   {/* LIKE */}
+
                   <div
                     className="flex flex-col items-center gap-1 cursor-pointer"
                     onClick={() =>
@@ -2474,16 +2593,17 @@ const Profile = () => {
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
 
                       <span
-                        className={`text-xl transition-colors ${
+                        className={`text-xl ${
                           viewerPost.isLikedByMe ||
                           isIdInArray(
                             viewerPost.likes,
                             currentUser?._id
                           )
                             ? 'text-red-500'
-                            : 'text-white/80 hover:text-white'
+                            : 'text-white/80'
                         }`}
                       >
+
                         {viewerPost.isLikedByMe ||
                         isIdInArray(
                           viewerPost.likes,
@@ -2493,64 +2613,54 @@ const Profile = () => {
                         ) : (
                           <FaRegHeart />
                         )}
+
                       </span>
 
                     </div>
 
-                    <span className="text-white/80 text-[11px] font-bold tracking-wide">
-                      {Array.isArray(
-                        viewerPost.likes
-                      )
-                        ? viewerPost.likes.length
-                        : 0}
+                    <span className="text-white/80 text-[11px] font-bold">
+                      {viewerPost.likes?.length ||
+                        0}
                     </span>
 
                   </div>
 
 
                   {/* COMMENTS */}
+
                   <div
                     className="flex flex-col items-center gap-1 cursor-pointer"
-                    onClick={(
-                      e
-                    ) => {
-                      e.stopPropagation();
-
+                    onClick={() =>
                       setIsCommentsOpen(
-                        prev => !prev
-                      );
-                    }}
+                        prev =>
+                          !prev
+                      )
+                    }
                   >
 
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
 
-                      <FaComment className="text-white/80 text-xl hover:text-white transition" />
+                      <FaComment className="text-white/80 text-xl" />
 
                     </div>
 
-                    <span className="text-white/80 text-[11px] font-bold tracking-wide">
-                      {Array.isArray(
-                        viewerPost.comments
-                      )
-                        ? viewerPost.comments.length
-                        : 0}
+                    <span className="text-white/80 text-[11px] font-bold">
+                      {viewerPost.comments?.length ||
+                        0}
                     </span>
 
                   </div>
 
 
                   {/* SAVE */}
+
                   <div
                     className="flex flex-col items-center gap-1 cursor-pointer"
-                    onClick={(
-                      e
-                    ) => {
-                      e.stopPropagation();
-
+                    onClick={() =>
                       handleSave(
                         viewerPost._id
-                      );
-                    }}
+                      )
+                    }
                   >
 
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
@@ -2560,38 +2670,38 @@ const Profile = () => {
                         viewerPost.savedBy,
                         currentUser?._id
                       ) ? (
-                        <FaBookmark className="text-yellow-400 text-xl transition-colors" />
+
+                        <FaBookmark className="text-yellow-400 text-xl" />
+
                       ) : (
-                        <FiBookmark className="text-white/80 text-xl hover:text-white transition-colors" />
+
+                        <FiBookmark className="text-white/80 text-xl" />
+
                       )}
 
                     </div>
 
-                    <span className="text-white/80 text-[11px] font-bold tracking-wide">
-                      {Array.isArray(
-                        viewerPost.savedBy
-                      )
-                        ? viewerPost.savedBy.length
-                        : 0}
+                    <span className="text-white/80 text-[11px] font-bold">
+                      {viewerPost.savedBy?.length ||
+                        0}
                     </span>
 
                   </div>
 
 
                   {/* NAVIGATION */}
+
                   <div className="border-t border-white/10 pt-4 mt-4 flex flex-col gap-3 w-full items-center">
 
                     <button
-                      onClick={(
-                        e
-                      ) => {
-                        e.stopPropagation();
-                        goPrev();
-                      }}
-                      disabled={
-                        viewerIndex === 0
+                      onClick={
+                        goPrev
                       }
-                      className="w-10 h-10 bg-black/60 backdrop-blur-md rounded-full border border-white/10 text-white hover:bg-black/80 transition disabled:opacity-30 flex items-center justify-center"
+                      disabled={
+                        viewerIndex ===
+                        0
+                      }
+                      className="w-10 h-10 bg-black/60 rounded-full border border-white/10 text-white disabled:opacity-30 flex items-center justify-center"
                     >
                       <FaChevronUp
                         size={16}
@@ -2599,18 +2709,15 @@ const Profile = () => {
                     </button>
 
                     <button
-                      onClick={(
-                        e
-                      ) => {
-                        e.stopPropagation();
-                        goNext();
-                      }}
+                      onClick={
+                        goNext
+                      }
                       disabled={
                         viewerIndex ===
                         viewerPosts.length -
                           1
                       }
-                      className="w-10 h-10 bg-black/60 backdrop-blur-md rounded-full border border-white/10 text-white hover:bg-black/80 transition disabled:opacity-30 flex items-center justify-center"
+                      className="w-10 h-10 bg-black/60 rounded-full border border-white/10 text-white disabled:opacity-30 flex items-center justify-center"
                     >
                       <FaChevronDown
                         size={16}
@@ -2624,13 +2731,12 @@ const Profile = () => {
               </div>
 
 
-              {/* ===================================================
-                  COMMENTS PANEL
-              ==================================================== */}
+              {/* COMMENTS PANEL */}
 
               <AnimatePresence>
 
                 {isCommentsOpen && (
+
                   <motion.div
                     initial={{
                       x: '100%'
@@ -2644,13 +2750,12 @@ const Profile = () => {
                     transition={{
                       duration: 0.3
                     }}
-                    onClick={(e) =>
+                    onClick={e =>
                       e.stopPropagation()
                     }
                     className="absolute right-0 top-0 bottom-0 w-[420px] bg-[#0a0a0a]/95 backdrop-blur-xl border-l border-white/10 z-40 p-6 flex flex-col shadow-2xl"
                   >
 
-                    {/* HEADER */}
                     <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
 
                       <span className="text-white font-bold text-lg">
@@ -2658,16 +2763,12 @@ const Profile = () => {
                       </span>
 
                       <button
-                        onClick={(
-                          e
-                        ) => {
-                          e.stopPropagation();
-
+                        onClick={() =>
                           setIsCommentsOpen(
                             false
-                          );
-                        }}
-                        className="text-white/50 hover:text-white transition text-xl"
+                          )
+                        }
+                        className="text-white/50 hover:text-white text-xl"
                       >
                         ✕
                       </button>
@@ -2675,15 +2776,17 @@ const Profile = () => {
                     </div>
 
 
-                    {/* COMMENTS */}
-                    <div className="flex-1 overflow-y-auto space-y-6 pr-2 pb-20 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto space-y-6 pr-2 pb-20">
 
-                      {(!viewerPost.comments ||
-                        viewerPost.comments.length === 0) && (
+                      {viewerPost.comments?.length ===
+                        0 && (
+
                         <p className="text-white/40 text-center mt-10">
                           Нет комментариев
                         </p>
+
                       )}
+
 
                       {viewerPost.comments?.map(
                         comment => {
@@ -2707,6 +2810,7 @@ const Profile = () => {
                             );
 
                           return (
+
                             <div
                               key={
                                 comment._id
@@ -2714,12 +2818,10 @@ const Profile = () => {
                               className="border-b border-white/5 pb-4"
                             >
 
-                              {/* COMMENT HEADER */}
                               <div className="flex gap-3 mb-2">
 
                                 <Link
                                   to={`/profile/${comment.user?._id}`}
-                                  className="shrink-0 hover:opacity-80 transition"
                                 >
 
                                   <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs text-white overflow-hidden">
@@ -2751,31 +2853,27 @@ const Profile = () => {
 
                                 <div className="flex-1">
 
-                                  <div className="flex items-center gap-2 flex-wrap">
+                                  <div className="flex items-center gap-2">
 
                                     <Link
                                       to={`/profile/${comment.user?._id}`}
-                                      className="text-white/60 text-xs font-medium hover:text-white transition inline-block"
+                                      className="text-white/60 text-xs"
                                     >
-                                      @{comment.user?.username}
+                                      @
+                                      {
+                                        comment.user?.username
+                                      }
                                     </Link>
 
                                     {isPostAuthor && (
-                                      <span className="text-[10px] text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">
+                                      <span className="text-[10px] text-red-400">
                                         Автор
-                                      </span>
-                                    )}
-
-                                    {comment.user?.isVerified && (
-                                      <span className="text-blue-500 text-xs">
-                                        ✓
                                       </span>
                                     )}
 
                                   </div>
 
 
-                                  {/* COMMENT TEXT */}
                                   {editingCommentId ===
                                   comment._id ? (
 
@@ -2785,14 +2883,12 @@ const Profile = () => {
                                         value={
                                           editCommentText
                                         }
-                                        onChange={(
-                                          e
-                                        ) =>
+                                        onChange={e =>
                                           setEditCommentText(
                                             e.target.value
                                           )
                                         }
-                                        className="w-full bg-black/40 border border-white/10 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent/50 resize-none"
+                                        className="w-full bg-black/40 border border-white/10 text-white rounded-lg px-3 py-2 text-sm"
                                         rows="2"
                                       />
 
@@ -2808,7 +2904,7 @@ const Profile = () => {
                                               ''
                                             );
                                           }}
-                                          className="text-xs text-white/50 hover:text-white"
+                                          className="text-xs text-white/50"
                                         >
                                           Отмена
                                         </button>
@@ -2821,7 +2917,7 @@ const Profile = () => {
                                               false
                                             )
                                           }
-                                          className="text-xs text-accent hover:opacity-80"
+                                          className="text-xs text-accent"
                                         >
                                           Сохранить
                                         </button>
@@ -2845,7 +2941,6 @@ const Profile = () => {
                               </div>
 
 
-                              {/* COMMENT ACTIONS */}
                               <div className="flex items-center gap-4 ml-11 mt-1">
 
                                 <div
@@ -2858,50 +2953,24 @@ const Profile = () => {
                                   }
                                 >
 
-                                  <span
-                                    className={`text-sm transition-colors ${
-                                      isCommentLiked
-                                        ? 'text-red-500'
-                                        : 'text-white/40 hover:text-white'
-                                    }`}
-                                  >
-                                    {isCommentLiked ? (
-                                      <FaHeart />
-                                    ) : (
-                                      <FaRegHeart />
-                                    )}
-                                  </span>
+                                  {isCommentLiked ? (
+                                    <FaHeart className="text-red-500 text-sm" />
+                                  ) : (
+                                    <FaRegHeart className="text-white/40 text-sm" />
+                                  )}
 
                                   <span className="text-xs text-white/40">
-                                    {comment.likes?.length > 0
-                                      ? comment.likes.length
-                                      : ''}
+                                    {comment.likes?.length ||
+                                      ''}
                                   </span>
 
-                                </div>
-
-
-                                <div
-                                  className="flex items-center gap-1 cursor-pointer text-white/40 hover:text-white transition text-xs"
-                                  onClick={() => {
-                                    const input =
-                                      document.getElementById(
-                                        `reply-input-${comment._id}`
-                                      );
-
-                                    input?.focus();
-                                  }}
-                                >
-                                  <FaReply size={12} />
-                                  <span>
-                                    Ответить
-                                  </span>
                                 </div>
 
 
                                 {isCommentAuthor &&
                                   !editingCommentId && (
-                                    <div className="flex items-center gap-2 text-white/30 ml-auto">
+
+                                    <div className="flex gap-2 ml-auto text-white/30">
 
                                       <button
                                         onClick={() =>
@@ -2910,7 +2979,6 @@ const Profile = () => {
                                             comment.text
                                           )
                                         }
-                                        className="hover:text-white transition"
                                       >
                                         <FaPencilAlt
                                           size={12}
@@ -2921,11 +2989,9 @@ const Profile = () => {
                                         onClick={() =>
                                           deleteComment(
                                             viewerPost._id,
-                                            comment._id,
-                                            false
+                                            comment._id
                                           )
                                         }
-                                        className="hover:text-red-400 transition"
                                       >
                                         <FaTrash
                                           size={12}
@@ -2933,12 +2999,12 @@ const Profile = () => {
                                       </button>
 
                                     </div>
+
                                   )}
 
                               </div>
 
 
-                              {/* REPLY INPUT */}
                               <div className="ml-11 mt-2 flex gap-2">
 
                                 <input
@@ -2948,11 +3014,10 @@ const Profile = () => {
                                   value={
                                     replyTexts[
                                       comment._id
-                                    ] || ''
+                                    ] ||
+                                    ''
                                   }
-                                  onChange={(
-                                    e
-                                  ) =>
+                                  onChange={e =>
                                     setReplyTexts(
                                       prev => ({
                                         ...prev,
@@ -2962,20 +3027,22 @@ const Profile = () => {
                                       })
                                     )
                                   }
-                                  onKeyDown={(
-                                    e
-                                  ) => {
+                                  onKeyDown={e => {
+
                                     if (
                                       e.key ===
                                       'Enter'
                                     ) {
+
                                       handleReply(
                                         viewerPost._id,
                                         comment._id
                                       );
+
                                     }
+
                                   }}
-                                  className="flex-1 bg-transparent border-b border-white/10 text-white text-xs outline-none pb-1 placeholder:text-white/30 focus:border-accent/50 transition"
+                                  className="flex-1 bg-transparent border-b border-white/10 text-white text-xs outline-none"
                                 />
 
                                 <button
@@ -2985,7 +3052,7 @@ const Profile = () => {
                                       comment._id
                                     )
                                   }
-                                  className="text-accent text-xs font-medium hover:opacity-80 transition"
+                                  className="text-accent text-xs"
                                 >
                                   Отправить
                                 </button>
@@ -2993,7 +3060,6 @@ const Profile = () => {
                               </div>
 
 
-                              {/* REPLIES */}
                               {comment.replies?.length >
                                 0 && (
 
@@ -3013,6 +3079,7 @@ const Profile = () => {
                                         reply._id;
 
                                       return (
+
                                         <div
                                           key={
                                             reply._id
@@ -3020,55 +3087,38 @@ const Profile = () => {
                                           className="flex gap-3"
                                         >
 
-                                          <Link
-                                            to={`/profile/${reply.user?._id}`}
-                                            className="shrink-0 hover:opacity-80 transition"
-                                          >
+                                          <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-[10px] text-white overflow-hidden">
 
-                                            <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-[10px] text-white overflow-hidden">
+                                            {reply.user?.avatar ? (
 
-                                              {reply.user?.avatar ? (
+                                              <img
+                                                src={
+                                                  reply.user.avatar
+                                                }
+                                                alt="Avatar"
+                                                className="w-full h-full object-cover"
+                                              />
 
-                                                <img
-                                                  src={
-                                                    reply.user.avatar
-                                                  }
-                                                  alt="Avatar"
-                                                  className="w-full h-full object-cover"
-                                                />
+                                            ) : (
 
-                                              ) : (
+                                              reply.user?.username
+                                                ?.charAt(
+                                                  0
+                                                )
+                                                .toUpperCase()
 
-                                                reply.user?.username
-                                                  ?.charAt(
-                                                    0
-                                                  )
-                                                  .toUpperCase()
+                                            )}
 
-                                              )}
-
-                                            </div>
-
-                                          </Link>
+                                          </div>
 
 
                                           <div className="flex-1">
 
-                                            <div className="flex items-center gap-2 flex-wrap">
-
-                                              <Link
-                                                to={`/profile/${reply.user?._id}`}
-                                                className="text-white/40 text-[11px] font-medium hover:text-white transition inline-block"
-                                              >
-                                                @{reply.user?.username}
-                                              </Link>
-
-                                              {reply.user?.isVerified && (
-                                                <span className="text-blue-500 text-[10px]">
-                                                  ✓
-                                                </span>
-                                              )}
-
+                                            <div className="text-white/40 text-[11px]">
+                                              @
+                                              {
+                                                reply.user?.username
+                                              }
                                             </div>
 
 
@@ -3080,14 +3130,12 @@ const Profile = () => {
                                                   value={
                                                     editCommentText
                                                   }
-                                                  onChange={(
-                                                    e
-                                                  ) =>
+                                                  onChange={e =>
                                                     setEditCommentText(
                                                       e.target.value
                                                     )
                                                   }
-                                                  className="w-full bg-black/40 border border-white/10 text-white rounded-lg px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-accent/50 resize-none"
+                                                  className="w-full bg-black/40 border border-white/10 text-white rounded-lg px-2 py-1 text-xs"
                                                   rows="2"
                                                 />
 
@@ -3103,7 +3151,7 @@ const Profile = () => {
                                                         ''
                                                       );
                                                     }}
-                                                    className="text-[10px] text-white/50 hover:text-white"
+                                                    className="text-[10px] text-white/50"
                                                   >
                                                     Отмена
                                                   </button>
@@ -3116,7 +3164,7 @@ const Profile = () => {
                                                         true
                                                       )
                                                     }
-                                                    className="text-[10px] text-accent hover:opacity-80"
+                                                    className="text-[10px] text-accent"
                                                   >
                                                     Сохранить
                                                   </button>
@@ -3138,7 +3186,8 @@ const Profile = () => {
 
                                             {isReplyAuthor &&
                                               !isReplyEditing && (
-                                                <div className="flex items-center gap-2 mt-1 text-white/20">
+
+                                                <div className="flex gap-2 mt-1 text-white/20">
 
                                                   <button
                                                     onClick={() =>
@@ -3147,7 +3196,6 @@ const Profile = () => {
                                                         reply.text
                                                       )
                                                     }
-                                                    className="hover:text-white transition"
                                                   >
                                                     <FaPencilAlt
                                                       size={10}
@@ -3162,7 +3210,6 @@ const Profile = () => {
                                                         true
                                                       )
                                                     }
-                                                    className="hover:text-red-400 transition"
                                                   >
                                                     <FaTrash
                                                       size={10}
@@ -3170,30 +3217,35 @@ const Profile = () => {
                                                   </button>
 
                                                 </div>
+
                                               )}
 
                                           </div>
 
                                         </div>
+
                                       );
+
                                     }
                                   )}
 
                                 </div>
+
                               )}
 
                             </div>
+
                           );
+
                         }
                       )}
 
                     </div>
 
 
-                    {/* COMMENT INPUT */}
-                    <div className="p-4 border-t border-white/10 bg-[#0a0a0a]/90 backdrop-blur-md z-10 shrink-0">
+                    <div className="p-4 border-t border-white/10 bg-[#0a0a0a]/90 shrink-0">
 
-                      <div className="flex gap-2 bg-black/40 border border-white/10 rounded-full px-4 py-2 items-center">
+                      <div className="flex gap-2 bg-black/40 border border-white/10 rounded-full px-4 py-2">
 
                         <input
                           type="text"
@@ -3201,26 +3253,26 @@ const Profile = () => {
                           value={
                             commentText
                           }
-                          onChange={(
-                            e
-                          ) =>
+                          onChange={e =>
                             setCommentText(
                               e.target.value
                             )
                           }
-                          onKeyDown={(
-                            e
-                          ) => {
+                          onKeyDown={e => {
+
                             if (
                               e.key ===
                               'Enter'
                             ) {
+
                               handleAddComment(
                                 viewerPost._id
                               );
+
                             }
+
                           }}
-                          className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-white/30"
+                          className="flex-1 bg-transparent text-white text-sm outline-none"
                         />
 
                         <button
@@ -3229,7 +3281,7 @@ const Profile = () => {
                               viewerPost._id
                             )
                           }
-                          className="text-accent font-medium text-sm hover:opacity-80 transition"
+                          className="text-accent text-sm"
                         >
                           Опубликовать
                         </button>
@@ -3239,6 +3291,7 @@ const Profile = () => {
                     </div>
 
                   </motion.div>
+
                 )}
 
               </AnimatePresence>
@@ -3246,18 +3299,22 @@ const Profile = () => {
             </div>
 
           </motion.div>
+
         )}
+
       </AnimatePresence>
 
 
       {/* =====================================================
-          PROFILE PAGE
+          PROFILE
       ====================================================== */}
 
       {!viewerPost && (
+
         <div className="max-w-4xl mx-auto p-4 md:p-6">
 
-          {/* PROFILE HEADER */}
+          {/* HEADER */}
+
           <div className="bg-white/5 border border-white/10 backdrop-blur-xl rounded-2xl p-8 mb-8 text-center">
 
             <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-r from-accent to-glow overflow-hidden mb-4 border-2 border-white/20">
@@ -3265,7 +3322,9 @@ const Profile = () => {
               {user.avatar ? (
 
                 <img
-                  src={user.avatar}
+                  src={
+                    user.avatar
+                  }
                   alt="Avatar"
                   className="w-full h-full object-cover"
                 />
@@ -3273,11 +3332,13 @@ const Profile = () => {
               ) : (
 
                 <div className="w-full h-full flex items-center justify-center text-3xl text-white font-bold">
+
                   {user.username
                     ?.charAt(
                       0
                     )
                     .toUpperCase()}
+
                 </div>
 
               )}
@@ -3285,16 +3346,10 @@ const Profile = () => {
             </div>
 
 
-            <h2 className="text-2xl font-bold text-white flex items-center justify-center gap-2">
+            <h2 className="text-2xl font-bold text-white">
 
               {user.displayName ||
                 user.username}
-
-              {user.isVerified && (
-                <span className="text-blue-500 text-2xl">
-                  ✓
-                </span>
-              )}
 
             </h2>
 
@@ -3388,26 +3443,34 @@ const Profile = () => {
 
 
           {/* =================================================
-              POSTS GRID
+              GRID
           ================================================== */}
 
           <div className="grid grid-cols-3 gap-1 md:gap-2">
 
             {posts.length ===
               0 && (
+
               <div className="col-span-3 text-center text-white/40 py-10">
                 У пользователя пока нет постов.
               </div>
+
             )}
 
 
             {posts.map(
               post => {
+
                 const isVideo =
                   post.mediaType ===
                   'video';
 
+                const isMenuOpen =
+                  openGridMenuId ===
+                  post._id;
+
                 return (
+
                   <motion.div
                     key={
                       post._id
@@ -3424,45 +3487,150 @@ const Profile = () => {
                   >
 
                     {/* =======================================
-                        THREE DOTS / EDIT
+                        THREE DOTS
                     ======================================== */}
 
                     {isOwnProfile && (
-                      <div
-                        className="absolute top-2 right-2 z-20 cursor-pointer bg-black/60 backdrop-blur-sm hover:bg-black/80 p-1 rounded-full transition"
-                        onClick={(
-                          e
-                        ) => {
-                          e.stopPropagation();
 
-                          openEditModalFromGrid(
-                            post
-                          );
-                        }}
+                      <div
+                        className="absolute top-2 right-2 z-30"
+                        onClick={e =>
+                          e.stopPropagation()
+                        }
                       >
-                        <FiMoreVertical
-                          size={18}
-                          className="text-white/80 hover:text-white"
-                        />
+
+                        <button
+                          type="button"
+                          onClick={e => {
+
+                            e.stopPropagation();
+
+                            setOpenGridMenuId(
+                              prev =>
+                                prev ===
+                                post._id
+                                  ? null
+                                  : post._id
+                            );
+
+                          }}
+                          className="bg-black/60 backdrop-blur-sm hover:bg-black/80 p-2 rounded-full transition"
+                        >
+                          <FiMoreVertical
+                            size={18}
+                            className="text-white/80 hover:text-white"
+                          />
+                        </button>
+
+
+                        <AnimatePresence>
+
+                          {isMenuOpen && (
+
+                            <motion.div
+                              initial={{
+                                opacity: 0,
+                                scale: 0.9,
+                                y: -5
+                              }}
+                              animate={{
+                                opacity: 1,
+                                scale: 1,
+                                y: 0
+                              }}
+                              exit={{
+                                opacity: 0,
+                                scale: 0.9,
+                                y: -5
+                              }}
+                              className="absolute right-0 top-11 w-36 bg-black/95 backdrop-blur-xl border border-white/10 rounded-xl p-1.5 shadow-2xl"
+                            >
+
+                              {/* EDIT */}
+
+                              <button
+                                type="button"
+                                onClick={e => {
+
+                                  e.stopPropagation();
+
+                                  openEditModalFromGrid(
+                                    post
+                                  );
+
+                                }}
+                                className="flex items-center gap-2 w-full px-3 py-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition text-sm"
+                              >
+
+                                <FiEdit2
+                                  size={15}
+                                />
+
+                                <span>
+                                  Изменить
+                                </span>
+
+                              </button>
+
+
+                              {/* DELETE */}
+
+                              <button
+                                type="button"
+                                onClick={e => {
+
+                                  e.stopPropagation();
+
+                                  setOpenGridMenuId(
+                                    null
+                                  );
+
+                                  handleDeletePost(
+                                    post._id
+                                  );
+
+                                }}
+                                className="flex items-center gap-2 w-full px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition text-sm"
+                              >
+
+                                <FaTrash
+                                  size={14}
+                                />
+
+                                <span>
+                                  Удалить
+                                </span>
+
+                              </button>
+
+                            </motion.div>
+
+                          )}
+
+                        </AnimatePresence>
+
                       </div>
+
                     )}
 
 
-                    {/* =======================================
-                        MEDIA
-                    ======================================== */}
+                    {/* MEDIA */}
 
                     {post.mediaUrl ? (
 
                       isVideo ? (
 
                         <video
-                          ref={(el) => {
+                          ref={el => {
+
                             if (el) {
+
                               videoRefs.current[
                                 post._id
                               ] = el;
+
                             }
+
                           }}
                           src={getMediaUrl(
                             post.mediaUrl
@@ -3481,19 +3649,24 @@ const Profile = () => {
                               null
                             )
                           }
-                          onEnded={(e) => {
+                          onEnded={e => {
+
                             if (
                               hoveredId ===
                               post._id
                             ) {
-                              e.target.currentTime = 0;
+
+                              e.target.currentTime =
+                                0;
 
                               e.target
                                 .play()
                                 .catch(
                                   () => {}
                                 );
+
                             }
+
                           }}
                         />
 
@@ -3514,7 +3687,9 @@ const Profile = () => {
                       <div className="w-full h-full flex items-center justify-center p-4 text-center bg-black/40">
 
                         <p className="text-white/90 text-sm font-medium line-clamp-5 whitespace-pre-wrap break-words">
-                          {post.content}
+                          {
+                            post.content
+                          }
                         </p>
 
                       </div>
@@ -3523,8 +3698,10 @@ const Profile = () => {
 
 
                     {/* LIKE COUNT */}
+
                     {post.likes?.length >
                       0 && (
+
                       <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1 text-white/90 text-xs font-semibold drop-shadow-lg">
 
                         <FaHeart
@@ -3533,33 +3710,36 @@ const Profile = () => {
 
                         <span>
                           {
-                            post
-                              .likes
-                              .length
+                            post.likes.length
                           }
                         </span>
 
                       </div>
+
                     )}
 
                   </motion.div>
+
                 );
+
               }
             )}
 
           </div>
 
         </div>
+
       )}
 
 
       {/* =====================================================
-          EDIT POST MODAL
+          EDIT MODAL
       ====================================================== */}
 
       <AnimatePresence>
 
         {isEditModalOpen && (
+
           <motion.div
             initial={{
               opacity: 0
@@ -3594,7 +3774,7 @@ const Profile = () => {
                 y: 20,
                 scale: 0.96
               }}
-              onClick={(e) =>
+              onClick={e =>
                 e.stopPropagation()
               }
               className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl"
@@ -3605,119 +3785,85 @@ const Profile = () => {
               </h3>
 
 
-              <div className="space-y-4">
-
-                <textarea
-                  autoFocus
-                  value={
-                    editContent
-                  }
-                  onChange={(
-                    e
-                  ) =>
-                    setEditContent(
-                      e.target.value
-                    )
-                  }
-                  className="w-full bg-white/5 border border-white/10 text-white rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-accent/50 resize-none min-h-[100px] placeholder:text-white/30"
-                  placeholder="Описание поста..."
-                />
+              <textarea
+                autoFocus
+                value={
+                  editContent
+                }
+                onChange={e =>
+                  setEditContent(
+                    e.target.value
+                  )
+                }
+                className="w-full bg-white/5 border border-white/10 text-white rounded-xl px-4 py-3 outline-none resize-none min-h-[120px]"
+                placeholder="Описание поста..."
+              />
 
 
-                {editPreview && (
-                  <div className="relative border border-white/10 rounded-xl overflow-hidden">
+              {editPreview && (
 
-                    {editFile?.type?.startsWith(
-                      'video/'
-                    ) ? (
+                <div className="relative border border-white/10 rounded-xl overflow-hidden mt-4">
 
-                      <video
-                        src={
-                          editPreview
-                        }
-                        controls
-                        className="w-full max-h-60 object-contain bg-black"
-                      />
+                  {editFile?.type?.startsWith(
+                    'video/'
+                  ) ? (
 
-                    ) : (
+                    <video
+                      src={
+                        editPreview
+                      }
+                      controls
+                      className="w-full max-h-60 object-contain bg-black"
+                    />
 
-                      <img
-                        src={
-                          editPreview
-                        }
-                        alt="Preview"
-                        className="w-full max-h-60 object-contain bg-black"
-                      />
+                  ) : (
 
-                    )}
+                    <img
+                      src={
+                        editPreview
+                      }
+                      alt="Preview"
+                      className="w-full max-h-60 object-contain bg-black"
+                    />
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditFile(
-                          null
-                        );
+                  )}
 
-                        if (
-                          editPreview
-                        ) {
-                          URL.revokeObjectURL(
-                            editPreview
-                          );
-                        }
+                </div>
 
-                        setEditPreview(
-                          null
-                        );
-
-                        if (
-                          editFileInputRef.current
-                        ) {
-                          editFileInputRef.current.value =
-                            '';
-                        }
-                      }}
-                      className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1 hover:bg-black/80"
-                    >
-                      ✕
-                    </button>
-
-                  </div>
-                )}
+              )}
 
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    editFileInputRef.current?.click()
-                  }
-                  className="w-full py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition"
-                >
-                  {editPreview
-                    ? 'Заменить медиа'
-                    : 'Добавить/Заменить медиа'}
-                </button>
+              <button
+                type="button"
+                onClick={() =>
+                  editFileInputRef.current?.click()
+                }
+                className="w-full mt-4 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition"
+              >
+                {editPreview
+                  ? 'Заменить медиа'
+                  : 'Добавить/Заменить медиа'}
+              </button>
 
 
-                <input
-                  type="file"
-                  ref={
-                    editFileInputRef
-                  }
-                  accept="image/*,video/*"
-                  onChange={
-                    handleEditFileChange
-                  }
-                  className="hidden"
-                />
-
-              </div>
+              <input
+                type="file"
+                ref={
+                  editFileInputRef
+                }
+                accept="image/*,video/*"
+                onChange={
+                  handleEditFileChange
+                }
+                className="hidden"
+              />
 
 
               <div className="flex gap-2 mt-6">
 
                 <button
                   onClick={() => {
+
                     setIsEditModalOpen(
                       false
                     );
@@ -3725,6 +3871,7 @@ const Profile = () => {
                     setEditingPost(
                       null
                     );
+
                   }}
                   className="flex-1 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition"
                 >
@@ -3740,7 +3887,7 @@ const Profile = () => {
                     isUpdating ||
                     !editContent.trim()
                   }
-                  className="flex-1 py-2 bg-accent text-white font-semibold rounded-xl hover:bg-accent/80 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-2 bg-accent text-white rounded-xl disabled:opacity-50"
                 >
                   {isUpdating
                     ? 'Сохранение...'
@@ -3752,6 +3899,7 @@ const Profile = () => {
             </motion.div>
 
           </motion.div>
+
         )}
 
       </AnimatePresence>
