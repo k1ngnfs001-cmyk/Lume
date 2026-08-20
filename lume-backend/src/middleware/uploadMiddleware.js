@@ -1,11 +1,17 @@
 const multer = require('multer');
 
-// Храним файл в памяти (буфер), чтобы отправить в Cloudinary
-const storage = multer.memoryStorage();
+// Faylni RAM'da saqlaymiz,
+// keyin Cloudinary'ga yuboramiz.
+const storage =
+  multer.memoryStorage();
 
 const upload = multer({
-  storage: storage,
-  limits: { fileSize: 50 * 1024 * 1024 } // 50 МБ
+  storage,
+
+  limits: {
+    fileSize:
+      50 * 1024 * 1024
+  }
 });
 
 module.exports = upload;
