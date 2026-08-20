@@ -3,6 +3,11 @@ const express = require('express');
 const router =
   express.Router();
 
+
+// =========================================================
+// CONTROLLERS
+// =========================================================
+
 const {
   createPost,
   getFeed,
@@ -16,14 +21,38 @@ const {
   editComment,
   deleteComment,
   deletePost
-} = require('../controllers/postController');
+} = require(
+  '../controllers/postController'
+);
+
+
+// =========================================================
+// MIDDLEWARE
+// =========================================================
 
 const {
   protect
-} = require('../middleware/authMiddleware');
+} = require(
+  '../middleware/authMiddleware'
+);
 
 const upload =
-  require('../middleware/uploadMiddleware');
+  require(
+    '../middleware/uploadMiddleware'
+  );
+
+
+// =========================================================
+// DEBUG: ROUTE LOADED
+// =========================================================
+
+console.log(
+  '✅ postRoutes.js loaded'
+);
+
+console.log(
+  '✅ DELETE /:id route will be registered'
+);
 
 
 // =========================================================
@@ -44,7 +73,7 @@ router
 
 
 // =========================================================
-// FOLLOWING
+// FOLLOWING POSTS
 // =========================================================
 
 router.get(
@@ -55,7 +84,7 @@ router.get(
 
 
 // =========================================================
-// LIKE
+// LIKE POST
 // =========================================================
 
 router.post(
@@ -66,7 +95,7 @@ router.post(
 
 
 // =========================================================
-// SAVE
+// SAVE POST
 // =========================================================
 
 router.post(
@@ -107,6 +136,10 @@ router.delete(
   '/:id',
   protect,
   deletePost
+);
+
+console.log(
+  '✅ DELETE /:id REGISTERED'
 );
 
 
@@ -153,6 +186,10 @@ router.delete(
   deleteComment
 );
 
+
+// =========================================================
+// EXPORT
+// =========================================================
 
 module.exports =
   router;

@@ -1206,74 +1206,70 @@ exports.updatePost =
 // DELETE POST
 // =========================================================
 
-exports.deletePost =
-  async (
-    req,
-    res
-  ) => {
-    try {
-      const postId =
-        req.params.id;
+exports.deletePost = async (req, res) => {
+  try {
+    const postId = req.params.id;
 
-      console.log(
-        'DELETE POST REQUEST:',
+    console.log('================================');
+    console.log('DELETE POST HIT');
+    console.log('METHOD:', req.method);
+    console.log('URL:', req.originalUrl);
+    console.log('POST ID:', postId);
+    console.log('USER ID:', req.user?._id?.toString());
+
+    const post = await Post.findById(postId);
+
+    console.log(
+      'POST FOUND:',
+      post
+        ? {
+            _id: post._id.toString(),
+            user: post.user.toString()
+          }
+        : null
+    );
+
+    if (!post) {
+      console.log('❌ POST NOT FOUND');
+
+      return res.status(404).json({
+        message: 'Пост не найден',
         postId
-      );
-
-      const post =
-        await Post.findById(
-          postId
-        );
-
-      if (!post) {
-        return res.status(404).json({
-          message:
-            'Пост не найден'
-        });
-      }
-
-      // Только владелец поста или админ
-      // может его удалить
-      if (
-        !sameId(
-          post.user,
-          req.user._id
-        ) &&
-        !req.user.isAdmin
-      ) {
-        return res.status(403).json({
-          message:
-            'Нет прав для удаления этого поста'
-        });
-      }
-
-      await post.deleteOne();
-
-      console.log(
-        'POST DELETED:',
-        postId
-      );
-
-      res.json({
-        success:
-          true,
-
-        message:
-          'Пост удалён',
-
-        postId
-      });
-
-    } catch (error) {
-
-      console.error(
-        'Ошибка удаления поста:',
-        error
-      );
-
-      res.status(500).json({
-        message:
-          error.message
       });
     }
-  };
+
+    if (
+      post.user.toString() !==
+        req.user._id.toString() &&
+      !req.user.isAdmin
+    ) {
+      console.log('❌ NO PERMISSION');
+
+      return res.status(403).json({
+        message:
+          'Нет прав для удаления этого поста'
+      });
+    }
+
+    await post.deleteOne();
+
+    console.log('✅ POST DELETED:', postId);
+    console.log('================================');
+
+    res.json({
+      success: true,
+      message: 'Пост удалён',
+      postId
+    });
+
+  } catch (error) {
+    console.error(
+      '❌ DELETE POST ERROR:',
+      error
+    );
+
+    res.status(500).json({
+      message: error.message
+    });
+  }
+};
