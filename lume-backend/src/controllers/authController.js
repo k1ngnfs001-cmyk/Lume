@@ -1,99 +1,404 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-// const sendOTPEmail = require('../config/email'); // <--- ПОЛНОСТЬЮ УБРАЛИ ИМПОРТ ПОЧТЫ
 
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
+// =========================================================
+// TOKEN
+// =========================================================
+
+const generateToken = (
+  id
+) => {
+  return jwt.sign(
+    {
+      id
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn:
+        '7d'
+    }
+  );
 };
 
-exports.register = async (req, res) => {
-  const { username, email, password } = req.body;
-  try {
-    const userExists = await User.findOne({ email });
-    if (userExists) return res.status(400).json({ message: 'Email уже зарегистрирован' });
 
-    const user = await User.create({ username, email, password });
+// =========================================================
+// REGISTER
+// =========================================================
+
+exports.register = async (
+  req,
+  res
+) => {
+
+  const {
+    username,
+    email,
+    password
+  } = req.body;
+
+  try {
+
+    const emailExists =
+      await User.findOne({
+        email
+      });
+
+    if (emailExists) {
+      return res.status(400).json({
+        message:
+          'Email уже зарегистрирован'
+      });
+    }
+
+    const usernameExists =
+      await User.findOne({
+        username
+      });
+
+    if (usernameExists) {
+      return res.status(400).json({
+        message:
+          'Это имя пользователя уже занято'
+      });
+    }
+
+    const user =
+      await User.create({
+        username,
+        email,
+        password
+      });
+
     res.status(201).json({
-      _id: user._id,
-      username: user.username,
-      email: user.email,
-      avatar: user.avatar,
-      token: generateToken(user._id)
+
+      _id:
+        user._id,
+
+      username:
+        user.username,
+
+      email:
+        user.email,
+
+      displayName:
+        user.displayName,
+
+      avatar:
+        user.avatar,
+
+      bio:
+        user.bio,
+
+      isAdmin:
+        user.isAdmin,
+
+      isVerified:
+        user.isVerified,
+
+      isBanned:
+        user.isBanned,
+
+      token:
+        generateToken(
+          user._id
+        )
+
     });
+
   } catch (error) {
-    res.status(500).json({ message: error.message });
+
+    console.error(
+      'Ошибка регистрации:',
+      error
+    );
+
+    res.status(500).json({
+      message:
+        error.message
+    });
   }
 };
 
-exports.login = async (req, res) => {
-  const { email, password } = req.body;
+
+// =========================================================
+// LOGIN
+// =========================================================
+
+exports.login = async (
+  req,
+  res
+) => {
+
+  const {
+    email,
+    password
+  } = req.body;
+
   try {
-    const user = await User.findOne({ email }).select('+password');
+
+    const user =
+      await User.findOne({
+        email
+      }).select(
+        '+password'
+      );
+
     if (!user) {
-      return res.status(401).json({ message: 'Неверный email или пароль' });
+      return res.status(401).json({
+        message:
+          'Неверный email или пароль'
+      });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch =
+      await bcrypt.compare(
+        password,
+        user.password
+      );
+
     if (!isMatch) {
-      return res.status(401).json({ message: 'Неверный email или пароль' });
+      return res.status(401).json({
+        message:
+          'Неверный email или пароль'
+      });
     }
 
-    // Генерация 6-значного OTP кода
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiry = Date.now() + 10 * 60 * 1000;
+    // -------------------------------------------------------
+    // BAN CHECK
+    // -------------------------------------------------------
 
-    user.otp = otp;
-    user.otpExpiry = otpExpiry;
+    if (user.isBanned) {
+      return res.status(403).json({
+        message:
+          'Ваш аккаунт заблокирован администратором',
+        code:
+          'USER_BANNED'
+      });
+    }
+
+    // -------------------------------------------------------
+    // OTP
+    // -------------------------------------------------------
+
+    const otp =
+      Math.floor(
+        100000 +
+        Math.random() * 900000
+      ).toString();
+
+    const otpExpiry =
+      Date.now() +
+      10 * 60 * 1000;
+
+    user.otp =
+      otp;
+
+    user.otpExpiry =
+      otpExpiry;
+
     await user.save();
 
-    // ==============================================
-    // ПОЧТА ПОЛНОСТЬЮ ОТКЛЮЧЕНА! КОД ТОЛЬКО В КОНСОЛЬ!
-    // ==============================================
-    console.log('========================================');
-    console.log('✅ КОД ДЛЯ ВХОДА (смотри в логах Render):', otp);
-    console.log('========================================');
-    // await sendOTPEmail(email, otp); 
+    console.log(
+      '========================================'
+    );
 
-    res.json({ message: 'Код подтверждения (смотри в логах)', requireOtp: true });
+    console.log(
+      '✅ КОД ДЛЯ ВХОДА:',
+      otp
+    );
+
+    console.log(
+      '========================================'
+    );
+
+    res.json({
+      message:
+        'Код подтверждения (смотри в логах)',
+      requireOtp:
+        true
+    });
+
   } catch (error) {
-    res.status(500).json({ message: error.message });
+
+    console.error(
+      'Ошибка входа:',
+      error
+    );
+
+    res.status(500).json({
+      message:
+        error.message
+    });
   }
 };
 
-exports.verifyOtp = async (req, res) => {
-  const { email, otp } = req.body;
-  try {
-    const user = await User.findOne({ email });
 
-    if (!user || user.otp !== otp || Date.now() > user.otpExpiry) {
-      return res.status(400).json({ message: 'Неверный или истекший код' });
+// =========================================================
+// VERIFY OTP
+// =========================================================
+
+exports.verifyOtp = async (
+  req,
+  res
+) => {
+
+  const {
+    email,
+    otp
+  } = req.body;
+
+  try {
+
+    const user =
+      await User.findOne({
+        email
+      });
+
+    if (!user) {
+      return res.status(400).json({
+        message:
+          'Неверный или истекший код'
+      });
     }
 
-    user.otp = undefined;
-    user.otpExpiry = undefined;
+    // -------------------------------------------------------
+    // BAN CHECK AGAIN
+    // -------------------------------------------------------
+
+    if (user.isBanned) {
+      return res.status(403).json({
+        message:
+          'Ваш аккаунт заблокирован администратором',
+        code:
+          'USER_BANNED'
+      });
+    }
+
+    // -------------------------------------------------------
+    // OTP CHECK
+    // -------------------------------------------------------
+
+    if (
+      user.otp !== otp ||
+      !user.otpExpiry ||
+      Date.now() >
+        user.otpExpiry
+    ) {
+      return res.status(400).json({
+        message:
+          'Неверный или истекший код'
+      });
+    }
+
+    user.otp =
+      undefined;
+
+    user.otpExpiry =
+      undefined;
+
     await user.save();
 
     res.json({
-      _id: user._id,
-      username: user.username,
-      email: user.email,
-      avatar: user.avatar,
-      token: generateToken(user._id)
+
+      _id:
+        user._id,
+
+      username:
+        user.username,
+
+      email:
+        user.email,
+
+      displayName:
+        user.displayName,
+
+      avatar:
+        user.avatar,
+
+      bio:
+        user.bio,
+
+      isAdmin:
+        user.isAdmin,
+
+      isVerified:
+        user.isVerified,
+
+      isBanned:
+        user.isBanned,
+
+      token:
+        generateToken(
+          user._id
+        )
+
     });
+
   } catch (error) {
-    res.status(500).json({ message: error.message });
+
+    console.error(
+      'Ошибка проверки OTP:',
+      error
+    );
+
+    res.status(500).json({
+      message:
+        error.message
+    });
   }
 };
 
-exports.getMe = async (req, res) => {
+
+// =========================================================
+// GET ME
+// =========================================================
+
+exports.getMe = async (
+  req,
+  res
+) => {
+
   try {
-    const user = await User.findById(req.user.id).select('-password');
+
+    const user =
+      await User.findById(
+        req.user._id
+      ).select(
+        '-password'
+      );
+
     if (!user) {
-      return res.status(404).json({ message: 'Пользователь не найден' });
+      return res.status(404).json({
+        message:
+          'Пользователь не найден'
+      });
     }
-    res.json(user);
+
+    if (user.isBanned) {
+      return res.status(403).json({
+        message:
+          'Ваш аккаунт заблокирован администратором',
+        code:
+          'USER_BANNED'
+      });
+    }
+
+    res.json(
+      user
+    );
+
   } catch (error) {
-    res.status(500).json({ message: 'Ошибка получения профиля' });
+
+    console.error(
+      'Ошибка получения профиля:',
+      error
+    );
+
+    res.status(500).json({
+      message:
+        'Ошибка получения профиля'
+    });
   }
 };

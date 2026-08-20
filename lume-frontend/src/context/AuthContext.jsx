@@ -17,17 +17,47 @@ export const AuthProvider = ({ children }) => {
           setUser(userData);
         })
         .catch(error => {
-          // Если сервер ответил 401, значит токен невалидный. Удаляем его!
-          if (error.response?.status === 401) {
-            localStorage.removeItem('lumeToken');
-            localStorage.removeItem('lumeUser');
-            setUser(null);
-          } else {
-            console.error('Не удалось загрузить данные пользователя:', error);
-            const savedUser = localStorage.getItem('lumeUser');
-            if (savedUser) setUser(JSON.parse(savedUser));
-          }
-        })
+  if (
+    error.response?.status === 401 ||
+    error.response?.status === 403
+  ) {
+    localStorage.removeItem(
+      'lumeToken'
+    );
+
+    localStorage.removeItem(
+      'lumeUser'
+    );
+
+    setUser(null);
+  } else {
+    console.error(
+      'Не удалось загрузить данные пользователя:',
+      error
+    );
+
+    const savedUser =
+      localStorage.getItem(
+        'lumeUser'
+      );
+
+    if (savedUser) {
+      try {
+        setUser(
+          JSON.parse(
+            savedUser
+          )
+        );
+      } catch {
+        localStorage.removeItem(
+          'lumeUser'
+        );
+
+        setUser(null);
+      }
+    }
+  }
+})
         .finally(() => setLoading(false));
     } else {
       setLoading(false);
