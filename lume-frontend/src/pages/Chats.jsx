@@ -19,7 +19,6 @@ const Chats = () => {
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // ===== TAHRIRLASH UCHUN STATE'LAR =====
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editText, setEditText] = useState('');
 
@@ -35,14 +34,16 @@ const Chats = () => {
     });
   }, [activeChatId]);
 
-  // ===== SOCKET LISTENERS (O'CHIRISH VA TAHRIRLASH QO'SHILDI) =====
   useEffect(() => {
     if (!socket) return;
 
-    // Yangi xabar kelsa
     const handleNewMessage = (newMsg) => {
       if (activeChatId && (newMsg.sender._id === activeChatId || newMsg.receiver._id === activeChatId)) {
-        setMessages(prev => [...prev, newMsg]);
+        setMessages(prev => {
+          // Xabar dublikat bo'lishining oldini olish
+          if (prev.some(m => m._id === newMsg._id)) return prev;
+          return [...prev, newMsg];
+        });
         scrollToBottom();
       }
       setConversations(prev => {
@@ -52,12 +53,10 @@ const Chats = () => {
       });
     };
 
-    // Xabar o'chirilsa (Ikkinchi odamdan signal kelganda)
     const handleMessageDeleted = ({ messageId }) => {
       setMessages(prev => prev.filter(m => m._id !== messageId));
     };
 
-    // Xabar tahrirlansa (Ikkinchi odamdan signal kelganda)
     const handleMessageEdited = ({ updatedMessage }) => {
       setMessages(prev => prev.map(m => m._id === updatedMessage._id ? updatedMessage : m));
     };
@@ -96,15 +95,11 @@ const Chats = () => {
         const uploadRes = await axios.post('/chats/send', fileFormData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
+        
         const savedMsg = uploadRes.data;
         
-        socket.emit('private-message', {
-          receiverId: activeChatId,
-          content: savedMsg.content || '',
-          mediaUrl: savedMsg.mediaUrl,
-          mediaType: savedMsg.mediaType
-        });
-
+        // CHATGPT FIX: socket.emit('private-message') ni qilib o'tirmaymiz, server o'zi yuboradi.
+        // O'z ekranimizga qo'shib qo'yamiz xolos:
         setMessages(prev => [...prev, savedMsg]);
         setSelectedFile(null);
         setInputText('');
@@ -114,6 +109,7 @@ const Chats = () => {
         alert('Не удалось загрузить файл: ' + (error.response?.data?.message || error.message));
       }
     } else {
+      // Oddiy text xabarni esa socket orqali jo'natamiz
       socket.emit('private-message', {
         receiverId: activeChatId,
         content: inputText,
@@ -124,33 +120,25 @@ const Chats = () => {
     }
   };
 
-  // ===== XABARNI O'CHIRISH =====
   const handleDeleteMessage = async (messageId) => {
     if (!window.confirm('Вы уверены, что хотите удалить это сообщение?')) return;
     try {
       await axios.delete(`/chats/messages/${messageId}`);
+      // O'z ekranimizdan o'chiramiz, boshqalarnikidan server o'zi o'chiradi
       setMessages(prev => prev.filter(m => m._id !== messageId));
-      
-      // SUHBATDOSHGA SIGNAL YUBORISH:
-      socket.emit('deleteMessage', { messageId, receiverId: activeChatId });
-      
     } catch (error) {
       alert('Не удалось удалить сообщение: ' + (error.response?.data?.message || error.message));
     }
   };
 
-  // ===== XABARNI TAHRIRLASH =====
   const handleSaveEdit = async (messageId) => {
     if (!editText.trim()) return;
     try {
-      const res = await axios.put(`/chats/messages/${messageId}`, { text: editText });
+      const res = await axios.put(`/chats/messages/${messageId}`, { text: editText.trim() });
+      // O'z ekranimizda tahrirlaymiz, boshqalarnikida server o'zi tahrirlaydi
       setMessages(prev => prev.map(m => m._id === messageId ? res.data : m));
       setEditingMessageId(null);
       setEditText('');
-
-      // SUHBATDOSHGA SIGNAL YUBORISH:
-      socket.emit('editMessage', { updatedMessage: res.data, receiverId: activeChatId });
-
     } catch (error) {
       alert('Не удалось отредактировать сообщение: ' + (error.response?.data?.message || error.message));
     }
@@ -216,7 +204,6 @@ const Chats = () => {
               >
                 <div className={`flex items-center gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                   
-                  {/* Основной блок сообщения */}
                   <div className={`max-w-[70%] p-3 rounded-2xl relative ${isMe ? 'bg-accent/70 text-white' : 'bg-white/10 text-white/90'}`}>
                     {isEditing ? (
                       <div className="flex flex-col gap-2 min-w-[140px]">
@@ -261,7 +248,6 @@ const Chats = () => {
                     )}
                   </div>
 
-                  {/* Кнопки редактирования/удаления */}
                   {isMe && !isEditing && (
                     <div className={`flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${isMe ? 'mr-1' : 'ml-1'} bg-black/40 backdrop-blur-sm p-1 rounded-xl`}>
                       <button 

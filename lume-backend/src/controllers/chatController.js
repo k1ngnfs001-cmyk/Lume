@@ -80,15 +80,18 @@ exports.sendMessage = async (req, res) => {
     });
 
     const populatedMsg = await message.populate('sender receiver', 'username avatar');
+    
+    // --- CHATGPT FIX: MEDIA XABARNI SERVERNING O'ZI JO'NATADI ---
+    const io = req.app.get('io');
+    if (io) {
+      io.to(receiver.toString()).emit('private-message', populatedMsg);
+    }
+
     res.status(201).json(populatedMsg);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
-// ==========================================================
-//  ДОБАВЛЕННЫЕ ФУНКЦИИ ДЛЯ РЕДАКТИРОВАНИЯ И УДАЛЕНИЯ
-// ==========================================================
 
 exports.updateMessage = async (req, res) => {
   try {
@@ -98,7 +101,6 @@ exports.updateMessage = async (req, res) => {
     const message = await Message.findById(messageId);
     if (!message) return res.status(404).json({ message: 'Сообщение не найдено' });
 
-    // Проверяем, что это сообщение отправил текущий пользователь
     if (message.sender.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Вы можете редактировать только свои сообщения' });
     }
@@ -106,8 +108,14 @@ exports.updateMessage = async (req, res) => {
     message.content = text;
     await message.save();
 
-    // ===== ВАЖНОЕ ИСПРАВЛЕНИЕ: Заполняем данные пользователя! =====
     const populatedMsg = await message.populate('sender receiver', 'username avatar');
+    
+    // --- CHATGPT FIX: TAHRIRLASH SIGNALINI SERVER JO'NATADI ---
+    const io = req.app.get('io');
+    if (io) {
+      io.to(message.receiver._id.toString()).emit('messageEdited', { updatedMessage: populatedMsg });
+    }
+
     res.json(populatedMsg);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -121,13 +129,20 @@ exports.deleteMessage = async (req, res) => {
     const message = await Message.findById(messageId);
     if (!message) return res.status(404).json({ message: 'Сообщение не найдено' });
 
-    // Проверяем, что это сообщение отправил текущий пользователь
     if (message.sender.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Вы можете удалять только свои сообщения' });
     }
 
+    const receiverId = message.receiver.toString();
     await message.deleteOne();
-    res.json({ message: 'Сообщение удалено' });
+
+    // --- CHATGPT FIX: O'CHIRISH SIGNALINI SERVER JO'NATADI ---
+    const io = req.app.get('io');
+    if (io) {
+      io.to(receiverId).emit('messageDeleted', { messageId });
+    }
+
+    res.json({ success: true, message: 'Сообщение удалено' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
