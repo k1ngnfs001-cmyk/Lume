@@ -11,15 +11,12 @@ import {
   useAuth
 } from './AuthContext';
 
-
 const SocketContext =
   createContext(null);
-
 
 export const SocketProvider = ({
   children
 }) => {
-
   const [
     socket,
     setSocket
@@ -32,35 +29,21 @@ export const SocketProvider = ({
 
 
   useEffect(() => {
-
     const token =
-      localStorage.getItem(
-        'lumeToken'
-      );
-
-
-    // -------------------------------------------------------
-    // No auth
-    // -------------------------------------------------------
+      localStorage.getItem('lumeToken');
 
     if (
       !token ||
       !user?._id
     ) {
-
-      setSocket(
-        null
-      );
-
+      setSocket(null);
       return;
     }
-
 
     console.log(
       '🔌 Creating socket for user:',
       user._id
     );
-
 
     const newSocket =
       io(
@@ -70,21 +53,13 @@ export const SocketProvider = ({
             token
           },
 
-          reconnection:
-            true,
-
-          reconnectionAttempts:
-            5,
-
-          timeout:
-            10000
+          reconnection: true,
+          reconnectionAttempts: 5,
+          timeout: 10000
         }
       );
 
-
-    setSocket(
-      newSocket
-    );
+    setSocket(newSocket);
 
 
     // =======================================================
@@ -94,7 +69,6 @@ export const SocketProvider = ({
     newSocket.on(
       'connect',
       () => {
-
         console.log(
           '======================================'
         );
@@ -116,7 +90,6 @@ export const SocketProvider = ({
         console.log(
           '======================================'
         );
-
       }
     );
 
@@ -127,7 +100,6 @@ export const SocketProvider = ({
 
     const handleUserBanned =
       (data) => {
-
         console.log(
           '======================================'
         );
@@ -146,17 +118,11 @@ export const SocketProvider = ({
         );
 
 
-        // ---------------------------------------------------
-        // Disconnect socket
-        // ---------------------------------------------------
-
+        // Socketni yopamiz
         newSocket.disconnect();
 
 
-        // ---------------------------------------------------
-        // Clear authentication
-        // ---------------------------------------------------
-
+        // LocalStorage tozalaymiz
         localStorage.removeItem(
           'lumeToken'
         );
@@ -166,32 +132,22 @@ export const SocketProvider = ({
         );
 
 
-        // ---------------------------------------------------
-        // Logout React state
-        // ---------------------------------------------------
-
+        // React auth state tozalaymiz
         try {
-
           logout();
-
         } catch (error) {
-
           console.error(
             'Logout error:',
             error
           );
-
         }
 
 
-        // ---------------------------------------------------
-        // Redirect
-        // ---------------------------------------------------
-
+        // Muhim:
+        // Lume login route'i /auth
         window.location.replace(
-          '/login'
+          '/auth'
         );
-
       };
 
 
@@ -207,15 +163,12 @@ export const SocketProvider = ({
 
     const handleAccountDeleted =
       (data) => {
-
-        console.warn(
-          '🗑 ACCOUNT DELETED:',
+        console.log(
+          '🗑 ACCOUNT DELETED EVENT RECEIVED:',
           data
         );
 
-
         newSocket.disconnect();
-
 
         localStorage.removeItem(
           'lumeToken'
@@ -225,25 +178,18 @@ export const SocketProvider = ({
           'lumeUser'
         );
 
-
         try {
-
           logout();
-
         } catch (error) {
-
           console.error(
             'Logout error:',
             error
           );
-
         }
 
-
         window.location.replace(
-          '/login'
+          '/auth'
         );
-
       };
 
 
@@ -260,12 +206,10 @@ export const SocketProvider = ({
     newSocket.on(
       'connect_error',
       (error) => {
-
         console.error(
           '❌ SOCKET CONNECTION ERROR:',
           error.message
         );
-
       }
     );
 
@@ -277,12 +221,10 @@ export const SocketProvider = ({
     newSocket.on(
       'disconnect',
       (reason) => {
-
         console.log(
           '🔴 SOCKET DISCONNECTED:',
           reason
         );
-
       }
     );
 
@@ -292,7 +234,6 @@ export const SocketProvider = ({
     // =======================================================
 
     return () => {
-
       console.log(
         '🧹 Cleaning socket'
       );
@@ -308,12 +249,10 @@ export const SocketProvider = ({
       );
 
       newSocket.disconnect();
-
     };
 
   }, [
-    user?._id,
-    logout
+    user?._id
   ]);
 
 
