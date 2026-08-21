@@ -7,18 +7,11 @@ const bcrypt = require('bcryptjs');
 // TOKEN
 // =========================================================
 
-const generateToken = (
-  id
-) => {
+const generateToken = (id) => {
   return jwt.sign(
-    {
-      id
-    },
+    { id },
     process.env.JWT_SECRET,
-    {
-      expiresIn:
-        '7d'
-    }
+    { expiresIn: '7d' }
   );
 };
 
@@ -27,11 +20,7 @@ const generateToken = (
 // REGISTER
 // =========================================================
 
-exports.register = async (
-  req,
-  res
-) => {
-
+exports.register = async (req, res) => {
   const {
     username,
     email,
@@ -39,11 +28,8 @@ exports.register = async (
   } = req.body;
 
   try {
-
     const emailExists =
-      await User.findOne({
-        email
-      });
+      await User.findOne({ email });
 
     if (emailExists) {
       return res.status(400).json({
@@ -53,9 +39,7 @@ exports.register = async (
     }
 
     const usernameExists =
-      await User.findOne({
-        username
-      });
+      await User.findOne({ username });
 
     if (usernameExists) {
       return res.status(400).json({
@@ -72,51 +56,26 @@ exports.register = async (
       });
 
     res.status(201).json({
-
-      _id:
-        user._id,
-
-      username:
-        user.username,
-
-      email:
-        user.email,
-
-      displayName:
-        user.displayName,
-
-      avatar:
-        user.avatar,
-
-      bio:
-        user.bio,
-
-      isAdmin:
-        user.isAdmin,
-
-      isVerified:
-        user.isVerified,
-
-      isBanned:
-        user.isBanned,
-
-      token:
-        generateToken(
-          user._id
-        )
-
+      _id: user._id,
+      username: user.username,
+      email: user.email,
+      displayName: user.displayName,
+      avatar: user.avatar,
+      bio: user.bio,
+      isAdmin: user.isAdmin,
+      isVerified: user.isVerified,
+      isBanned: user.isBanned,
+      token: generateToken(user._id)
     });
 
   } catch (error) {
-
     console.error(
       'Ошибка регистрации:',
       error
     );
 
     res.status(500).json({
-      message:
-        error.message
+      message: error.message
     });
   }
 };
@@ -126,24 +85,16 @@ exports.register = async (
 // LOGIN
 // =========================================================
 
-exports.login = async (
-  req,
-  res
-) => {
-
+exports.login = async (req, res) => {
   const {
     email,
     password
   } = req.body;
 
   try {
-
     const user =
-      await User.findOne({
-        email
-      }).select(
-        '+password'
-      );
+      await User.findOne({ email })
+        .select('+password');
 
     if (!user) {
       return res.status(401).json({
@@ -165,11 +116,16 @@ exports.login = async (
       });
     }
 
-    // -------------------------------------------------------
+    // =====================================================
     // BAN CHECK
-    // -------------------------------------------------------
+    // =====================================================
 
-    if (user.isBanned) {
+    if (user.isBanned === true) {
+      console.log(
+        '🚫 Заблокированный пользователь пытается войти:',
+        user.username
+      );
+
       return res.status(403).json({
         message:
           'Ваш аккаунт заблокирован администратором',
@@ -178,9 +134,9 @@ exports.login = async (
       });
     }
 
-    // -------------------------------------------------------
+    // =====================================================
     // OTP
-    // -------------------------------------------------------
+    // =====================================================
 
     const otp =
       Math.floor(
@@ -210,6 +166,11 @@ exports.login = async (
     );
 
     console.log(
+      'Пользователь:',
+      user.username
+    );
+
+    console.log(
       '========================================'
     );
 
@@ -221,7 +182,6 @@ exports.login = async (
     });
 
   } catch (error) {
-
     console.error(
       'Ошибка входа:',
       error
@@ -243,14 +203,12 @@ exports.verifyOtp = async (
   req,
   res
 ) => {
-
   const {
     email,
     otp
   } = req.body;
 
   try {
-
     const user =
       await User.findOne({
         email
@@ -263,11 +221,16 @@ exports.verifyOtp = async (
       });
     }
 
-    // -------------------------------------------------------
+    // =====================================================
     // BAN CHECK AGAIN
-    // -------------------------------------------------------
+    // =====================================================
 
-    if (user.isBanned) {
+    if (user.isBanned === true) {
+      console.log(
+        '🚫 Заблокированный пользователь пытается подтвердить OTP:',
+        user.username
+      );
+
       return res.status(403).json({
         message:
           'Ваш аккаунт заблокирован администратором',
@@ -276,9 +239,9 @@ exports.verifyOtp = async (
       });
     }
 
-    // -------------------------------------------------------
+    // =====================================================
     // OTP CHECK
-    // -------------------------------------------------------
+    // =====================================================
 
     if (
       user.otp !== otp ||
@@ -301,7 +264,6 @@ exports.verifyOtp = async (
     await user.save();
 
     res.json({
-
       _id:
         user._id,
 
@@ -333,11 +295,9 @@ exports.verifyOtp = async (
         generateToken(
           user._id
         )
-
     });
 
   } catch (error) {
-
     console.error(
       'Ошибка проверки OTP:',
       error
@@ -359,9 +319,7 @@ exports.getMe = async (
   req,
   res
 ) => {
-
   try {
-
     const user =
       await User.findById(
         req.user._id
@@ -376,7 +334,7 @@ exports.getMe = async (
       });
     }
 
-    if (user.isBanned) {
+    if (user.isBanned === true) {
       return res.status(403).json({
         message:
           'Ваш аккаунт заблокирован администратором',
@@ -385,12 +343,9 @@ exports.getMe = async (
       });
     }
 
-    res.json(
-      user
-    );
+    res.json(user);
 
   } catch (error) {
-
     console.error(
       'Ошибка получения профиля:',
       error
