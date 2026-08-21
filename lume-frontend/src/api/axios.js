@@ -15,14 +15,21 @@ API.interceptors.request.use((req) => {
 API.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 403) {
-      const message = error.response.data?.message || 'Sizning akkauntingiz bloklangan!';
+    if (error.response) {
+      const status = error.response.status;
 
-      localStorage.removeItem('lumeToken');
-      localStorage.removeItem('lumeUser');
+      // 401: Token eski yoki yo'q / 403: Ban berilgan
+      if (status === 401 || status === 403) {
+        localStorage.removeItem('lumeToken');
+        localStorage.removeItem('lumeUser');
 
-      alert(message);
-      window.location.href = '/auth';
+        const message = status === 403
+          ? (error.response.data?.message || 'Sizning akkauntingiz bloklangan!')
+          : 'Sessiya muddati tugadi. Qaytadan tizimga kiring!';
+
+        alert(message);
+        window.location.href = '/auth';
+      }
     }
     return Promise.reject(error);
   }
