@@ -1,275 +1,78 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState
-} from 'react';
-
+import { createContext, useContext, useEffect, useState } from 'react';
 import io from 'socket.io-client';
+import { useAuth } from './AuthContext';
 
-import {
-  useAuth
-} from './AuthContext';
+const SocketContext = createContext(null);
 
-const SocketContext =
-  createContext(null);
-
-export const SocketProvider = ({
-  children
-}) => {
-  const [
-    socket,
-    setSocket
-  ] = useState(null);
-
-  const {
-    user,
-    logout
-  } = useAuth();
-
+export const SocketProvider = ({ children }) => {
+  const [socket, setSocket] = useState(null);
+  const { user, logout } = useAuth();
 
   useEffect(() => {
-    const token =
-      localStorage.getItem('lumeToken');
+    const token = localStorage.getItem('lumeToken');
 
-    if (
-      !token ||
-      !user?._id
-    ) {
+    if (!token || !user?._id) {
       setSocket(null);
       return;
     }
 
-    console.log(
-      '🔌 Creating socket for user:',
-      user._id
-    );
-
-    const newSocket =
-      io(
-        'https://lume-5mof.onrender.com',
-        {
-          auth: {
-            token
-          },
-
-          reconnection: true,
-          reconnectionAttempts: 5,
-          timeout: 10000
-        }
-      );
+    const newSocket = io('https://lume-5mof.onrender.com', {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      timeout: 10000
+    });
 
     setSocket(newSocket);
 
-
-    // =======================================================
-    // CONNECT
-    // =======================================================
-
-    newSocket.on(
-      'connect',
-      () => {
-        console.log(
-          '======================================'
-        );
-
-        console.log(
-          '✅ SOCKET CONNECTED'
-        );
-
-        console.log(
-          'SOCKET ID:',
-          newSocket.id
-        );
-
-        console.log(
-          'USER ID:',
-          user._id
-        );
-
-        console.log(
-          '======================================'
-        );
-      }
-    );
-
-
-    // =======================================================
     // USER BANNED
-    // =======================================================
-
-    const handleUserBanned =
-      (data) => {
-        console.log(
-          '======================================'
-        );
-
-        console.log(
-          '🚫🚫🚫 USER BANNED EVENT RECEIVED'
-        );
-
-        console.log(
-          'DATA:',
-          data
-        );
-
-        console.log(
-          '======================================'
-        );
-
-
-        // Socketni yopamiz
-        newSocket.disconnect();
-
-
-        // LocalStorage tozalaymiz
-        localStorage.removeItem(
-          'lumeToken'
-        );
-
-        localStorage.removeItem(
-          'lumeUser'
-        );
-
-
-        // React auth state tozalaymiz
-        try {
-          logout();
-        } catch (error) {
-          console.error(
-            'Logout error:',
-            error
-          );
-        }
-
-
-        // Muhim:
-        // Lume login route'i /auth
-        window.location.replace(
-          '/auth'
-        );
-      };
-
-
-    newSocket.on(
-      'user-banned',
-      handleUserBanned
-    );
-
-
-    // =======================================================
-    // ACCOUNT DELETED
-    // =======================================================
-
-    const handleAccountDeleted =
-      (data) => {
-        console.log(
-          '🗑 ACCOUNT DELETED EVENT RECEIVED:',
-          data
-        );
-
-        newSocket.disconnect();
-
-        localStorage.removeItem(
-          'lumeToken'
-        );
-
-        localStorage.removeItem(
-          'lumeUser'
-        );
-
-        try {
-          logout();
-        } catch (error) {
-          console.error(
-            'Logout error:',
-            error
-          );
-        }
-
-        window.location.replace(
-          '/auth'
-        );
-      };
-
-
-    newSocket.on(
-      'account-deleted',
-      handleAccountDeleted
-    );
-
-
-    // =======================================================
-    // CONNECT ERROR
-    // =======================================================
-
-    newSocket.on(
-      'connect_error',
-      (error) => {
-        console.error(
-          '❌ SOCKET CONNECTION ERROR:',
-          error.message
-        );
-      }
-    );
-
-
-    // =======================================================
-    // DISCONNECT
-    // =======================================================
-
-    newSocket.on(
-      'disconnect',
-      (reason) => {
-        console.log(
-          '🔴 SOCKET DISCONNECTED:',
-          reason
-        );
-      }
-    );
-
-
-    // =======================================================
-    // CLEANUP
-    // =======================================================
-
-    return () => {
-      console.log(
-        '🧹 Cleaning socket'
-      );
-
-      newSocket.off(
-        'user-banned',
-        handleUserBanned
-      );
-
-      newSocket.off(
-        'account-deleted',
-        handleAccountDeleted
-      );
-
+    const handleUserBanned = (data) => {
       newSocket.disconnect();
+      localStorage.removeItem('lumeToken');
+      localStorage.removeItem('lumeUser');
+
+      try {
+        logout();
+      } catch (error) {
+        console.error('Logout error:', error);
+      }
+
+      alert(data?.message || 'Sizning akkauntingiz bloklandi!');
+      window.location.href = '/auth';
     };
 
-  }, [
-    user?._id
-  ]);
+    // ACCOUNT DELETED
+    const handleAccountDeleted = (data) => {
+      newSocket.disconnect();
+      localStorage.removeItem('lumeToken');
+      localStorage.removeItem('lumeUser');
 
+      try {
+        logout();
+      } catch (error) {
+        console.error('Logout error:', error);
+      }
+
+      alert(data?.message || 'Sizning akkauntingiz o‘chirildi!');
+      window.location.href = '/auth';
+    };
+
+    newSocket.on('user-banned', handleUserBanned);
+    newSocket.on('account-deleted', handleAccountDeleted);
+
+    return () => {
+      newSocket.off('user-banned', handleUserBanned);
+      newSocket.off('account-deleted', handleAccountDeleted);
+      newSocket.disconnect();
+    };
+  }, [user?._id]);
 
   return (
-    <SocketContext.Provider
-      value={{
-        socket
-      }}
-    >
+    <SocketContext.Provider value={{ socket }}>
       {children}
     </SocketContext.Provider>
   );
 };
 
-
-export const useSocket =
-  () =>
-    useContext(
-      SocketContext
-    );
+export const useSocket = () => useContext(SocketContext);
