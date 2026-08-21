@@ -7,110 +7,330 @@ import {
 
 import io from 'socket.io-client';
 
-import { useAuth } from './AuthContext';
+import {
+  useAuth
+} from './AuthContext';
 
-const SocketContext = createContext(null);
 
-export const SocketProvider = ({ children }) => {
-  const [socket, setSocket] = useState(null);
+const SocketContext =
+  createContext(null);
+
+
+export const SocketProvider = ({
+  children
+}) => {
+
+  const [
+    socket,
+    setSocket
+  ] = useState(null);
 
   const {
     user,
     logout
   } = useAuth();
 
-  useEffect(() => {
-    const token = localStorage.getItem('lumeToken');
 
-    if (!token || !user) {
-      setSocket(null);
+  useEffect(() => {
+
+    const token =
+      localStorage.getItem(
+        'lumeToken'
+      );
+
+
+    // -------------------------------------------------------
+    // No auth
+    // -------------------------------------------------------
+
+    if (
+      !token ||
+      !user?._id
+    ) {
+
+      setSocket(
+        null
+      );
+
       return;
     }
 
-    const newSocket = io(
-      'https://lume-5mof.onrender.com',
-      {
-        auth: {
-          token
-        },
-        reconnection: true,
-        reconnectionAttempts: 5,
-        timeout: 10000
+
+    console.log(
+      '🔌 Creating socket for user:',
+      user._id
+    );
+
+
+    const newSocket =
+      io(
+        'https://lume-5mof.onrender.com',
+        {
+          auth: {
+            token
+          },
+
+          reconnection:
+            true,
+
+          reconnectionAttempts:
+            5,
+
+          timeout:
+            10000
+        }
+      );
+
+
+    setSocket(
+      newSocket
+    );
+
+
+    // =======================================================
+    // CONNECT
+    // =======================================================
+
+    newSocket.on(
+      'connect',
+      () => {
+
+        console.log(
+          '======================================'
+        );
+
+        console.log(
+          '✅ SOCKET CONNECTED'
+        );
+
+        console.log(
+          'SOCKET ID:',
+          newSocket.id
+        );
+
+        console.log(
+          'USER ID:',
+          user._id
+        );
+
+        console.log(
+          '======================================'
+        );
+
       }
     );
 
-    setSocket(newSocket);
 
-    const handleBanned = (data) => {
-      console.warn('🚫 USER BANNED EVENT', data);
+    // =======================================================
+    // USER BANNED
+    // =======================================================
 
-      // 1. Socketni darhol uzamiz
-      newSocket.disconnect();
+    const handleUserBanned =
+      (data) => {
 
-      // 2. Auth state va localStorage
-      localStorage.removeItem('lumeToken');
-      localStorage.removeItem('lumeUser');
+        console.log(
+          '======================================'
+        );
 
-      try {
-        logout();
-      } catch (error) {
-        console.error('Logout error:', error);
+        console.log(
+          '🚫🚫🚫 USER BANNED EVENT RECEIVED'
+        );
+
+        console.log(
+          'DATA:',
+          data
+        );
+
+        console.log(
+          '======================================'
+        );
+
+
+        // ---------------------------------------------------
+        // Disconnect socket
+        // ---------------------------------------------------
+
+        newSocket.disconnect();
+
+
+        // ---------------------------------------------------
+        // Clear authentication
+        // ---------------------------------------------------
+
+        localStorage.removeItem(
+          'lumeToken'
+        );
+
+        localStorage.removeItem(
+          'lumeUser'
+        );
+
+
+        // ---------------------------------------------------
+        // Logout React state
+        // ---------------------------------------------------
+
+        try {
+
+          logout();
+
+        } catch (error) {
+
+          console.error(
+            'Logout error:',
+            error
+          );
+
+        }
+
+
+        // ---------------------------------------------------
+        // Redirect
+        // ---------------------------------------------------
+
+        window.location.replace(
+          '/login'
+        );
+
+      };
+
+
+    newSocket.on(
+      'user-banned',
+      handleUserBanned
+    );
+
+
+    // =======================================================
+    // ACCOUNT DELETED
+    // =======================================================
+
+    const handleAccountDeleted =
+      (data) => {
+
+        console.warn(
+          '🗑 ACCOUNT DELETED:',
+          data
+        );
+
+
+        newSocket.disconnect();
+
+
+        localStorage.removeItem(
+          'lumeToken'
+        );
+
+        localStorage.removeItem(
+          'lumeUser'
+        );
+
+
+        try {
+
+          logout();
+
+        } catch (error) {
+
+          console.error(
+            'Logout error:',
+            error
+          );
+
+        }
+
+
+        window.location.replace(
+          '/login'
+        );
+
+      };
+
+
+    newSocket.on(
+      'account-deleted',
+      handleAccountDeleted
+    );
+
+
+    // =======================================================
+    // CONNECT ERROR
+    // =======================================================
+
+    newSocket.on(
+      'connect_error',
+      (error) => {
+
+        console.error(
+          '❌ SOCKET CONNECTION ERROR:',
+          error.message
+        );
+
       }
+    );
 
-      // 3. Avval redirect, keyin alert
-      window.location.replace('/login');
 
-      // Alert redirectdan oldin ko'rsatilishi kerak bo'lsa,
-      // commentni olib tashlash mumkin.
-    };
+    // =======================================================
+    // DISCONNECT
+    // =======================================================
 
-    const handleDeleted = (data) => {
-      console.warn('🚫 ACCOUNT DELETED EVENT', data);
+    newSocket.on(
+      'disconnect',
+      (reason) => {
 
-      newSocket.disconnect();
+        console.log(
+          '🔴 SOCKET DISCONNECTED:',
+          reason
+        );
 
-      localStorage.removeItem('lumeToken');
-      localStorage.removeItem('lumeUser');
-
-      try {
-        logout();
-      } catch (error) {
-        console.error('Logout error:', error);
       }
+    );
 
-      window.location.replace('/login');
-    };
 
-    newSocket.on('user-banned', handleBanned);
-    newSocket.on('account-deleted', handleDeleted);
-
-    newSocket.on('connect', () => {
-      console.log(
-        '✅ Socket connected:',
-        newSocket.id
-      );
-    });
-
-    newSocket.on('connect_error', (error) => {
-      console.error(
-        'Socket connection error:',
-        error.message
-      );
-    });
+    // =======================================================
+    // CLEANUP
+    // =======================================================
 
     return () => {
-      newSocket.off('user-banned', handleBanned);
-      newSocket.off('account-deleted', handleDeleted);
+
+      console.log(
+        '🧹 Cleaning socket'
+      );
+
+      newSocket.off(
+        'user-banned',
+        handleUserBanned
+      );
+
+      newSocket.off(
+        'account-deleted',
+        handleAccountDeleted
+      );
+
       newSocket.disconnect();
+
     };
-  }, [user]);
+
+  }, [
+    user?._id,
+    logout
+  ]);
+
 
   return (
-    <SocketContext.Provider value={{ socket }}>
+    <SocketContext.Provider
+      value={{
+        socket
+      }}
+    >
       {children}
     </SocketContext.Provider>
   );
 };
 
-export const useSocket = () =>
-  useContext(SocketContext);
+
+export const useSocket =
+  () =>
+    useContext(
+      SocketContext
+    );

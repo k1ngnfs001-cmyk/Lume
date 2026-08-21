@@ -41,9 +41,7 @@ app.use(
 // BODY PARSER
 // =========================================================
 
-app.use(
-  express.json()
-);
+app.use(express.json());
 
 
 // =========================================================
@@ -70,7 +68,6 @@ app.use(
   require('./routes/authRoutes')
 );
 
-
 const postRoutes =
   require('./routes/postRoutes');
 
@@ -78,11 +75,6 @@ app.use(
   '/api/posts',
   postRoutes
 );
-
-console.log(
-  '✅ POST ROUTES LOADED'
-);
-
 
 app.use(
   '/api/users',
@@ -114,6 +106,10 @@ app.use(
   require('./routes/searchRoutes')
 );
 
+console.log(
+  '✅ POST ROUTES LOADED'
+);
+
 
 // =========================================================
 // BASIC TEST ROUTE
@@ -123,8 +119,10 @@ app.get(
   '/',
   (req, res) => {
     res.json({
-      message: 'Lume API is running',
-      status: 'ok'
+      message:
+        'Lume API is running',
+      status:
+        'ok'
     });
   }
 );
@@ -163,7 +161,7 @@ app.set(
 
 
 // =========================================================
-// SOCKET AUTHENTICATION
+// SOCKET AUTH
 // =========================================================
 
 io.use(
@@ -173,6 +171,10 @@ io.use(
       socket.handshake.auth?.token;
 
     if (!token) {
+      console.log(
+        '❌ Socket token отсутствует'
+      );
+
       return next(
         new Error(
           'Authentication error'
@@ -189,14 +191,14 @@ io.use(
         );
 
       socket.userId =
-        decoded.id;
+        decoded.id.toString();
 
       next();
 
     } catch (error) {
 
       console.error(
-        'Socket auth error:',
+        '❌ Socket auth error:',
         error.message
       );
 
@@ -218,14 +220,35 @@ io.on(
   'connection',
   (socket) => {
 
+    const userId =
+      socket.userId.toString();
+
     console.log(
-      `Пользователь ${socket.userId} подключился к сокету`
+      '🟢 SOCKET CONNECTED'
+    );
+
+    console.log(
+      'USER ID:',
+      userId
+    );
+
+    console.log(
+      'SOCKET ID:',
+      socket.id
     );
 
 
+    // -------------------------------------------------------
     // User room
+    // -------------------------------------------------------
+
     socket.join(
-      socket.userId.toString()
+      userId
+    );
+
+    console.log(
+      '🏠 JOINED ROOM:',
+      userId
     );
 
 
@@ -256,7 +279,7 @@ io.on(
           const message =
             await Message.create({
               sender:
-                socket.userId,
+                userId,
 
               receiver:
                 receiverId,
@@ -313,10 +336,25 @@ io.on(
 
     socket.on(
       'disconnect',
-      () => {
+      (reason) => {
 
         console.log(
-          `Пользователь ${socket.userId} отключился`
+          '🔴 SOCKET DISCONNECTED'
+        );
+
+        console.log(
+          'USER ID:',
+          userId
+        );
+
+        console.log(
+          'SOCKET ID:',
+          socket.id
+        );
+
+        console.log(
+          'REASON:',
+          reason
         );
 
       }
@@ -327,11 +365,16 @@ io.on(
 
 
 // =========================================================
-// ERROR HANDLER
+// GLOBAL ERROR HANDLER
 // =========================================================
 
 app.use(
-  (err, req, res, next) => {
+  (
+    err,
+    req,
+    res,
+    next
+  ) => {
 
     console.error(
       'GLOBAL ERROR:',
@@ -357,18 +400,25 @@ const PORT =
   process.env.PORT ||
   5000;
 
-
 server.listen(
   PORT,
   '0.0.0.0',
   () => {
 
     console.log(
+      '======================================'
+    );
+
+    console.log(
       `🚀 Server running on port ${PORT}`
     );
 
     console.log(
-      `🌐 Port: ${PORT}`
+      '🌐 Host: 0.0.0.0'
+    );
+
+    console.log(
+      '======================================'
     );
 
   }
@@ -376,7 +426,7 @@ server.listen(
 
 
 // =========================================================
-// KEEP ALIVE / TIMEOUTS
+// TIMEOUTS
 // =========================================================
 
 server.keepAliveTimeout =

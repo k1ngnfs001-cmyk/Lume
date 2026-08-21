@@ -6,21 +6,31 @@ const Post = require('../models/Post');
 // GET ALL USERS
 // =========================================================
 
-exports.getAllUsers = async (req, res) => {
+exports.getAllUsers = async (
+  req,
+  res
+) => {
   try {
-    const users = await User.find()
-      .select('-password')
-      .sort({ createdAt: -1 });
+
+    const users =
+      await User.find()
+        .select('-password')
+        .sort({
+          createdAt: -1
+        });
 
     res.json(users);
+
   } catch (error) {
+
     console.error(
       'Ошибка загрузки пользователей:',
       error
     );
 
     res.status(500).json({
-      message: error.message
+      message:
+        error.message
     });
   }
 };
@@ -30,24 +40,34 @@ exports.getAllUsers = async (req, res) => {
 // GET ALL POSTS
 // =========================================================
 
-exports.getAllPosts = async (req, res) => {
+exports.getAllPosts = async (
+  req,
+  res
+) => {
   try {
-    const posts = await Post.find()
-      .populate(
-        'user',
-        'username avatar isVerified'
-      )
-      .sort({ createdAt: -1 });
+
+    const posts =
+      await Post.find()
+        .populate(
+          'user',
+          'username avatar isVerified'
+        )
+        .sort({
+          createdAt: -1
+        });
 
     res.json(posts);
+
   } catch (error) {
+
     console.error(
       'Ошибка загрузки постов:',
       error
     );
 
     res.status(500).json({
-      message: error.message
+      message:
+        error.message
     });
   }
 };
@@ -57,32 +77,44 @@ exports.getAllPosts = async (req, res) => {
 // DELETE POST
 // =========================================================
 
-exports.deletePost = async (req, res) => {
+exports.deletePost = async (
+  req,
+  res
+) => {
   try {
-    const post = await Post.findById(
-      req.params.id
-    );
+
+    const post =
+      await Post.findById(
+        req.params.id
+      );
 
     if (!post) {
       return res.status(404).json({
-        message: 'Пост не найден'
+        message:
+          'Пост не найден'
       });
     }
 
     await post.deleteOne();
 
     res.json({
-      success: true,
-      message: 'Пост удалён'
+      success:
+        true,
+
+      message:
+        'Пост удалён'
     });
+
   } catch (error) {
+
     console.error(
       'Ошибка удаления поста:',
       error
     );
 
     res.status(500).json({
-      message: error.message
+      message:
+        error.message
     });
   }
 };
@@ -92,15 +124,21 @@ exports.deletePost = async (req, res) => {
 // DELETE USER
 // =========================================================
 
-exports.deleteUser = async (req, res) => {
+exports.deleteUser = async (
+  req,
+  res
+) => {
   try {
-    const user = await User.findById(
-      req.params.id
-    );
+
+    const user =
+      await User.findById(
+        req.params.id
+      );
 
     if (!user) {
       return res.status(404).json({
-        message: 'Пользователь не найден'
+        message:
+          'Пользователь не найден'
       });
     }
 
@@ -111,47 +149,59 @@ exports.deleteUser = async (req, res) => {
       });
     }
 
-    const io = req.app.get('io');
+    const io =
+      req.app.get('io');
 
-    // Agar user online bo'lsa, account o'chirilayotganini bildirámiz
+    const userRoom =
+      user._id.toString();
+
+    // Online userga event
     if (io) {
-      const userRoom =
-        user._id.toString();
 
-      io.to(userRoom).emit(
+      io.to(
+        userRoom
+      ).emit(
         'account-deleted',
         {
           message:
             'Ваш аккаунт был удалён администратором',
+
           code:
             'ACCOUNT_DELETED'
         }
       );
 
       console.log(
-        `🗑 Пользователь ${user.username} получает account-deleted`
+        '🗑 account-deleted sent:',
+        userRoom
       );
     }
 
     await Post.deleteMany({
-      user: user._id
+      user:
+        user._id
     });
 
     await user.deleteOne();
 
     res.json({
-      success: true,
+      success:
+        true,
+
       message:
         'Пользователь и его посты удалены'
     });
+
   } catch (error) {
+
     console.error(
       'Ошибка удаления пользователя:',
       error
     );
 
     res.status(500).json({
-      message: error.message
+      message:
+        error.message
     });
   }
 };
@@ -161,15 +211,21 @@ exports.deleteUser = async (req, res) => {
 // TOGGLE VERIFY
 // =========================================================
 
-exports.toggleVerify = async (req, res) => {
+exports.toggleVerify = async (
+  req,
+  res
+) => {
   try {
-    const user = await User.findById(
-      req.params.id
-    );
+
+    const user =
+      await User.findById(
+        req.params.id
+      );
 
     if (!user) {
       return res.status(404).json({
-        message: 'Пользователь не найден'
+        message:
+          'Пользователь не найден'
       });
     }
 
@@ -186,19 +242,28 @@ exports.toggleVerify = async (req, res) => {
     await user.save();
 
     res.json({
-      _id: user._id,
-      username: user.username,
+
+      _id:
+        user._id,
+
+      username:
+        user.username,
+
       isVerified:
         user.isVerified
+
     });
+
   } catch (error) {
+
     console.error(
       'Ошибка верификации:',
       error
     );
 
     res.status(500).json({
-      message: error.message
+      message:
+        error.message
     });
   }
 };
@@ -208,8 +273,12 @@ exports.toggleVerify = async (req, res) => {
 // UPDATE USER
 // =========================================================
 
-exports.updateUser = async (req, res) => {
+exports.updateUser = async (
+  req,
+  res
+) => {
   try {
+
     const {
       username,
       bio,
@@ -218,13 +287,15 @@ exports.updateUser = async (req, res) => {
       isVerified
     } = req.body;
 
-    const user = await User.findById(
-      req.params.id
-    );
+    const user =
+      await User.findById(
+        req.params.id
+      );
 
     if (!user) {
       return res.status(404).json({
-        message: 'Пользователь не найден'
+        message:
+          'Пользователь не найден'
       });
     }
 
@@ -241,8 +312,10 @@ exports.updateUser = async (req, res) => {
 
     if (
       username &&
-      username !== user.username
+      username !==
+        user.username
     ) {
+
       const existing =
         await User.findOne({
           username
@@ -253,6 +326,7 @@ exports.updateUser = async (req, res) => {
         existing._id.toString() !==
           user._id.toString()
       ) {
+
         return res.status(400).json({
           message:
             'Это имя пользователя уже занято'
@@ -263,19 +337,26 @@ exports.updateUser = async (req, res) => {
         username;
     }
 
-    if (bio !== undefined) {
-      user.bio = bio;
+    if (
+      bio !== undefined
+    ) {
+      user.bio =
+        bio;
     }
 
-    if (avatar !== undefined) {
-      user.avatar = avatar;
+    if (
+      avatar !== undefined
+    ) {
+      user.avatar =
+        avatar;
     }
 
     if (
       role &&
       !user.isAdmin
     ) {
-      user.role = role;
+      user.role =
+        role;
     }
 
     if (
@@ -288,27 +369,46 @@ exports.updateUser = async (req, res) => {
     await user.save();
 
     res.json({
-      _id: user._id,
-      username: user.username,
+
+      _id:
+        user._id,
+
+      username:
+        user.username,
+
       displayName:
         user.displayName,
-      email: user.email,
-      avatar: user.avatar,
-      bio: user.bio,
-      isAdmin: user.isAdmin,
+
+      email:
+        user.email,
+
+      avatar:
+        user.avatar,
+
+      bio:
+        user.bio,
+
+      isAdmin:
+        user.isAdmin,
+
       isVerified:
         user.isVerified,
+
       isBanned:
         user.isBanned
+
     });
+
   } catch (error) {
+
     console.error(
       'Ошибка обновления пользователя:',
       error
     );
 
     res.status(500).json({
-      message: error.message
+      message:
+        error.message
     });
   }
 };
@@ -318,23 +418,31 @@ exports.updateUser = async (req, res) => {
 // UPDATE POST
 // =========================================================
 
-exports.updatePost = async (req, res) => {
+exports.updatePost = async (
+  req,
+  res
+) => {
   try {
+
     const {
       content
     } = req.body;
 
-    const post = await Post.findById(
-      req.params.id
-    );
+    const post =
+      await Post.findById(
+        req.params.id
+      );
 
     if (!post) {
       return res.status(404).json({
-        message: 'Пост не найден'
+        message:
+          'Пост не найден'
       });
     }
 
-    if (content !== undefined) {
+    if (
+      content !== undefined
+    ) {
       post.content =
         content;
     }
@@ -350,14 +458,17 @@ exports.updatePost = async (req, res) => {
     res.json(
       updatedPost
     );
+
   } catch (error) {
+
     console.error(
       'Ошибка обновления поста:',
       error
     );
 
     res.status(500).json({
-      message: error.message
+      message:
+        error.message
     });
   }
 };
@@ -367,293 +478,431 @@ exports.updatePost = async (req, res) => {
 // GET POST COMMENTS
 // =========================================================
 
-exports.getPostComments = async (
-  req,
-  res
-) => {
-  try {
-    const post =
-      await Post.findById(
-        req.params.id
-      ).populate(
-        'comments.user',
-        'username avatar'
+exports.getPostComments =
+  async (
+    req,
+    res
+  ) => {
+    try {
+
+      const post =
+        await Post.findById(
+          req.params.id
+        ).populate(
+          'comments.user',
+          'username avatar'
+        );
+
+      if (!post) {
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+      }
+
+      res.json(
+        post.comments
       );
 
-    if (!post) {
-      return res.status(404).json({
-        message: 'Пост не найден'
+    } catch (error) {
+
+      console.error(
+        'Ошибка загрузки комментариев:',
+        error
+      );
+
+      res.status(500).json({
+        message:
+          error.message
       });
     }
-
-    res.json(
-      post.comments
-    );
-  } catch (error) {
-    console.error(
-      'Ошибка загрузки комментариев:',
-      error
-    );
-
-    res.status(500).json({
-      message: error.message
-    });
-  }
-};
+  };
 
 
 // =========================================================
 // UPDATE COMMENT
 // =========================================================
 
-exports.updateComment = async (
-  req,
-  res
-) => {
-  try {
-    const {
-      text
-    } = req.body;
+exports.updateComment =
+  async (
+    req,
+    res
+  ) => {
+    try {
 
-    const post =
-      await Post.findOne({
-        'comments._id':
+      const {
+        text
+      } = req.body;
+
+      const post =
+        await Post.findOne({
+          'comments._id':
+            req.params.id
+        });
+
+      if (!post) {
+        return res.status(404).json({
+          message:
+            'Комментарий не найден'
+        });
+      }
+
+      const comment =
+        post.comments.id(
           req.params.id
-      });
+        );
 
-    if (!post) {
-      return res.status(404).json({
-        message:
-          'Комментарий не найден'
-      });
-    }
+      if (!comment) {
+        return res.status(404).json({
+          message:
+            'Комментарий не найден'
+        });
+      }
 
-    const comment =
-      post.comments.id(
-        req.params.id
+      if (
+        text !== undefined
+      ) {
+        comment.text =
+          text;
+      }
+
+      await post.save();
+
+      await post.populate(
+        'comments.user',
+        'username avatar'
       );
 
-    if (!comment) {
-      return res.status(404).json({
+      res.json(
+        post.comments.id(
+          req.params.id
+        )
+      );
+
+    } catch (error) {
+
+      console.error(
+        'Ошибка обновления комментария:',
+        error
+      );
+
+      res.status(500).json({
         message:
-          'Комментарий не найден'
+          error.message
       });
     }
-
-    if (text !== undefined) {
-      comment.text =
-        text;
-    }
-
-    await post.save();
-
-    await post.populate(
-      'comments.user',
-      'username avatar'
-    );
-
-    res.json(
-      post.comments.id(
-        req.params.id
-      )
-    );
-  } catch (error) {
-    console.error(
-      'Ошибка обновления комментария:',
-      error
-    );
-
-    res.status(500).json({
-      message: error.message
-    });
-  }
-};
+  };
 
 
 // =========================================================
 // DELETE COMMENT
 // =========================================================
 
-exports.deleteComment = async (
-  req,
-  res
-) => {
-  try {
-    const post =
-      await Post.findOne({
-        'comments._id':
+exports.deleteComment =
+  async (
+    req,
+    res
+  ) => {
+    try {
+
+      const post =
+        await Post.findOne({
+          'comments._id':
+            req.params.id
+        });
+
+      if (!post) {
+        return res.status(404).json({
+          message:
+            'Комментарий не найден'
+        });
+      }
+
+      const comment =
+        post.comments.id(
           req.params.id
-      });
+        );
 
-    if (!post) {
-      return res.status(404).json({
+      if (!comment) {
+        return res.status(404).json({
+          message:
+            'Комментарий не найден'
+        });
+      }
+
+      comment.deleteOne();
+
+      await post.save();
+
+      res.json({
+        success:
+          true,
+
         message:
-          'Комментарий не найден'
+          'Комментарий удалён'
       });
-    }
 
-    const comment =
-      post.comments.id(
-        req.params.id
+    } catch (error) {
+
+      console.error(
+        'Ошибка удаления комментария:',
+        error
       );
 
-    if (!comment) {
-      return res.status(404).json({
+      res.status(500).json({
         message:
-          'Комментарий не найден'
+          error.message
       });
     }
-
-    comment.deleteOne();
-
-    await post.save();
-
-    res.json({
-      success: true,
-      message:
-        'Комментарий удалён'
-    });
-  } catch (error) {
-    console.error(
-      'Ошибка удаления комментария:',
-      error
-    );
-
-    res.status(500).json({
-      message: error.message
-    });
-  }
-};
+  };
 
 
 // =========================================================
-// BAN / UNBAN USER
+// BAN / UNBAN
 // =========================================================
 
 exports.toggleBan = async (
   req,
   res
 ) => {
+
   try {
+
     const targetUser =
       await User.findById(
         req.params.id
       );
 
     if (!targetUser) {
+
       return res.status(404).json({
         message:
           'Пользователь не найден'
       });
+
     }
 
-    // Adminni ban qilish mumkin emas
-    if (targetUser.isAdmin) {
+
+    // -------------------------------------------------------
+    // ADMIN PROTECTION
+    // -------------------------------------------------------
+
+    if (
+      targetUser.isAdmin
+    ) {
+
       return res.status(400).json({
         message:
           'Нельзя заблокировать администратора'
       });
+
     }
 
-    // O'zini ban qilish mumkin emas
+
+    // -------------------------------------------------------
+    // SELF PROTECTION
+    // -------------------------------------------------------
+
     if (
       targetUser._id.toString() ===
       req.user._id.toString()
     ) {
+
       return res.status(400).json({
         message:
           'Нельзя заблокировать самого себя'
       });
+
     }
 
-    // ============================================
+
+    // -------------------------------------------------------
     // TOGGLE
-    // ============================================
+    // -------------------------------------------------------
 
     targetUser.isBanned =
       !targetUser.isBanned;
 
     await targetUser.save();
 
+
     const io =
       req.app.get('io');
 
-    // ============================================
-    // USER BAN
-    // ============================================
+    const userId =
+      targetUser._id.toString();
+
+
+    // =======================================================
+    // BAN
+    // =======================================================
 
     if (
       targetUser.isBanned
     ) {
-      const userRoom =
-        targetUser._id.toString();
 
       console.log(
         '=========================================='
       );
 
       console.log(
-        '🚫 BAN USER'
+        '🚫 USER BAN START'
       );
 
       console.log(
-        'User:',
+        'USERNAME:',
         targetUser.username
       );
 
       console.log(
-        'User ID:',
-        userRoom
+        'USER ID:',
+        userId
       );
 
-      console.log(
-        'Socket room:',
-        userRoom
-      );
 
-      console.log(
-        'Sending user-banned event...'
-      );
+      if (!io) {
 
-      if (io) {
-        // MUHIM:
-        // Avval event yuboramiz.
-        // Socketni serverdan shu zahoti uzmaymiz.
-        io.to(userRoom).emit(
+        console.error(
+          '❌ Socket.io instance topilmadi'
+        );
+
+      } else {
+
+        // ---------------------------------------------------
+        // ROOM EVENT
+        // ---------------------------------------------------
+
+        io.to(
+          userId
+        ).emit(
           'user-banned',
           {
             message:
               'Ваш аккаунт был заблокирован администратором',
+
             code:
               'USER_BANNED'
           }
         );
 
         console.log(
-          '✅ user-banned event sent'
+          '✅ ROOM EVENT SENT:',
+          userId
         );
-      } else {
-        console.warn(
-          '⚠️ Socket.io instance topilmadi'
+
+
+        // ---------------------------------------------------
+        // DIRECT SOCKET SEARCH
+        // ---------------------------------------------------
+
+        let matchedSockets =
+          0;
+
+        io.sockets.sockets.forEach(
+          (socket) => {
+
+            const socketUserId =
+              socket.userId
+                ? socket.userId.toString()
+                : '';
+
+            console.log(
+              '🔎 SOCKET CHECK:',
+              socket.id,
+              socketUserId
+            );
+
+
+            if (
+              socketUserId ===
+              userId
+            ) {
+
+              matchedSockets++;
+
+              // Direct event
+              socket.emit(
+                'user-banned',
+                {
+                  message:
+                    'Ваш аккаунт был заблокирован администратором',
+
+                  code:
+                    'USER_BANNED'
+                }
+              );
+
+              console.log(
+                '✅ DIRECT EVENT SENT:',
+                socket.id
+              );
+
+
+              // Socketni darhol emas,
+              // 1.5 sec keyin uzamiz.
+              setTimeout(
+                () => {
+
+                  if (
+                    socket.connected
+                  ) {
+
+                    socket.disconnect(
+                      true
+                    );
+
+                    console.log(
+                      '🔴 SOCKET DISCONNECTED AFTER BAN:',
+                      socket.id
+                    );
+
+                  }
+
+                },
+                1500
+              );
+
+            }
+
+          }
         );
+
+
+        console.log(
+          '🎯 MATCHED SOCKETS:',
+          matchedSockets
+        );
+
       }
+
 
       console.log(
         '=========================================='
       );
+
     }
 
-    // ============================================
-    // USER UNBAN
-    // ============================================
+
+    // =======================================================
+    // UNBAN
+    // =======================================================
 
     else {
+
       console.log(
-        `✅ Пользователь ${targetUser.username} разблокирован`
+        '✅ USER UNBANNED:',
+        targetUser.username
       );
+
     }
 
+
+    // =======================================================
+    // RESPONSE
+    // =======================================================
+
     res.json({
+
       _id:
         targetUser._id,
 
@@ -662,11 +911,13 @@ exports.toggleBan = async (
 
       isBanned:
         targetUser.isBanned
+
     });
 
   } catch (error) {
+
     console.error(
-      'Ошибка бана/разбана:',
+      '❌ Ошибка бана/разбана:',
       error
     );
 
