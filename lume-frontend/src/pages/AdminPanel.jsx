@@ -112,14 +112,53 @@ const AdminPanel = ({ isSidebarOpen = true }) => {
   };
 
   const handleToggleBan = async (id) => {
-    try {
-      const res = await axios.put(`/admin/ban/${id}`);
-      const { isBanned } = res.data;
-      setUsers(prev => prev.map(u => u._id === id ? { ...u, isBanned } : u));
-    } catch (error) {
-      alert('Ошибка бана/разбана: ' + error.message);
-    }
-  };
+  try {
+    const res = await axios.put(
+      `/admin/ban/${id}`
+    );
+
+    const {
+      isBanned
+    } = res.data;
+
+    // AdminPaneldagi user statusini darhol yangilaymiz
+    setUsers(
+      prev =>
+        prev.map(
+          user =>
+            user._id === id
+              ? {
+                  ...user,
+                  isBanned
+                }
+              : user
+        )
+    );
+
+    console.log(
+      isBanned
+        ? '🚫 Пользователь заблокирован'
+        : '✅ Пользователь разблокирован',
+      res.data
+    );
+
+  } catch (error) {
+    console.error(
+      'Ошибка бана/разбана:',
+      error
+    );
+
+    const message =
+      error.response?.data?.message ||
+      error.message ||
+      'Неизвестная ошибка';
+
+    alert(
+      'Ошибка бана/разбана: ' +
+      message
+    );
+  }
+};
 
   const handleUpdatePost = async () => {
     try {
