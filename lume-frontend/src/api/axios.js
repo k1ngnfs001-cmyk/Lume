@@ -5,11 +5,6 @@ const API = axios.create({
   timeout: 30000
 });
 
-
-// =========================================================
-// REQUEST INTERCEPTOR
-// =========================================================
-
 API.interceptors.request.use(
   (config) => {
     const token =
@@ -20,8 +15,6 @@ API.interceptors.request.use(
         `Bearer ${token}`;
     }
 
-    // FormData uchun Content-Type'ni browserga qoldiramiz.
-    // Browser multipart/form-data boundary'ni o'zi qo'yadi.
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type'];
       delete config.headers['content-type'];
@@ -32,20 +25,11 @@ API.interceptors.request.use(
 
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-
-// =========================================================
-// RESPONSE INTERCEPTOR
-// =========================================================
-
 API.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
 
   (error) => {
     const status =
@@ -54,23 +38,26 @@ API.interceptors.response.use(
     const data =
       error.response?.data || {};
 
-    const code =
-      data.code;
+    const requestUrl =
+      error.config?.url || '';
 
-    const message =
-      data.message;
+    // =====================================================
+    // LOGIN / REGISTER / OTP uchun avtomatik redirect YO'Q
+    // =====================================================
 
+    const isAuthRequest =
+      requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/auth/register') ||
+      requestUrl.includes('/auth/verify-otp');
 
-    // =======================================================
-    // 401
-    // Token yo'q / noto'g'ri / muddati tugagan
-    // =======================================================
+    // =====================================================
+    // 401 — faqat authenticated requestlar
+    // =====================================================
 
-    if (status === 401) {
-      console.warn(
-        '🔐 Lume: session invalid or expired'
-      );
-
+    if (
+      status === 401 &&
+      !isAuthRequest
+    ) {
       localStorage.removeItem(
         'lumeToken'
       );
@@ -80,8 +67,7 @@ API.interceptors.response.use(
       );
 
       if (
-        window.location.pathname !==
-        '/auth'
+        window.location.pathname !== '/auth'
       ) {
         alert(
           'Сессия истекла. Войдите снова.'
@@ -91,24 +77,16 @@ API.interceptors.response.use(
           '/auth'
         );
       }
-
-      return Promise.reject(error);
     }
 
-
-    // =======================================================
+    // =====================================================
     // 403 + USER_BANNED
-    // Faqat ban qilingan userni chiqaramiz
-    // =======================================================
+    // =====================================================
 
     if (
       status === 403 &&
-      code === 'USER_BANNED'
+      data.code === 'USER_BANNED'
     ) {
-      console.warn(
-        '🚫 Lume: user is banned'
-      );
-
       localStorage.removeItem(
         'lumeToken'
       );
@@ -118,11 +96,10 @@ API.interceptors.response.use(
       );
 
       if (
-        window.location.pathname !==
-        '/auth'
+        window.location.pathname !== '/auth'
       ) {
         alert(
-          message ||
+          data.message ||
           'Ваш аккаунт заблокирован администратором'
         );
 
@@ -130,39 +107,12 @@ API.interceptors.response.use(
           '/auth'
         );
       }
-
-      return Promise.reject(error);
     }
 
-
-    // =======================================================
-    // OTHER 403
-    // MUHIM:
-    // Bu yerda logout QILMAYMIZ.
-    //
-    // Masalan:
-    // Admin Unban qilayotganda
-    // permission xatosi bo'lsa,
-    // admin sessioni o'chmasligi kerak.
-    // =======================================================
-
-    if (status === 403) {
-      console.warn(
-        '⚠️ Lume: 403 response',
-        data
-      );
-
-      return Promise.reject(error);
-    }
-
-
-    // =======================================================
-    // BOSHQA XATOLAR
-    // =======================================================
+    // Boshqa 403'larda logout qilinmaydi.
 
     return Promise.reject(error);
   }
 );
-
 
 export default API;
