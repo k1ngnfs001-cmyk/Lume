@@ -15,6 +15,7 @@ import AdminPanel from './pages/AdminPanel';
 import LeftSidebar from './components/LeftSidebar';
 import { FiChevronsRight } from 'react-icons/fi';
 import { useState, cloneElement } from 'react';
+import { AlertProvider } from './context/AlertContext';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -66,9 +67,9 @@ function App() {
       <AuthProvider>
         <SocketProvider>
           <NotificationProvider>
+            <AlertProvider>
             <Routes>
               <Route path="/auth" element={<Auth />} />
-              
               <Route path="/" element={<ProtectedRoute><LayoutWithSidebar scrollLock={true}><Feed /></LayoutWithSidebar></ProtectedRoute>} />
               <Route path="/following" element={<ProtectedRoute><LayoutWithSidebar><FollowingFeed /></LayoutWithSidebar></ProtectedRoute>} />
               <Route path="/upload" element={<ProtectedRoute><LayoutWithSidebar><Upload /></LayoutWithSidebar></ProtectedRoute>} />
@@ -81,6 +82,7 @@ function App() {
               <Route path="/admin" element={<ProtectedRoute><LayoutWithSidebar><AdminPanel /></LayoutWithSidebar></ProtectedRoute>} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            </AlertProvider>
           </NotificationProvider>
         </SocketProvider>
       </AuthProvider>
