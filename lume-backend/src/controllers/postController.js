@@ -3,7 +3,6 @@ const Notification = require('../models/Notification');
 const cloudinary = require('../config/cloudinary');
 const User = require('../models/User');
 
-
 // =========================================================
 // HELPERS
 // =========================================================
@@ -20,24 +19,31 @@ const emitNotification = async (
   req,
   notification
 ) => {
-  const io = req.app.get('io');
+  try {
+    const io = req.app.get('io');
 
-  if (!io) {
-    return;
-  }
+    if (!io) {
+      return;
+    }
 
-  const populated =
-    await notification.populate(
-      'sender',
-      'username avatar'
+    const populated =
+      await notification.populate(
+        'sender',
+        'username avatar'
+      );
+
+    io.to(
+      notification.recipient.toString()
+    ).emit(
+      'new_notification',
+      populated
     );
-
-  io.to(
-    notification.recipient.toString()
-  ).emit(
-    'new_notification',
-    populated
-  );
+  } catch (error) {
+    console.error(
+      'Ошибка отправки уведомления через Socket:',
+      error
+    );
+  }
 };
 
 const getProcessedPost = (
@@ -55,23 +61,33 @@ const getProcessedPost = (
     isLikedByMe:
       Array.isArray(obj.likes) &&
       obj.likes.some(
-        id => sameId(id, userId)
+        (id) =>
+          sameId(
+            id,
+            userId
+          )
       ),
 
     isSavedByMe:
       Array.isArray(obj.savedBy) &&
       obj.savedBy.some(
-        id => sameId(id, userId)
+        (id) =>
+          sameId(
+            id,
+            userId
+          )
       )
   };
 };
-
 
 // =========================================================
 // CREATE POST
 // =========================================================
 
-exports.createPost = async (req, res) => {
+exports.createPost = async (
+  req,
+  res
+) => {
   try {
     const {
       content = ''
@@ -96,35 +112,43 @@ exports.createPost = async (req, res) => {
       await cloudinary.uploader.upload(
         dataURI,
         {
-          folder: 'lume_posts',
-          resource_type: 'auto'
+          folder:
+            'lume_posts',
+          resource_type:
+            'auto'
         }
       );
 
     const post =
       await Post.create({
-        user: req.user._id,
+        user:
+          req.user._id,
         content,
-        mediaUrl: result.secure_url,
+        mediaUrl:
+          result.secure_url,
         mediaType:
-          result.resource_type === 'video'
+          result.resource_type ===
+          'video'
             ? 'video'
             : 'image'
       });
 
     await post.populate([
       {
-        path: 'user',
+        path:
+          'user',
         select:
           'username avatar isVerified'
       },
       {
-        path: 'comments.user',
+        path:
+          'comments.user',
         select:
           'username avatar isVerified'
       },
       {
-        path: 'comments.replies.user',
+        path:
+          'comments.replies.user',
         select:
           'username avatar isVerified'
       }
@@ -143,17 +167,20 @@ exports.createPost = async (req, res) => {
     );
 
     res.status(500).json({
-      message: error.message
+      message:
+        error.message
     });
   }
 };
-
 
 // =========================================================
 // GET FEED
 // =========================================================
 
-exports.getFeed = async (req, res) => {
+exports.getFeed = async (
+  req,
+  res
+) => {
   try {
     const userId =
       req.user._id;
@@ -161,7 +188,8 @@ exports.getFeed = async (req, res) => {
     const posts =
       await Post.find()
         .sort({
-          createdAt: -1
+          createdAt:
+            -1
         })
         .populate(
           'user',
@@ -178,7 +206,7 @@ exports.getFeed = async (req, res) => {
 
     res.json(
       posts.map(
-        post =>
+        (post) =>
           getProcessedPost(
             post,
             userId
@@ -192,75 +220,81 @@ exports.getFeed = async (req, res) => {
     );
 
     res.status(500).json({
-      message: error.message
+      message:
+        error.message
     });
   }
 };
-
 
 // =========================================================
 // GET FOLLOWING POSTS
 // =========================================================
 
-exports.getFollowingPosts = async (
-  req,
-  res
-) => {
-  try {
-    const userId =
-      req.user._id;
+exports.getFollowingPosts =
+  async (
+    req,
+    res
+  ) => {
+    try {
+      const userId =
+        req.user._id;
 
-    const currentUser =
-      await User.findById(
-        userId
-      ).select('following');
-
-    const followingIds =
-      currentUser?.following || [];
-
-    const posts =
-      await Post.find({
-        user: {
-          $in: followingIds
-        }
-      })
-        .sort({
-          createdAt: -1
-        })
-        .populate(
-          'user',
-          'username avatar isVerified'
-        )
-        .populate(
-          'comments.user',
-          'username avatar isVerified'
-        )
-        .populate(
-          'comments.replies.user',
-          'username avatar isVerified'
+      const currentUser =
+        await User.findById(
+          userId
+        ).select(
+          'following'
         );
 
-    res.json(
-      posts.map(
-        post =>
-          getProcessedPost(
-            post,
-            userId
+      const followingIds =
+        currentUser?.following ||
+        [];
+
+      const posts =
+        await Post.find({
+          user: {
+            $in:
+              followingIds
+          }
+        })
+          .sort({
+            createdAt:
+              -1
+          })
+          .populate(
+            'user',
+            'username avatar isVerified'
           )
-      )
-    );
-  } catch (error) {
-    console.error(
-      'Ошибка загрузки подписок:',
-      error
-    );
+          .populate(
+            'comments.user',
+            'username avatar isVerified'
+          )
+          .populate(
+            'comments.replies.user',
+            'username avatar isVerified'
+          );
 
-    res.status(500).json({
-      message: error.message
-    });
-  }
-};
+      res.json(
+        posts.map(
+          (post) =>
+            getProcessedPost(
+              post,
+              userId
+            )
+        )
+      );
+    } catch (error) {
+      console.error(
+        'Ошибка загрузки подписок:',
+        error
+      );
 
+      res.status(500).json({
+        message:
+          error.message
+      });
+    }
+  };
 
 // =========================================================
 // LIKE POST
@@ -296,7 +330,7 @@ exports.toggleLike = async (
         post.likes
       ) &&
       post.likes.some(
-        id =>
+        (id) =>
           sameId(
             id,
             userId
@@ -306,19 +340,24 @@ exports.toggleLike = async (
     const updatedPost =
       await Post.findByIdAndUpdate(
         postId,
+
         isLiked
           ? {
               $pull: {
-                likes: userId
+                likes:
+                  userId
               }
             }
           : {
               $addToSet: {
-                likes: userId
+                likes:
+                  userId
               }
             },
+
         {
-          new: true,
+          new:
+            true,
           select:
             'user likes'
         }
@@ -331,6 +370,10 @@ exports.toggleLike = async (
       });
     }
 
+    // =======================================================
+    // NOTIFICATION: POST LIKE
+    // =======================================================
+
     if (
       !isLiked &&
       !sameId(
@@ -342,12 +385,16 @@ exports.toggleLike = async (
         await Notification.create({
           recipient:
             post.user,
+
           sender:
             userId,
+
           type:
             'like',
+
           referenceId:
             post._id,
+
           text:
             'Понравился ваш пост'
         });
@@ -366,7 +413,8 @@ exports.toggleLike = async (
         !isLiked,
 
       likes:
-        updatedPost.likes || [],
+        updatedPost.likes ||
+        [],
 
       likesCount:
         (
@@ -381,11 +429,11 @@ exports.toggleLike = async (
     );
 
     res.status(500).json({
-      message: error.message
+      message:
+        error.message
     });
   }
 };
-
 
 // =========================================================
 // SAVE POST
@@ -402,11 +450,12 @@ exports.toggleSave = async (
     const userId =
       req.user._id;
 
+    // USER ham olamiz
     const post =
       await Post.findById(
         postId
       ).select(
-        'savedBy'
+        'user savedBy'
       );
 
     if (!post) {
@@ -421,7 +470,7 @@ exports.toggleSave = async (
         post.savedBy
       ) &&
       post.savedBy.some(
-        id =>
+        (id) =>
           sameId(
             id,
             userId
@@ -431,19 +480,24 @@ exports.toggleSave = async (
     const updatedPost =
       await Post.findByIdAndUpdate(
         postId,
+
         isSaved
           ? {
               $pull: {
-                savedBy: userId
+                savedBy:
+                  userId
               }
             }
           : {
               $addToSet: {
-                savedBy: userId
+                savedBy:
+                  userId
               }
             },
+
         {
-          new: true,
+          new:
+            true,
           select:
             'savedBy'
         }
@@ -456,6 +510,41 @@ exports.toggleSave = async (
       });
     }
 
+    // =======================================================
+    // NOTIFICATION: POST SAVE
+    // =======================================================
+
+    if (
+      !isSaved &&
+      !sameId(
+        post.user,
+        userId
+      )
+    ) {
+      const notification =
+        await Notification.create({
+          recipient:
+            post.user,
+
+          sender:
+            userId,
+
+          type:
+            'save',
+
+          referenceId:
+            post._id,
+
+          text:
+            'Сохранил ваш пост'
+        });
+
+      await emitNotification(
+        req,
+        notification
+      );
+    }
+
     res.json({
       success:
         true,
@@ -464,7 +553,8 @@ exports.toggleSave = async (
         !isSaved,
 
       savedBy:
-        updatedPost.savedBy || [],
+        updatedPost.savedBy ||
+        [],
 
       savedCount:
         (
@@ -479,11 +569,11 @@ exports.toggleSave = async (
     );
 
     res.status(500).json({
-      message: error.message
+      message:
+        error.message
     });
   }
 };
-
 
 // =========================================================
 // ADD COMMENT
@@ -514,6 +604,7 @@ exports.addComment = async (
     const newComment = {
       user:
         req.user._id,
+
       text:
         trimmed
     };
@@ -521,14 +612,17 @@ exports.addComment = async (
     const updatedPost =
       await Post.findByIdAndUpdate(
         postId,
+
         {
           $push: {
             comments:
               newComment
           }
         },
+
         {
-          new: true
+          new:
+            true
         }
       ).populate({
         path:
@@ -546,8 +640,13 @@ exports.addComment = async (
 
     const addedComment =
       updatedPost.comments[
-        updatedPost.comments.length - 1
+        updatedPost.comments.length -
+          1
       ];
+
+    // =======================================================
+    // NOTIFICATION: COMMENT
+    // =======================================================
 
     if (
       !sameId(
@@ -555,22 +654,30 @@ exports.addComment = async (
         req.user._id
       )
     ) {
+      const preview =
+        trimmed.substring(
+          0,
+          30
+        );
+
       const notification =
         await Notification.create({
           recipient:
             updatedPost.user,
+
           sender:
             req.user._id,
+
           type:
             'comment',
+
           referenceId:
             updatedPost._id,
+
           text:
-            `Комментарий: "${trimmed.substring(
-              0,
+            `Комментарий: "${preview}${
+              trimmed.length >
               30
-            )}${
-              trimmed.length > 30
                 ? '...'
                 : ''
             }"`
@@ -592,11 +699,11 @@ exports.addComment = async (
     );
 
     res.status(500).json({
-      message: error.message
+      message:
+        error.message
     });
   }
 };
-
 
 // =========================================================
 // LIKE COMMENT
@@ -645,7 +752,7 @@ exports.toggleCommentLike =
           comment.likes
         ) &&
         comment.likes.some(
-          id =>
+          (id) =>
             sameId(
               id,
               userId
@@ -654,10 +761,13 @@ exports.toggleCommentLike =
 
       await Post.updateOne(
         {
-          _id: postId,
+          _id:
+            postId,
+
           'comments._id':
             commentId
         },
+
         isLiked
           ? {
               $pull: {
@@ -681,16 +791,60 @@ exports.toggleCommentLike =
           'username avatar isVerified'
         );
 
+      if (!updatedPost) {
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+      }
+
       const updatedComment =
         updatedPost.comments.id(
           commentId
         );
 
+      // =====================================================
+      // NOTIFICATION: COMMENT LIKE
+      // =====================================================
+
+      if (
+        !isLiked &&
+        !sameId(
+          comment.user,
+          userId
+        )
+      ) {
+        const notification =
+          await Notification.create({
+            recipient:
+              comment.user,
+
+            sender:
+              userId,
+
+            type:
+              'comment_like',
+
+            referenceId:
+              post._id,
+
+            text:
+              'Поставил лайк вашему комментарию'
+          });
+
+        await emitNotification(
+          req,
+          notification
+        );
+      }
+
       res.json({
         success:
           true,
+
         isLiked:
           !isLiked,
+
         comment:
           updatedComment
       });
@@ -701,11 +855,11 @@ exports.toggleCommentLike =
       );
 
       res.status(500).json({
-        message: error.message
+        message:
+          error.message
       });
     }
   };
-
 
 // =========================================================
 // ADD REPLY
@@ -739,6 +893,7 @@ exports.addCommentReply =
       const newReply = {
         user:
           req.user._id,
+
         text:
           trimmed
       };
@@ -746,18 +901,23 @@ exports.addCommentReply =
       const updatedPost =
         await Post.findOneAndUpdate(
           {
-            _id: postId,
+            _id:
+              postId,
+
             'comments._id':
               commentId
           },
+
           {
             $push: {
               'comments.$.replies':
                 newReply
             }
           },
+
           {
-            new: true
+            new:
+              true
           }
         ).populate(
           'comments.user comments.replies.user',
@@ -776,16 +936,60 @@ exports.addCommentReply =
           commentId
         );
 
+      if (!parentComment) {
+        return res.status(404).json({
+          message:
+            'Комментарий не найден'
+        });
+      }
+
       const addedReply =
         parentComment.replies[
-          parentComment.replies.length - 1
+          parentComment.replies.length -
+            1
         ];
+
+      // =====================================================
+      // NOTIFICATION: REPLY
+      // =====================================================
+
+      if (
+        !sameId(
+          parentComment.user,
+          req.user._id
+        )
+      ) {
+        const notification =
+          await Notification.create({
+            recipient:
+              parentComment.user,
+
+            sender:
+              req.user._id,
+
+            type:
+              'reply',
+
+            referenceId:
+              updatedPost._id,
+
+            text:
+              'Ответил на ваш комментарий'
+          });
+
+        await emitNotification(
+          req,
+          notification
+        );
+      }
 
       res.status(201).json({
         success:
           true,
+
         reply:
           addedReply,
+
         commentId
       });
     } catch (error) {
@@ -795,11 +999,11 @@ exports.addCommentReply =
       );
 
       res.status(500).json({
-        message: error.message
+        message:
+          error.message
       });
     }
   };
-
 
 // =========================================================
 // EDIT COMMENT / REPLY
@@ -859,6 +1063,7 @@ exports.editComment =
           if (reply) {
             targetComment =
               reply;
+
             break;
           }
         }
@@ -917,6 +1122,7 @@ exports.editComment =
           if (reply) {
             updatedComment =
               reply;
+
             break;
           }
         }
@@ -930,6 +1136,7 @@ exports.editComment =
       res.json({
         success:
           true,
+
         comment:
           updatedComment
       });
@@ -940,11 +1147,11 @@ exports.editComment =
       );
 
       res.status(500).json({
-        message: error.message
+        message:
+          error.message
       });
     }
   };
-
 
 // =========================================================
 // DELETE COMMENT / REPLY
@@ -978,7 +1185,6 @@ exports.deleteComment =
       }
 
       if (isReply) {
-
         let parentComment =
           null;
 
@@ -1031,9 +1237,7 @@ exports.deleteComment =
         parentComment.replies.pull(
           commentId
         );
-
       } else {
-
         const comment =
           post.comments.id(
             commentId
@@ -1077,11 +1281,11 @@ exports.deleteComment =
       );
 
       res.status(500).json({
-        message: error.message
+        message:
+          error.message
       });
     }
   };
-
 
 // =========================================================
 // UPDATE POST
@@ -1132,8 +1336,12 @@ exports.updatePost =
       if (req.file) {
         const b64 =
           Buffer
-            .from(req.file.buffer)
-            .toString('base64');
+            .from(
+              req.file.buffer
+            )
+            .toString(
+              'base64'
+            );
 
         const dataURI =
           `data:${req.file.mimetype};base64,${b64}`;
@@ -1144,6 +1352,7 @@ exports.updatePost =
             {
               folder:
                 'lume_posts',
+
               resource_type:
                 'auto'
             }
@@ -1165,18 +1374,23 @@ exports.updatePost =
         {
           path:
             'user',
+
           select:
             'username avatar isVerified'
         },
+
         {
           path:
             'comments.user',
+
           select:
             'username avatar isVerified'
         },
+
         {
           path:
             'comments.replies.user',
+
           select:
             'username avatar isVerified'
         }
@@ -1201,75 +1415,122 @@ exports.updatePost =
     }
   };
 
-
 // =========================================================
 // DELETE POST
 // =========================================================
 
-exports.deletePost = async (req, res) => {
-  try {
-    const postId = req.params.id;
+exports.deletePost =
+  async (
+    req,
+    res
+  ) => {
+    try {
+      const postId =
+        req.params.id;
 
-    console.log('================================');
-    console.log('DELETE POST HIT');
-    console.log('METHOD:', req.method);
-    console.log('URL:', req.originalUrl);
-    console.log('POST ID:', postId);
-    console.log('USER ID:', req.user?._id?.toString());
+      console.log(
+        '================================'
+      );
 
-    const post = await Post.findById(postId);
+      console.log(
+        'DELETE POST HIT'
+      );
 
-    console.log(
-      'POST FOUND:',
-      post
-        ? {
-            _id: post._id.toString(),
-            user: post.user.toString()
-          }
-        : null
-    );
+      console.log(
+        'METHOD:',
+        req.method
+      );
 
-    if (!post) {
-      console.log('❌ POST NOT FOUND');
+      console.log(
+        'URL:',
+        req.originalUrl
+      );
 
-      return res.status(404).json({
-        message: 'Пост не найден',
+      console.log(
+        'POST ID:',
+        postId
+      );
+
+      console.log(
+        'USER ID:',
+        req.user?._id?.toString()
+      );
+
+      const post =
+        await Post.findById(
+          postId
+        );
+
+      console.log(
+        'POST FOUND:',
+        post
+          ? {
+              _id:
+                post._id.toString(),
+
+              user:
+                post.user.toString()
+            }
+          : null
+      );
+
+      if (!post) {
+        console.log(
+          '❌ POST NOT FOUND'
+        );
+
+        return res.status(404).json({
+          message:
+            'Пост не найден',
+
+          postId
+        });
+      }
+
+      if (
+        post.user.toString() !==
+          req.user._id.toString() &&
+        !req.user.isAdmin
+      ) {
+        console.log(
+          '❌ NO PERMISSION'
+        );
+
+        return res.status(403).json({
+          message:
+            'Нет прав для удаления этого поста'
+        });
+      }
+
+      await post.deleteOne();
+
+      console.log(
+        '✅ POST DELETED:',
+        postId
+      );
+
+      console.log(
+        '================================'
+      );
+
+      res.json({
+        success:
+          true,
+
+        message:
+          'Пост удалён',
+
         postId
       });
-    }
+    } catch (error) {
+      console.error(
+        '❌ DELETE POST ERROR:',
+        error
+      );
 
-    if (
-      post.user.toString() !==
-        req.user._id.toString() &&
-      !req.user.isAdmin
-    ) {
-      console.log('❌ NO PERMISSION');
-
-      return res.status(403).json({
+      res.status(500).json({
         message:
-          'Нет прав для удаления этого поста'
+          error.message
       });
     }
-
-    await post.deleteOne();
-
-    console.log('✅ POST DELETED:', postId);
-    console.log('================================');
-
-    res.json({
-      success: true,
-      message: 'Пост удалён',
-      postId
-    });
-
-  } catch (error) {
-    console.error(
-      '❌ DELETE POST ERROR:',
-      error
-    );
-
-    res.status(500).json({
-      message: error.message
-    });
-  }
-};
+  };

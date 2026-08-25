@@ -4,40 +4,55 @@ import {
   useContext,
   useEffect,
   useRef,
-  useCallback,
+  useCallback
 } from 'react';
 
+import {
+  motion,
+  AnimatePresence
+} from 'framer-motion';
+
 import axios from '../api/axios';
+import { useSocket } from './SocketContext';
 
 const NotificationContext =
-  createContext();
+  createContext(null);
 
 export const NotificationProvider = ({
-  children,
+  children
 }) => {
+  const { socket } = useSocket();
+
   const [
     notifications,
-    setNotifications,
+    setNotifications
   ] = useState([]);
 
   const [
     unreadCount,
-    setUnreadCount,
+    setUnreadCount
   ] = useState(0);
 
-  // Bir vaqtning o'zida ikkita request ketishiga yo'l qo'ymaymiz
-  const isFetchingRef = useRef(false);
+  const [
+    toast,
+    setToast
+  ] = useState(null);
 
-  // Component unmount bo'lganini kuzatamiz
-  const mountedRef = useRef(true);
+  const isFetchingRef =
+    useRef(false);
 
-  // Network errorni console'da qayta-qayta chiqarib yubormaslik
+  const mountedRef =
+    useRef(true);
+
+  const toastTimerRef =
+    useRef(null);
+
   const lastNetworkErrorRef =
     useRef(0);
 
-  // ---------------------------------------------------------
-  // Fetch notifications
-  // ---------------------------------------------------------
+  // =========================================================
+  // FETCH NOTIFICATIONS
+  // =========================================================
 
   const fetchNotifications =
     useCallback(async () => {
@@ -46,13 +61,10 @@ export const NotificationProvider = ({
           'lumeToken'
         );
 
-      // Login qilinmagan bo'lsa request yubormaymiz
       if (!token) {
         return;
       }
 
-      // Oldingi request hali davom etayotgan bo'lsa
-      // yangi request yubormaymiz
       if (isFetchingRef.current) {
         return;
       }
@@ -70,9 +82,7 @@ export const NotificationProvider = ({
         }
 
         const data =
-          Array.isArray(
-            res.data
-          )
+          Array.isArray(res.data)
             ? res.data
             : [];
 
@@ -86,39 +96,29 @@ export const NotificationProvider = ({
 
         setUnreadCount(unread);
 
-        // Request muvaffaqiyatli bo'lsa
-        // network error timestampini reset qilamiz
         lastNetworkErrorRef.current = 0;
       } catch (error) {
-        // 401 -> token yaroqsiz yoki yo'q
         if (
-          error.response?.status ===
-          401
+          error.response?.status === 401
         ) {
           return;
         }
 
-        // Network error
         const isNetworkError =
           !error.response ||
-          error.code ===
-            'ERR_NETWORK' ||
-          error.message ===
-            'Network Error';
+          error.code === 'ERR_NETWORK' ||
+          error.message === 'Network Error';
 
         if (isNetworkError) {
-          const now =
-            Date.now();
+          const now = Date.now();
 
-          // Faqat har 60 sekundda bir marta
-          // network xatosini console'ga chiqaramiz
           if (
             now -
               lastNetworkErrorRef.current >
             60000
           ) {
             console.warn(
-              'Lume: server bilan vaqtinchalik aloqa yo‘q. Keyingi urinish avtomatik amalga oshiriladi.'
+              'Lume: server bilan vaqtinchalik aloqa yo‘q.'
             );
 
             lastNetworkErrorRef.current =
@@ -128,30 +128,28 @@ export const NotificationProvider = ({
           return;
         }
 
-        // Boshqa server xatolarini ko'rsatamiz
         console.error(
           'Ошибка загрузки уведомлений:',
           error
         );
       } finally {
-        isFetchingRef.current =
-          false;
+        isFetchingRef.current = false;
       }
     }, []);
 
-  // ---------------------------------------------------------
-  // Initial fetch + polling
-  // ---------------------------------------------------------
+  // =========================================================
+  // INITIAL FETCH + POLLING
+  // =========================================================
 
   useEffect(() => {
     mountedRef.current = true;
 
     fetchNotifications();
 
-    // Har 30 sekundda tekshiramiz
-    const interval = setInterval(() => {
-      fetchNotifications();
-    }, 30000);
+    const interval =
+      setInterval(() => {
+        fetchNotifications();
+      }, 30000);
 
     return () => {
       mountedRef.current = false;
@@ -159,68 +157,210 @@ export const NotificationProvider = ({
     };
   }, [fetchNotifications]);
 
-  // ---------------------------------------------------------
-  // Mark notification as read
-  // ---------------------------------------------------------
+  // =========================================================
+  // REAL-TIME SOCKET NOTIFICATION
+  // =========================================================
 
-  const markAsRead = async (
-    id
-  ) => {
+  useEffect(() => {
+    if (!socket) {
+      return;
+    }
+
+    const handleNewNotification =
+      (notification) => {
+        if (!notification) {
+          return;
+        }
+
+        setNotifications((prev) => {
+          const exists = prev.some(
+            (item) =>
+              item._id === notification._id
+          );
+
+          if (exists) {
+            return prev;
+          }
+
+          return [
+            notification,
+            ...prev
+          ];
+        });
+
+        setUnreadCount((prev) => prev + 1);
+
+        setToast(notification);
+
+        if (toastTimerRef.current) {
+          clearTimeout(
+            toastTimerRef.current
+          );
+        }
+
+        toastTimerRef.current =
+          setTimeout(() => {
+            setToast(null);
+          }, 5000);
+      };
+
+    socket.on(
+      'new_notification',
+      handleNewNotification
+    );
+
+    return () => {
+      socket.off(
+        'new_notification',
+        handleNewNotification
+      );
+
+      if (toastTimerRef.current) {
+        clearTimeout(
+          toastTimerRef.current
+        );
+      }
+    };
+  }, [socket]);
+
+  // =========================================================
+  // MARK ONE AS READ
+  // =========================================================
+
+  const markAsRead = async (id) => {
     if (!id) {
       return;
     }
 
     try {
-      await axios.put(
-        `/notifications/${id}/read`
-      );
+      const target =
+        notifications.find(
+          (notification) =>
+            notification._id === id
+        );
 
       if (
-        !mountedRef.current
+        !target ||
+        target.isRead
       ) {
         return;
       }
 
-      setNotifications(
-        (prev) =>
-          prev.map(
-            (notification) =>
-              notification._id === id
-                ? {
-                    ...notification,
-                    isRead: true,
-                  }
-                : notification
-          )
+      await axios.put(
+        `/notifications/${id}/read`
       );
 
-      setUnreadCount(
-        (prev) =>
-          Math.max(
-            0,
-            prev - 1
-          )
+      if (!mountedRef.current) {
+        return;
+      }
+
+      setNotifications((prev) =>
+        prev.map(
+          (notification) =>
+            notification._id === id
+              ? {
+                  ...notification,
+                  isRead: true
+                }
+              : notification
+        )
+      );
+
+      setUnreadCount((prev) =>
+        Math.max(0, prev - 1)
       );
     } catch (error) {
-      const isNetworkError =
-        !error.response ||
-        error.code ===
-          'ERR_NETWORK' ||
-        error.message ===
-          'Network Error';
-
-      if (!isNetworkError) {
-        console.error(
-          'Ошибка отметки прочитанным:',
-          error
-        );
-      }
+      console.error(
+        'Ошибка отметки уведомления:',
+        error
+      );
     }
   };
 
-  // ---------------------------------------------------------
-  // Provider
-  // ---------------------------------------------------------
+  // =========================================================
+  // MARK ALL AS READ
+  // =========================================================
+
+  const markAllAsRead = async () => {
+    try {
+      await axios.put(
+        '/notifications/read'
+      );
+
+      if (!mountedRef.current) {
+        return;
+      }
+
+      setNotifications((prev) =>
+        prev.map(
+          (notification) => ({
+            ...notification,
+            isRead: true
+          })
+        )
+      );
+
+      setUnreadCount(0);
+    } catch (error) {
+      console.error(
+        'Ошибка отметки всех уведомлений:',
+        error
+      );
+    }
+  };
+
+  // =========================================================
+  // CLOSE TOAST
+  // =========================================================
+
+  const closeToast = () => {
+    setToast(null);
+
+    if (toastTimerRef.current) {
+      clearTimeout(
+        toastTimerRef.current
+      );
+    }
+  };
+
+  // =========================================================
+  // ICON
+  // =========================================================
+
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case 'like':
+        return '❤️';
+
+      case 'save':
+        return '🔖';
+
+      case 'comment':
+        return '💬';
+
+      case 'comment_like':
+        return '❤️';
+
+      case 'reply':
+        return '↩️';
+
+      case 'message':
+        return '💬';
+
+      case 'follow':
+        return '👤';
+
+      case 'story':
+        return '⭕';
+
+      default:
+        return '🔔';
+    }
+  };
+
+  // =========================================================
+  // PROVIDER
+  // =========================================================
 
   return (
     <NotificationContext.Provider
@@ -229,16 +369,195 @@ export const NotificationProvider = ({
         unreadCount,
         fetchNotifications,
         markAsRead,
+        markAllAsRead
       }}
     >
       {children}
+
+      {/* =====================================================
+          TOP RIGHT GLASS NOTIFICATION
+      ====================================================== */}
+
+      <div
+        className="
+          fixed
+          top-5
+          right-5
+          z-[99990]
+          w-[min(390px,calc(100vw-32px))]
+          pointer-events-none
+        "
+      >
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              initial={{
+                opacity: 0,
+                x: 80,
+                scale: 0.95
+              }}
+              animate={{
+                opacity: 1,
+                x: 0,
+                scale: 1
+              }}
+              exit={{
+                opacity: 0,
+                x: 80,
+                scale: 0.95
+              }}
+              transition={{
+                type: 'spring',
+                stiffness: 350,
+                damping: 28
+              }}
+              className="
+                pointer-events-auto
+                relative
+                overflow-hidden
+                rounded-2xl
+                border
+                border-white/15
+                bg-white/10
+                backdrop-blur-2xl
+                shadow-2xl
+                p-4
+                text-white
+              "
+            >
+              <div
+                className="
+                  pointer-events-none
+                  absolute
+                  inset-0
+                  bg-gradient-to-br
+                  from-white/15
+                  via-transparent
+                  to-transparent
+                "
+              />
+
+              <div
+                className="
+                  relative
+                  flex
+                  gap-3
+                  items-start
+                "
+              >
+                {/* Avatar */}
+                <div
+                  className="
+                    w-11
+                    h-11
+                    shrink-0
+                    rounded-full
+                    overflow-hidden
+                    border
+                    border-white/20
+                    bg-white/10
+                    flex
+                    items-center
+                    justify-center
+                  "
+                >
+                  {toast.sender?.avatar ? (
+                    <img
+                      src={toast.sender.avatar}
+                      alt="Avatar"
+                      className="
+                        w-full
+                        h-full
+                        object-cover
+                      "
+                    />
+                  ) : (
+                    <span className="
+                      text-sm
+                      font-bold
+                      text-white
+                    ">
+                      {toast.sender?.username
+                        ?.charAt(0)
+                        .toUpperCase()}
+                    </span>
+                  )}
+                </div>
+
+                {/* Content */}
+                <div
+                  className="
+                    flex-1
+                    min-w-0
+                  "
+                >
+                  <div
+                    className="
+                      flex
+                      items-center
+                      gap-2
+                    "
+                  >
+                    <span className="text-lg">
+                      {getNotificationIcon(
+                        toast.type
+                      )}
+                    </span>
+
+                    <span
+                      className="
+                        font-semibold
+                        text-sm
+                        truncate
+                      "
+                    >
+                      @{toast.sender?.username}
+                    </span>
+                  </div>
+
+                  <p
+                    className="
+                      text-white/70
+                      text-sm
+                      mt-1
+                      leading-relaxed
+                    "
+                  >
+                    {toast.text}
+                  </p>
+
+                  <p
+                    className="
+                      text-white/35
+                      text-[10px]
+                      mt-2
+                    "
+                  >
+                    Сейчас
+                  </p>
+                </div>
+
+                {/* Close */}
+                <button
+                  onClick={closeToast}
+                  className="
+                    shrink-0
+                    text-white/40
+                    hover:text-white
+                    transition
+                    text-lg
+                  "
+                >
+                  ✕
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </NotificationContext.Provider>
   );
 };
-
-// ---------------------------------------------------------
-// Hook
-// ---------------------------------------------------------
 
 export const useNotifications =
   () =>
