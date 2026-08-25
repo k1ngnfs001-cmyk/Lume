@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+// AlertContext yoki useAlert qayerda joylashgan bo'lsa, o'sha yerdan import qiling
+import { useAlert } from '../context/AlertContext'; 
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import LumeLogo from '../assets/logo.png';
@@ -14,6 +16,7 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const { register, login } = useAuth();
+  const { showAlert } = useAlert(); // <-- showAlert chaqirib olindi
   const navigate = useNavigate();
 
   const changeMode = (loginMode) => {
@@ -48,10 +51,10 @@ const Auth = () => {
           return;
         }
 
-        alert(
-          result.message ||
-          'Ошибка входа'
-        );
+        showAlert({ 
+          title: 'Ошибка', 
+          message: result.message || 'Ошибка входа' 
+        });
 
         return;
       }
@@ -61,33 +64,30 @@ const Auth = () => {
       // =====================================================
 
       if (!username.trim()) {
-        alert('Введите имя пользователя');
+        showAlert({ title: 'Внимание', message: 'Введите имя пользователя' });
         return;
       }
 
       if (!email.trim()) {
-        alert('Введите email');
+        showAlert({ title: 'Внимание', message: 'Введите email' });
         return;
       }
 
       if (!password) {
-        alert('Введите пароль');
+        showAlert({ title: 'Внимание', message: 'Введите пароль' });
         return;
       }
 
       if (password.length < 6) {
-        alert(
-          'Пароль должен содержать минимум 6 символов'
-        );
-
+        showAlert({ 
+          title: 'Внимание', 
+          message: 'Пароль должен содержать минимум 6 символов' 
+        });
         return;
       }
 
       if (password !== confirmPassword) {
-        alert(
-          'Пароли не совпадают'
-        );
-
+        showAlert({ title: 'Внимание', message: 'Пароли не совпадают' });
         return;
       }
 
@@ -99,9 +99,7 @@ const Auth = () => {
       );
 
       if (result.success) {
-        alert(
-          'Регистрация успешна!'
-        );
+        showAlert({ title: 'Успех', message: 'Регистрация успешна!' });
 
         // O'zi login tabiga qaytamiz
         setIsLogin(true);
@@ -114,10 +112,10 @@ const Auth = () => {
         return;
       }
 
-      alert(
-        result.message ||
-        'Ошибка регистрации'
-      );
+      showAlert({ 
+        title: 'Ошибка', 
+        message: result.message || 'Ошибка регистрации' 
+      });
 
     } finally {
       setIsLoading(false);
@@ -156,14 +154,8 @@ const Auth = () => {
       />
 
       <motion.div
-        initial={{
-          opacity: 0,
-          y: 20
-        }}
-        animate={{
-          opacity: 1,
-          y: 0
-        }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
         className="
           relative
           bg-white/5
@@ -246,9 +238,7 @@ const Auth = () => {
               type="text"
               placeholder="Имя пользователя"
               value={username}
-              onChange={(e) =>
-                setUsername(e.target.value)
-              }
+              onChange={(e) => setUsername(e.target.value)}
               className="
                 w-full
                 bg-white/5
@@ -273,9 +263,7 @@ const Auth = () => {
             type="email"
             placeholder="Email"
             value={email}
-            onChange={(e) =>
-              setEmail(e.target.value)
-            }
+            onChange={(e) => setEmail(e.target.value)}
             className="
               w-full
               bg-white/5
@@ -299,9 +287,7 @@ const Auth = () => {
             type="password"
             placeholder="Пароль"
             value={password}
-            onChange={(e) =>
-              setPassword(e.target.value)
-            }
+            onChange={(e) => setPassword(e.target.value)}
             className="
               w-full
               bg-white/5
@@ -326,11 +312,7 @@ const Auth = () => {
               type="password"
               placeholder="Подтвердите пароль"
               value={confirmPassword}
-              onChange={(e) =>
-                setConfirmPassword(
-                  e.target.value
-                )
-              }
+              onChange={(e) => setConfirmPassword(e.target.value)}
               className="
                 w-full
                 bg-white/5

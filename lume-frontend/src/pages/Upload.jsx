@@ -1,11 +1,14 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useAlert } from '../context/AlertContext'; // <-- AlertContext import qilindi
 import { motion } from 'framer-motion';
 
 const Upload = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { showAlert } = useAlert(); // <-- showAlert chaqirib olindi
+
   const [content, setContent] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -17,13 +20,19 @@ const Upload = () => {
     if (file) {
       // Валидация: размер файла (макс 50 МБ)
       if (file.size > 50 * 1024 * 1024) {
-        alert('Файл слишком большой! Пожалуйста, загрузите файл размером менее 50 МБ.');
+        showAlert({ 
+          title: 'Внимание', 
+          message: 'Файл слишком большой! Пожалуйста, загрузите файл размером менее 50 МБ.' 
+        });
         e.target.value = ''; // Сброс инпута
         return;
       }
       // Валидация: формат (только картинки и видео)
       if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
-        alert('Пожалуйста, загрузите только фото или видео!');
+        showAlert({ 
+          title: 'Внимание', 
+          message: 'Пожалуйста, загрузите только фото или видео!' 
+        });
         e.target.value = '';
         return;
       }
@@ -35,11 +44,17 @@ const Upload = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!content.trim()) {
-      alert('Пожалуйста, введите описание поста!');
+      showAlert({ 
+        title: 'Внимание', 
+        message: 'Пожалуйста, введите описание поста!' 
+      });
       return;
     }
     if (!selectedFile) {
-      alert('Пожалуйста, выберите фото или видео!');
+      showAlert({ 
+        title: 'Внимание', 
+        message: 'Пожалуйста, выберите фото или видео!' 
+      });
       return;
     }
 
@@ -58,10 +73,16 @@ const Upload = () => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message);
       
-      alert('Пост успешно опубликован!');
+      showAlert({ 
+        title: 'Успех', 
+        message: 'Пост успешно опубликован!' 
+      });
       navigate('/');
     } catch (error) {
-      alert('Ошибка: ' + error.message);
+      showAlert({ 
+        title: 'Ошибка', 
+        message: 'Ошибка: ' + error.message 
+      });
     } finally {
       setLoading(false);
     }
