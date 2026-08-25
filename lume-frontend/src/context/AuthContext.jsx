@@ -7,131 +7,87 @@ import {
 
 import axios from '../api/axios';
 
-const AuthContext =
-  createContext();
-
+const AuthContext = createContext();
 
 export const AuthProvider = ({
   children
 }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const [
-    user,
-    setUser
-  ] = useState(null);
-
-  const [
-    loading,
-    setLoading
-  ] = useState(true);
-
-
-  // =======================================================
+  // =========================================================
   // CHECK CURRENT USER
-  // =======================================================
+  // =========================================================
 
   useEffect(() => {
-
     const token =
-      localStorage.getItem(
-        'lumeToken'
-      );
+      localStorage.getItem('lumeToken');
 
-    if (token) {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
-      axios.get(
-        '/auth/me'
-      )
+    axios
+      .get('/auth/me')
+      .then((response) => {
+        const userData = response.data;
 
-        .then(
-          response => {
+        localStorage.setItem(
+          'lumeUser',
+          JSON.stringify(userData)
+        );
 
-            const userData =
-              response.data;
+        setUser(userData);
+      })
+      .catch((error) => {
+        if (
+          error.response?.status === 401 ||
+          error.response?.status === 403
+        ) {
+          localStorage.removeItem(
+            'lumeToken'
+          );
 
-            localStorage.setItem(
-              'lumeUser',
-              JSON.stringify(
-                userData
-              )
+          localStorage.removeItem(
+            'lumeUser'
+          );
+
+          setUser(null);
+        } else {
+          console.error(
+            'Не удалось загрузить данные пользователя:',
+            error
+          );
+
+          const savedUser =
+            localStorage.getItem(
+              'lumeUser'
             );
 
-            setUser(
-              userData
-            );
-          }
-        )
-
-        .catch(
-          error => {
-
-            if (
-              error.response?.status === 401 ||
-              error.response?.status === 403
-            ) {
-
-              localStorage.removeItem(
-                'lumeToken'
+          if (savedUser) {
+            try {
+              setUser(
+                JSON.parse(savedUser)
               );
-
+            } catch {
               localStorage.removeItem(
                 'lumeUser'
               );
 
               setUser(null);
-
-            } else {
-
-              console.error(
-                'Не удалось загрузить данные пользователя:',
-                error
-              );
-
-              const savedUser =
-                localStorage.getItem(
-                  'lumeUser'
-                );
-
-              if (savedUser) {
-
-                try {
-
-                  setUser(
-                    JSON.parse(
-                      savedUser
-                    )
-                  );
-
-                } catch {
-
-                  localStorage.removeItem(
-                    'lumeUser'
-                  );
-
-                  setUser(null);
-                }
-              }
             }
           }
-        )
-
-        .finally(
-          () =>
-            setLoading(false)
-        );
-
-    } else {
-
-      setLoading(false);
-
-    }
-
+        }
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
-
-  // =======================================================
+  // =========================================================
   // REGISTER
-  // =======================================================
+  // =========================================================
 
   const register = async (
     username,
@@ -139,9 +95,7 @@ export const AuthProvider = ({
     password,
     confirmPassword
   ) => {
-
     try {
-
       const response =
         await axios.post(
           '/auth/register',
@@ -153,12 +107,10 @@ export const AuthProvider = ({
           }
         );
 
-
       const {
         token,
         ...userData
       } = response.data;
-
 
       localStorage.setItem(
         'lumeToken',
@@ -167,53 +119,35 @@ export const AuthProvider = ({
 
       localStorage.setItem(
         'lumeUser',
-        JSON.stringify(
-          userData
-        )
+        JSON.stringify(userData)
       );
 
-
-      setUser(
-        userData
-      );
-
+      setUser(userData);
 
       return {
-        success:
-          true,
-
-        data:
-          userData
+        success: true,
+        data: userData
       };
 
     } catch (error) {
-
       return {
-
-        success:
-          false,
-
+        success: false,
         message:
           error.response?.data?.message ||
           'Ошибка регистрации'
-
       };
-
     }
   };
 
-
-  // =======================================================
+  // =========================================================
   // LOGIN
-  // =======================================================
+  // =========================================================
 
   const login = async (
     email,
     password
   ) => {
-
     try {
-
       const response =
         await axios.post(
           '/auth/login',
@@ -223,32 +157,21 @@ export const AuthProvider = ({
           }
         );
 
-
-      if (
-        response.data.requireOtp
-      ) {
-
-        return {
-
-          success:
-            true,
-
-          requireOtp:
-            true,
-
-          message:
-            response.data.message
-
-        };
-
-      }
-
+      // Endi OTP yo'q.
+      // Login response darhol token berishi kerak.
 
       const {
         token,
         ...userData
       } = response.data;
 
+      if (!token) {
+        return {
+          success: false,
+          message:
+            'Сервер не вернул токен авторизации'
+        };
+      }
 
       localStorage.setItem(
         'lumeToken',
@@ -257,122 +180,31 @@ export const AuthProvider = ({
 
       localStorage.setItem(
         'lumeUser',
-        JSON.stringify(
-          userData
-        )
+        JSON.stringify(userData)
       );
 
-
-      setUser(
-        userData
-      );
-
+      setUser(userData);
 
       return {
-
-        success:
-          true,
-
-        data:
-          userData
-
+        success: true,
+        data: userData
       };
 
     } catch (error) {
-
       return {
-
-        success:
-          false,
-
+        success: false,
         message:
           error.response?.data?.message ||
           'Ошибка входа'
-
       };
-
     }
   };
 
-
-  // =======================================================
-  // VERIFY OTP
-  // =======================================================
-
-  const verifyOtp = async (
-    email,
-    otp
-  ) => {
-
-    try {
-
-      const response =
-        await axios.post(
-          '/auth/verify-otp',
-          {
-            email,
-            otp
-          }
-        );
-
-
-      const {
-        token,
-        ...userData
-      } = response.data;
-
-
-      localStorage.setItem(
-        'lumeToken',
-        token
-      );
-
-      localStorage.setItem(
-        'lumeUser',
-        JSON.stringify(
-          userData
-        )
-      );
-
-
-      setUser(
-        userData
-      );
-
-
-      return {
-
-        success:
-          true,
-
-        data:
-          userData
-
-      };
-
-    } catch (error) {
-
-      return {
-
-        success:
-          false,
-
-        message:
-          error.response?.data?.message ||
-          'Неверный или истекший код'
-
-      };
-
-    }
-  };
-
-
-  // =======================================================
+  // =========================================================
   // LOGOUT
-  // =======================================================
+  // =========================================================
 
   const logout = () => {
-
     localStorage.removeItem(
       'lumeToken'
     );
@@ -382,9 +214,7 @@ export const AuthProvider = ({
     );
 
     setUser(null);
-
   };
-
 
   return (
     <AuthContext.Provider
@@ -393,7 +223,6 @@ export const AuthProvider = ({
         loading,
         register,
         login,
-        verifyOtp,
         logout,
         setUser
       }}
@@ -403,9 +232,5 @@ export const AuthProvider = ({
   );
 };
 
-
-export const useAuth =
-  () =>
-    useContext(
-      AuthContext
-    );
+export const useAuth = () =>
+  useContext(AuthContext);

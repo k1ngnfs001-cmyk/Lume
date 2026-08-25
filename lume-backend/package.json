@@ -110,7 +110,6 @@
     "raw-body": "^3.0.2",
     "readable-stream": "^3.6.2",
     "readdirp": "^3.6.0",
-    "resend": "^6.22.0",
     "router": "^2.2.0",
     "safe-buffer": "^5.2.1",
     "safer-buffer": "^2.1.2",

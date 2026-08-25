@@ -6,7 +6,6 @@ const router =
 const {
   register,
   login,
-  verifyOtp,
   getMe
 } = require(
   '../controllers/authController'
@@ -36,16 +35,6 @@ router.post(
 router.post(
   '/login',
   login
-);
-
-
-// =========================================================
-// VERIFY OTP
-// =========================================================
-
-router.post(
-  '/verify-otp',
-  verifyOtp
 );
 
 
