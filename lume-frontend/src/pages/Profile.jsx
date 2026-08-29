@@ -1,54 +1,63 @@
 import {
   useEffect,
   useState,
-  useRef
+  useRef,
 } from 'react';
 
 import {
   useParams,
   Link,
-  useNavigate
+  useNavigate,
 } from 'react-router-dom';
 
 import {
-  useAuth
+  useAuth,
 } from '../context/AuthContext';
+
+import {
+  useAlert,
+} from '../context/AlertContext';
 
 import axios from '../api/axios';
 
 import {
   motion,
-  AnimatePresence
+  AnimatePresence,
 } from 'framer-motion';
 
 import {
   FaHeart,
   FaRegHeart,
   FaComment,
+  FaShare,
   FaChevronUp,
   FaChevronDown,
   FaBookmark,
   FaTrash,
   FaPencilAlt,
-  FaReply
+  FaReply,
 } from 'react-icons/fa';
 
 import {
   FiBookmark,
   FiMoreVertical,
-  FiEdit2
+  FiEdit2,
 } from 'react-icons/fi';
 
 
 const Profile = () => {
 
   const {
-    id
+    id,
   } = useParams();
 
   const {
-    user: currentUser
+    user: currentUser,
   } = useAuth();
+
+  const {
+    showAlert,
+  } = useAlert();
 
   const navigate =
     useNavigate();
@@ -60,17 +69,17 @@ const Profile = () => {
 
   const [
     profileData,
-    setProfileData
+    setProfileData,
   ] = useState(null);
 
   const [
     isFollowing,
-    setIsFollowing
+    setIsFollowing,
   ] = useState(false);
 
   const [
     loading,
-    setLoading
+    setLoading,
   ] = useState(true);
 
 
@@ -80,28 +89,33 @@ const Profile = () => {
 
   const [
     viewerPost,
-    setViewerPost
+    setViewerPost,
   ] = useState(null);
 
   const [
     viewerPosts,
-    setViewerPosts
+    setViewerPosts,
   ] = useState([]);
 
   const [
     viewerIndex,
-    setViewerIndex
+    setViewerIndex,
   ] = useState(0);
 
   const [
     isMuted,
-    setIsMuted
+    setIsMuted,
   ] = useState(true);
 
   const [
     progress,
-    setProgress
+    setProgress,
   ] = useState(0);
+
+  const [
+    isPlaying,
+    setIsPlaying,
+  ] = useState(true);
 
   const videoRef =
     useRef(null);
@@ -113,27 +127,27 @@ const Profile = () => {
 
   const [
     isCommentsOpen,
-    setIsCommentsOpen
+    setIsCommentsOpen,
   ] = useState(false);
 
   const [
     commentText,
-    setCommentText
+    setCommentText,
   ] = useState('');
 
   const [
     replyTexts,
-    setReplyTexts
+    setReplyTexts,
   ] = useState({});
 
   const [
     editingCommentId,
-    setEditingCommentId
+    setEditingCommentId,
   ] = useState(null);
 
   const [
     editCommentText,
-    setEditCommentText
+    setEditCommentText,
   ] = useState('');
 
 
@@ -143,27 +157,27 @@ const Profile = () => {
 
   const [
     isEditMenuOpen,
-    setIsEditMenuOpen
+    setIsEditMenuOpen,
   ] = useState(false);
 
   const [
     isEditModalOpen,
-    setIsEditModalOpen
+    setIsEditModalOpen,
   ] = useState(false);
 
   const [
     editContent,
-    setEditContent
+    setEditContent,
   ] = useState('');
 
   const [
     editFile,
-    setEditFile
+    setEditFile,
   ] = useState(null);
 
   const [
     editPreview,
-    setEditPreview
+    setEditPreview,
   ] = useState(null);
 
   const editFileInputRef =
@@ -171,12 +185,12 @@ const Profile = () => {
 
   const [
     isUpdating,
-    setIsUpdating
+    setIsUpdating,
   ] = useState(false);
 
   const [
     editingPost,
-    setEditingPost
+    setEditingPost,
   ] = useState(null);
 
 
@@ -186,7 +200,7 @@ const Profile = () => {
 
   const [
     openGridMenuId,
-    setOpenGridMenuId
+    setOpenGridMenuId,
   ] = useState(null);
 
 
@@ -196,7 +210,7 @@ const Profile = () => {
 
   const [
     hoveredId,
-    setHoveredId
+    setHoveredId,
   ] = useState(null);
 
   const videoRefs =
@@ -210,25 +224,20 @@ const Profile = () => {
   const getMediaUrl = (
     url
   ) => {
+
     if (!url) {
       return '';
     }
 
     if (
-      url.startsWith(
-        'http://'
-      ) ||
-      url.startsWith(
-        'https://'
-      )
+      url.startsWith('http://') ||
+      url.startsWith('https://')
     ) {
       return url;
     }
 
     if (
-      url.startsWith(
-        '/uploads'
-      )
+      url.startsWith('/uploads')
     ) {
       return (
         'https://lume-5mof.onrender.com' +
@@ -244,6 +253,7 @@ const Profile = () => {
     a,
     b
   ) => {
+
     if (
       a == null ||
       b == null
@@ -263,6 +273,7 @@ const Profile = () => {
     arr,
     id
   ) => {
+
     if (!Array.isArray(arr)) {
       return false;
     }
@@ -315,9 +326,7 @@ const Profile = () => {
 
         } catch (error) {
 
-          if (
-            cancelled
-          ) {
+          if (cancelled) {
             return;
           }
 
@@ -326,25 +335,32 @@ const Profile = () => {
             error
           );
 
-          alert(
-            'Ошибка загрузки профиля: ' +
-            (
-              error.response?.data?.message ||
-              error.message
-            )
-          );
+          showAlert({
+            title:
+              'Ошибка',
+
+            message:
+              'Ошибка загрузки профиля: ' +
+              (
+                error.response?.data?.message ||
+                error.message
+              ),
+          });
 
         } finally {
 
           if (!cancelled) {
+
             setLoading(
               false
             );
+
           }
 
         }
 
       };
+
 
     if (id) {
       fetchProfile();
@@ -354,7 +370,9 @@ const Profile = () => {
       cancelled = true;
     };
 
-  }, [id]);
+  }, [
+    id,
+  ]);
 
 
   // =========================================================
@@ -401,7 +419,9 @@ const Profile = () => {
       }
     );
 
-  }, [hoveredId]);
+  }, [
+    hoveredId,
+  ]);
 
 
   // =========================================================
@@ -454,6 +474,7 @@ const Profile = () => {
 
             const nextFollowers =
               nextFollowing
+
                 ? oldFollowers.some(
                     follower =>
                       sameId(
@@ -466,6 +487,7 @@ const Profile = () => {
                       ...oldFollowers,
                       currentUser._id
                     ]
+
                 : oldFollowers.filter(
                     follower =>
                       !sameId(
@@ -484,19 +506,22 @@ const Profile = () => {
                   nextFollowers
               }
             };
-
           }
         );
 
       } catch (error) {
 
-        alert(
-          'Ошибка подписки: ' +
-          (
-            error.response?.data?.message ||
-            error.message
-          )
-        );
+        showAlert({
+          title:
+            'Ошибка',
+
+          message:
+            'Ошибка подписки: ' +
+            (
+              error.response?.data?.message ||
+              error.message
+            ),
+        });
 
       }
 
@@ -524,9 +549,9 @@ const Profile = () => {
 
     const index =
       posts.findIndex(
-        p =>
+        item =>
           sameId(
-            p._id,
+            item._id,
             post._id
           )
       );
@@ -546,20 +571,29 @@ const Profile = () => {
     );
 
     setProgress(0);
-    setIsMuted(true);
+
+    setIsMuted(
+      true
+    );
+
+    setIsPlaying(
+      true
+    );
+
     setIsCommentsOpen(
       false
     );
+
     setIsEditMenuOpen(
       false
     );
+
     setOpenGridMenuId(
       null
     );
 
     document.body.style.overflow =
       'hidden';
-
   };
 
 
@@ -578,9 +612,19 @@ const Profile = () => {
         []
       );
 
-      setProgress(0);
+      setViewerIndex(
+        0
+      );
+
+      setProgress(
+        0
+      );
 
       setIsMuted(
+        true
+      );
+
+      setIsPlaying(
         true
       );
 
@@ -602,7 +646,6 @@ const Profile = () => {
 
       document.body.style.overflow =
         '';
-
     };
 
 
@@ -610,315 +653,81 @@ const Profile = () => {
   // NEXT
   // =========================================================
 
-  const goNext = () => {
+  const goNext =
+    () => {
 
-    if (
-      viewerIndex >=
-      viewerPosts.length - 1
-    ) {
-      return;
-    }
+      if (
+        viewerIndex >=
+        viewerPosts.length - 1
+      ) {
+        return;
+      }
 
-    const nextIndex =
-      viewerIndex + 1;
+      const nextIndex =
+        viewerIndex + 1;
 
-    setViewerIndex(
-      nextIndex
-    );
-
-    setViewerPost(
-      viewerPosts[
+      setViewerIndex(
         nextIndex
-      ]
-    );
+      );
 
-    setProgress(0);
+      setViewerPost(
+        viewerPosts[
+          nextIndex
+        ]
+      );
 
-    setIsCommentsOpen(
-      false
-    );
+      setProgress(
+        0
+      );
 
-  };
+      setIsPlaying(
+        true
+      );
+
+      setIsCommentsOpen(
+        false
+      );
+    };
 
 
   // =========================================================
   // PREVIOUS
   // =========================================================
 
-  const goPrev = () => {
+  const goPrev =
+    () => {
 
-    if (
-      viewerIndex <= 0
-    ) {
-      return;
-    }
+      if (
+        viewerIndex <= 0
+      ) {
+        return;
+      }
 
-    const prevIndex =
-      viewerIndex - 1;
+      const prevIndex =
+        viewerIndex - 1;
 
-    setViewerIndex(
-      prevIndex
-    );
-
-    setViewerPost(
-      viewerPosts[
+      setViewerIndex(
         prevIndex
-      ]
-    );
-
-    setProgress(0);
-
-    setIsCommentsOpen(
-      false
-    );
-
-  };
-
-
-  // =========================================================
-  // VIEWER SCROLL
-  // =========================================================
-
-  useEffect(() => {
-
-    if (!viewerPost) {
-      return;
-    }
-
-    const handleScroll =
-      e => {
-
-        const sidebar =
-          document.getElementById(
-            'lume-sidebar'
-          );
-
-        if (
-          sidebar &&
-          sidebar.contains(
-            e.target
-          )
-        ) {
-          return;
-        }
-
-        if (
-          e.target.tagName ===
-            'INPUT' ||
-          e.target.tagName ===
-            'TEXTAREA'
-        ) {
-          return;
-        }
-
-        e.preventDefault();
-
-        const delta =
-          e.deltaY ||
-          e.wheelDelta ||
-          0;
-
-        if (
-          Math.abs(delta) <
-          50
-        ) {
-          return;
-        }
-
-        if (delta > 0) {
-          goNext();
-        } else {
-          goPrev();
-        }
-
-      };
-
-    window.addEventListener(
-      'wheel',
-      handleScroll,
-      {
-        passive: false
-      }
-    );
-
-    return () => {
-
-      window.removeEventListener(
-        'wheel',
-        handleScroll
       );
 
-    };
-
-  }, [
-    viewerPost,
-    viewerIndex,
-    viewerPosts.length
-  ]);
-
-
-  // =========================================================
-  // KEYBOARD
-  // =========================================================
-
-  useEffect(() => {
-
-    const handleKeyDown =
-      e => {
-
-        if (
-          e.target.tagName ===
-            'INPUT' ||
-          e.target.tagName ===
-            'TEXTAREA'
-        ) {
-          return;
-        }
-
-        if (
-          e.key ===
-          'ArrowDown'
-        ) {
-          e.preventDefault();
-          goNext();
-        }
-
-        if (
-          e.key ===
-          'ArrowUp'
-        ) {
-          e.preventDefault();
-          goPrev();
-        }
-
-        if (
-          e.key ===
-          'Escape'
-        ) {
-
-          if (
-            isEditModalOpen
-          ) {
-
-            setIsEditModalOpen(
-              false
-            );
-
-          } else if (
-            viewerPost
-          ) {
-
-            closeViewer();
-
-          } else {
-
-            setOpenGridMenuId(
-              null
-            );
-
-          }
-
-        }
-
-        if (
-          e.key ===
-          ' '
-        ) {
-
-          if (
-            viewerPost
-          ) {
-            e.preventDefault();
-            handleVideoClick();
-          }
-
-        }
-
-      };
-
-    window.addEventListener(
-      'keydown',
-      handleKeyDown
-    );
-
-    return () => {
-
-      window.removeEventListener(
-        'keydown',
-        handleKeyDown
+      setViewerPost(
+        viewerPosts[
+          prevIndex
+        ]
       );
 
+      setProgress(
+        0
+      );
+
+      setIsPlaying(
+        true
+      );
+
+      setIsCommentsOpen(
+        false
+      );
     };
-
-  }, [
-    viewerPost,
-    isEditModalOpen
-  ]);
-
-
-  // =========================================================
-  // UPDATE POST EVERYWHERE
-  // =========================================================
-
-  const updatePostEverywhere = (
-    postId,
-    updater
-  ) => {
-
-    setViewerPosts(
-      prev =>
-        prev.map(
-          post =>
-            sameId(
-              post._id,
-              postId
-            )
-              ? updater(post)
-              : post
-        )
-    );
-
-    setProfileData(
-      prev => {
-
-        if (!prev) {
-          return prev;
-        }
-
-        return {
-          ...prev,
-
-          posts:
-            Array.isArray(
-              prev.posts
-            )
-              ? prev.posts.map(
-                  post =>
-                    sameId(
-                      post._id,
-                      postId
-                    )
-                      ? updater(post)
-                      : post
-                )
-              : []
-        };
-
-      }
-    );
-
-    setViewerPost(
-      prev =>
-        prev &&
-        sameId(
-          prev._id,
-          postId
-        )
-          ? updater(prev)
-          : prev
-    );
-
-  };
 
 
   // =========================================================
@@ -976,10 +785,11 @@ const Profile = () => {
         true
       );
 
-      updatePostEverywhere(
-        postId,
-        post => ({
 
+      const updateLocalPost =
+        (
+          post
+        ) => ({
           ...post,
 
           isLikedByMe:
@@ -987,24 +797,83 @@ const Profile = () => {
 
           likes:
             wasLiked
+
               ? (
                   post.likes ||
                   []
                 ).filter(
-                  id =>
+                  item =>
                     !sameId(
-                      id,
+                      item,
                       currentUser._id
                     )
                 )
+
               : [
-                  ...(post.likes ||
-                    []),
+                  ...(post.likes || []),
                   currentUser._id
                 ]
+        });
 
-        })
+
+      setViewerPosts(
+        prev =>
+          prev.map(
+            post =>
+              sameId(
+                post._id,
+                postId
+              )
+                ? updateLocalPost(
+                    post
+                  )
+                : post
+          )
       );
+
+      setProfileData(
+        prev => {
+
+          if (!prev) {
+            return prev;
+          }
+
+          return {
+            ...prev,
+
+            posts:
+              (
+                prev.posts ||
+                []
+              ).map(
+                post =>
+                  sameId(
+                    post._id,
+                    postId
+                  )
+                    ? updateLocalPost(
+                        post
+                      )
+                    : post
+              )
+          };
+
+        }
+      );
+
+      setViewerPost(
+        prev =>
+          prev &&
+          sameId(
+            prev._id,
+            postId
+          )
+            ? updateLocalPost(
+                prev
+              )
+            : prev
+      );
+
 
       try {
 
@@ -1013,16 +882,18 @@ const Profile = () => {
             `/posts/${postId}/like`
           );
 
-        updatePostEverywhere(
-          postId,
-          post => ({
+        const serverLiked =
+          Boolean(
+            res.data.isLiked
+          );
 
+
+        const applyServer =
+          post => ({
             ...post,
 
             isLikedByMe:
-              Boolean(
-                res.data.isLiked
-              ),
+              serverLiked,
 
             likes:
               Array.isArray(
@@ -1033,25 +904,91 @@ const Profile = () => {
                     post.likes ||
                     []
                   )
+          });
 
-          })
+
+        setViewerPosts(
+          prev =>
+            prev.map(
+              post =>
+                sameId(
+                  post._id,
+                  postId
+                )
+                  ? applyServer(
+                      post
+                    )
+                  : post
+            )
+        );
+
+        setProfileData(
+          prev => {
+
+            if (!prev) {
+              return prev;
+            }
+
+            return {
+              ...prev,
+
+              posts:
+                (
+                  prev.posts ||
+                  []
+                ).map(
+                  post =>
+                    sameId(
+                      post._id,
+                      postId
+                    )
+                      ? applyServer(
+                          post
+                        )
+                      : post
+                )
+            };
+
+          }
+        );
+
+        setViewerPost(
+          prev =>
+            prev &&
+            sameId(
+              prev._id,
+              postId
+            )
+              ? applyServer(
+                  prev
+                )
+              : prev
         );
 
       } catch (error) {
 
-        updatePostEverywhere(
-          postId,
-          () =>
-            originalPost
+        setViewerPost(
+          prev =>
+            prev &&
+            sameId(
+              prev._id,
+              postId
+            )
+              ? originalPost
+              : prev
         );
 
-        alert(
-          'Ошибка лайка: ' +
-          (
-            error.response?.data?.message ||
-            error.message
-          )
-        );
+        showAlert({
+          title:
+            'Ошибка',
+
+          message:
+            'Ошибка лайка: ' +
+            (
+              error.response?.data?.message ||
+              error.message
+            ),
+        });
 
       } finally {
 
@@ -1119,10 +1056,11 @@ const Profile = () => {
         true
       );
 
-      updatePostEverywhere(
-        postId,
-        post => ({
 
+      const updateLocalPost =
+        (
+          post
+        ) => ({
           ...post,
 
           isSavedByMe:
@@ -1130,24 +1068,83 @@ const Profile = () => {
 
           savedBy:
             wasSaved
+
               ? (
                   post.savedBy ||
                   []
                 ).filter(
-                  id =>
+                  item =>
                     !sameId(
-                      id,
+                      item,
                       currentUser._id
                     )
                 )
+
               : [
-                  ...(post.savedBy ||
-                    []),
+                  ...(post.savedBy || []),
                   currentUser._id
                 ]
+        });
 
-        })
+
+      setViewerPosts(
+        prev =>
+          prev.map(
+            post =>
+              sameId(
+                post._id,
+                postId
+              )
+                ? updateLocalPost(
+                    post
+                  )
+                : post
+          )
       );
+
+      setProfileData(
+        prev => {
+
+          if (!prev) {
+            return prev;
+          }
+
+          return {
+            ...prev,
+
+            posts:
+              (
+                prev.posts ||
+                []
+              ).map(
+                post =>
+                  sameId(
+                    post._id,
+                    postId
+                  )
+                    ? updateLocalPost(
+                        post
+                      )
+                    : post
+              )
+          };
+
+        }
+      );
+
+      setViewerPost(
+        prev =>
+          prev &&
+          sameId(
+            prev._id,
+            postId
+          )
+            ? updateLocalPost(
+                prev
+              )
+            : prev
+      );
+
 
       try {
 
@@ -1156,10 +1153,9 @@ const Profile = () => {
             `/posts/${postId}/save`
           );
 
-        updatePostEverywhere(
-          postId,
-          post => ({
 
+        const applyServer =
+          post => ({
             ...post,
 
             isSavedByMe:
@@ -1176,25 +1172,91 @@ const Profile = () => {
                     post.savedBy ||
                     []
                   )
+          });
 
-          })
+
+        setViewerPosts(
+          prev =>
+            prev.map(
+              post =>
+                sameId(
+                  post._id,
+                  postId
+                )
+                  ? applyServer(
+                      post
+                    )
+                  : post
+            )
+        );
+
+        setProfileData(
+          prev => {
+
+            if (!prev) {
+              return prev;
+            }
+
+            return {
+              ...prev,
+
+              posts:
+                (
+                  prev.posts ||
+                  []
+                ).map(
+                  post =>
+                    sameId(
+                      post._id,
+                      postId
+                    )
+                      ? applyServer(
+                          post
+                        )
+                      : post
+                )
+            };
+
+          }
+        );
+
+        setViewerPost(
+          prev =>
+            prev &&
+            sameId(
+              prev._id,
+              postId
+            )
+              ? applyServer(
+                  prev
+                )
+              : prev
         );
 
       } catch (error) {
 
-        updatePostEverywhere(
-          postId,
-          () =>
-            originalPost
+        setViewerPost(
+          prev =>
+            prev &&
+            sameId(
+              prev._id,
+              postId
+            )
+              ? originalPost
+              : prev
         );
 
-        alert(
-          'Ошибка сохранения: ' +
-          (
-            error.response?.data?.message ||
-            error.message
-          )
-        );
+        showAlert({
+          title:
+            'Ошибка',
+
+          message:
+            'Ошибка сохранения: ' +
+            (
+              error.response?.data?.message ||
+              error.message
+            ),
+        });
 
       } finally {
 
@@ -1204,6 +1266,146 @@ const Profile = () => {
 
       }
 
+    };
+
+
+  // =========================================================
+  // SHARE
+  // =========================================================
+
+  const handleShare =
+    async (
+      post
+    ) => {
+
+      if (
+        !post?._id
+      ) {
+        return;
+      }
+
+      const shareUrl =
+        `${window.location.origin}/post/${post._id}`;
+
+      const username =
+        post.user?.username ||
+        profileData?.user?.username ||
+        'user';
+
+      const shareText =
+        post.content?.trim()
+          ? post.content
+          : `Посмотри пост @${username} в Lume`;
+
+
+      // =======================================================
+      // NATIVE SHARE
+      // =======================================================
+
+      if (
+        typeof navigator !==
+          'undefined' &&
+        typeof navigator.share ===
+          'function'
+      ) {
+
+        try {
+
+          await navigator.share({
+            title:
+              `Пост @${username} в Lume`,
+            text:
+              shareText,
+            url:
+              shareUrl
+          });
+
+          return;
+
+        } catch (error) {
+
+          if (
+            error?.name ===
+            'AbortError'
+          ) {
+            return;
+          }
+
+        }
+      }
+
+
+      // =======================================================
+      // CLIPBOARD
+      // =======================================================
+
+      try {
+
+        if (
+          navigator.clipboard &&
+          window.isSecureContext
+        ) {
+
+          await navigator.clipboard.writeText(
+            shareUrl
+          );
+
+        } else {
+
+          const textarea =
+            document.createElement(
+              'textarea'
+            );
+
+          textarea.value =
+            shareUrl;
+
+          textarea.style.position =
+            'fixed';
+
+          textarea.style.opacity =
+            '0';
+
+          document.body.appendChild(
+            textarea
+          );
+
+          textarea.select();
+
+          document.execCommand(
+            'copy'
+          );
+
+          document.body.removeChild(
+            textarea
+          );
+        }
+
+
+        showAlert({
+          title:
+            'Ссылка скопирована',
+
+          message:
+            'Ссылка на этот пост скопирована в буфер обмена.',
+        });
+
+      } catch (error) {
+
+        console.error(
+          'Ошибка копирования ссылки:',
+          error
+        );
+
+        showAlert({
+          title:
+            'Ссылка на пост',
+
+          message:
+            shareUrl,
+        });
+
+      }
     };
 
 
@@ -1237,21 +1439,68 @@ const Profile = () => {
           );
 
         const newComment =
+          response.data.comment ||
           response.data;
 
-        updatePostEverywhere(
-          postId,
-          post => ({
 
-            ...post,
+        const addComment =
+          post => {
 
-            comments: [
-              ...(post.comments ||
-                []),
-              newComment
-            ]
+            if (
+              !sameId(
+                post._id,
+                postId
+              )
+            ) {
+              return post;
+            }
 
-          })
+            return {
+              ...post,
+
+              comments: [
+                ...(post.comments || []),
+                newComment
+              ]
+            };
+          };
+
+
+        setViewerPost(
+          prev =>
+            prev
+              ? addComment(
+                  prev
+                )
+              : prev
+        );
+
+        setViewerPosts(
+          prev =>
+            prev.map(
+              addComment
+            )
+        );
+
+        setProfileData(
+          prev => {
+
+            if (!prev) {
+              return prev;
+            }
+
+            return {
+              ...prev,
+
+              posts:
+                (
+                  prev.posts ||
+                  []
+                ).map(
+                  addComment
+                )
+            };
+          }
         );
 
         setCommentText(
@@ -1260,16 +1509,19 @@ const Profile = () => {
 
       } catch (error) {
 
-        alert(
-          'Ошибка добавления комментария: ' +
-          (
-            error.response?.data?.message ||
-            error.message
-          )
-        );
+        showAlert({
+          title:
+            'Ошибка',
+
+          message:
+            'Ошибка добавления комментария: ' +
+            (
+              error.response?.data?.message ||
+              error.message
+            ),
+        });
 
       }
-
     };
 
 
@@ -1291,57 +1543,95 @@ const Profile = () => {
           );
 
         const updatedComment =
-          response.data.comment;
+          response.data.comment ||
+          response.data;
+
 
         const updateComments =
-          comments => {
+          post => {
 
             if (
-              !Array.isArray(
-                comments
+              !sameId(
+                post._id,
+                postId
               )
             ) {
-              return [];
+              return post;
             }
 
-            return comments.map(
-              comment =>
-                sameId(
-                  comment._id,
-                  commentId
-                )
-                  ? updatedComment
-                  : comment
-            );
+            return {
+              ...post,
 
+              comments:
+                (
+                  post.comments ||
+                  []
+                ).map(
+                  comment =>
+                    sameId(
+                      comment._id,
+                      commentId
+                    )
+                      ? updatedComment
+                      : comment
+                )
+            };
           };
 
-        updatePostEverywhere(
-          postId,
-          post => ({
 
-            ...post,
+        setViewerPost(
+          prev =>
+            prev
+              ? updateComments(
+                  prev
+                )
+              : prev
+        );
 
-            comments:
-              updateComments(
-                post.comments
-              )
+        setViewerPosts(
+          prev =>
+            prev.map(
+              updateComments
+            )
+        );
 
-          })
+        setProfileData(
+          prev => {
+
+            if (!prev) {
+              return prev;
+            }
+
+            return {
+              ...prev,
+
+              posts:
+                (
+                  prev.posts ||
+                  []
+                ).map(
+                  updateComments
+                )
+            };
+
+          }
         );
 
       } catch (error) {
 
-        alert(
-          'Ошибка лайка комментария: ' +
-          (
-            error.response?.data?.message ||
-            error.message
-          )
-        );
+        showAlert({
+          title:
+            'Ошибка',
+
+          message:
+            'Ошибка лайка комментария: ' +
+            (
+              error.response?.data?.message ||
+              error.message
+            ),
+        });
 
       }
-
     };
 
 
@@ -1378,67 +1668,116 @@ const Profile = () => {
             }
           );
 
-        const {
-          reply,
-          commentId:
-            parentId
-        } = response.data;
+        const reply =
+          response.data.reply ||
+          response.data;
 
-        updatePostEverywhere(
-          postId,
-          post => ({
 
-            ...post,
+        const updateReplies =
+          post => {
 
-            comments:
-              Array.isArray(
-                post.comments
+            if (
+              !sameId(
+                post._id,
+                postId
               )
-                ? post.comments.map(
-                    comment =>
-                      sameId(
-                        comment._id,
-                        parentId
-                      )
-                        ? {
-                            ...comment,
+            ) {
+              return post;
+            }
 
-                            replies: [
-                              ...(comment.replies ||
-                                []),
-                              reply
-                            ]
-                          }
-                        : comment
-                  )
-                : []
+            return {
+              ...post,
 
-          })
+              comments:
+                (
+                  post.comments ||
+                  []
+                ).map(
+                  comment =>
+
+                    sameId(
+                      comment._id,
+                      commentId
+                    )
+
+                      ? {
+                          ...comment,
+
+                          replies: [
+                            ...(comment.replies || []),
+                            reply
+                          ]
+                        }
+
+                      : comment
+                )
+            };
+          };
+
+
+        setViewerPost(
+          prev =>
+            prev
+              ? updateReplies(
+                  prev
+                )
+              : prev
         );
+
+        setViewerPosts(
+          prev =>
+            prev.map(
+              updateReplies
+            )
+        );
+
+        setProfileData(
+          prev => {
+
+            if (!prev) {
+              return prev;
+            }
+
+            return {
+              ...prev,
+
+              posts:
+                (
+                  prev.posts ||
+                  []
+                ).map(
+                  updateReplies
+                )
+            };
+
+          }
+        );
+
 
         setReplyTexts(
           prev => ({
-
             ...prev,
 
             [commentId]:
               ''
-
           })
         );
 
       } catch (error) {
 
-        alert(
-          'Ошибка добавления ответа: ' +
-          (
-            error.response?.data?.message ||
-            error.message
-          )
-        );
+        showAlert({
+          title:
+            'Ошибка',
+
+          message:
+            'Ошибка добавления ответа: ' +
+            (
+              error.response?.data?.message ||
+              error.message
+            ),
+        });
 
       }
-
     };
 
 
@@ -1446,21 +1785,19 @@ const Profile = () => {
   // START EDIT COMMENT
   // =========================================================
 
-  const startEditComment =
-    (
-      commentId,
-      currentText
-    ) => {
+  const startEditComment = (
+    commentId,
+    currentText
+  ) => {
 
-      setEditingCommentId(
-        commentId
-      );
+    setEditingCommentId(
+      commentId
+    );
 
-      setEditCommentText(
-        currentText || ''
-      );
-
-    };
+    setEditCommentText(
+      currentText || ''
+    );
+  };
 
 
   // =========================================================
@@ -1495,41 +1832,59 @@ const Profile = () => {
         const serverComment =
           response.data.comment;
 
+
         const updateComments =
-          comments => {
+          post => {
 
             if (
-              !Array.isArray(
-                comments
+              !sameId(
+                post._id,
+                postId
               )
             ) {
-              return [];
+              return post;
             }
+
 
             if (!isReply) {
 
-              return comments.map(
-                comment =>
-                  sameId(
-                    comment._id,
-                    commentId
+              return {
+                ...post,
+
+                comments:
+                  (
+                    post.comments ||
+                    []
+                  ).map(
+                    comment =>
+                      sameId(
+                        comment._id,
+                        commentId
+                      )
+                        ? serverComment
+                        : comment
                   )
-                    ? serverComment
-                    : comment
-              );
+              };
 
             }
 
-            return comments.map(
-              comment => ({
 
-                ...comment,
+            return {
+              ...post,
 
-                replies:
-                  Array.isArray(
-                    comment.replies
-                  )
-                    ? comment.replies.map(
+              comments:
+                (
+                  post.comments ||
+                  []
+                ).map(
+                  comment => ({
+                    ...comment,
+
+                    replies:
+                      (
+                        comment.replies ||
+                        []
+                      ).map(
                         reply =>
                           sameId(
                             reply._id,
@@ -1538,26 +1893,50 @@ const Profile = () => {
                             ? serverComment
                             : reply
                       )
-                    : []
-
-              })
-            );
-
+                  })
+                )
+            };
           };
 
-        updatePostEverywhere(
-          postId,
-          post => ({
 
-            ...post,
-
-            comments:
-              updateComments(
-                post.comments
-              )
-
-          })
+        setViewerPost(
+          prev =>
+            prev
+              ? updateComments(
+                  prev
+                )
+              : prev
         );
+
+        setViewerPosts(
+          prev =>
+            prev.map(
+              updateComments
+            )
+        );
+
+        setProfileData(
+          prev => {
+
+            if (!prev) {
+              return prev;
+            }
+
+            return {
+              ...prev,
+
+              posts:
+                (
+                  prev.posts ||
+                  []
+                ).map(
+                  updateComments
+                )
+            };
+
+          }
+        );
+
 
         setEditingCommentId(
           null
@@ -1569,16 +1948,19 @@ const Profile = () => {
 
       } catch (error) {
 
-        alert(
-          'Ошибка редактирования: ' +
-          (
-            error.response?.data?.message ||
-            error.message
-          )
-        );
+        showAlert({
+          title:
+            'Ошибка',
+
+          message:
+            'Ошибка редактирования: ' +
+            (
+              error.response?.data?.message ||
+              error.message
+            ),
+        });
 
       }
-
     };
 
 
@@ -1587,104 +1969,161 @@ const Profile = () => {
   // =========================================================
 
   const deleteComment =
-    async (
+    (
       postId,
       commentId,
       isReply = false
     ) => {
 
-      if (
-        !window.confirm(
-          'Вы уверены, что хотите удалить этот комментарий?'
-        )
-      ) {
-        return;
-      }
+      showAlert({
+        title:
+          'Удаление комментария',
 
-      try {
+        message:
+          'Вы уверены, что хотите удалить этот комментарий?',
 
-        await axios.delete(
-          `/posts/${postId}/comments/${commentId}`,
-          {
-            data: {
-              isReply
-            }
-          }
-        );
+        confirmText:
+          'Удалить',
 
-        updatePostEverywhere(
-          postId,
-          post => {
+        cancelText:
+          'Отмена',
 
-            const comments =
-              Array.isArray(
-                post.comments
-              )
-                ? post.comments
-                : [];
+        showCancel:
+          true,
 
-            if (isReply) {
+        onConfirm:
+          async () => {
 
-              return {
+            try {
 
-                ...post,
+              await axios.delete(
+                `/posts/${postId}/comments/${commentId}`,
+                {
+                  data: {
+                    isReply
+                  }
+                }
+              );
 
-                comments:
-                  comments.map(
-                    comment => ({
 
-                      ...comment,
+              const updateComments =
+                post => {
 
-                      replies:
-                        Array.isArray(
-                          comment.replies
-                        )
-                          ? comment.replies.filter(
-                              reply =>
-                                !sameId(
-                                  reply._id,
-                                  commentId
-                                )
-                            )
-                          : []
-
-                    })
-                  )
-
-              };
-
-            }
-
-            return {
-
-              ...post,
-
-              comments:
-                comments.filter(
-                  comment =>
+                  if (
                     !sameId(
-                      comment._id,
-                      commentId
+                      post._id,
+                      postId
                     )
-                )
+                  ) {
+                    return post;
+                  }
 
-            };
+
+                  if (isReply) {
+
+                    return {
+                      ...post,
+
+                      comments:
+                        (
+                          post.comments ||
+                          []
+                        ).map(
+                          comment => ({
+                            ...comment,
+
+                            replies:
+                              (
+                                comment.replies ||
+                                []
+                              ).filter(
+                                reply =>
+                                  !sameId(
+                                    reply._id,
+                                    commentId
+                                  )
+                              )
+                          })
+                        )
+                    };
+
+                  }
+
+
+                  return {
+                    ...post,
+
+                    comments:
+                      (
+                        post.comments ||
+                        []
+                      ).filter(
+                        comment =>
+                          !sameId(
+                            comment._id,
+                            commentId
+                          )
+                      )
+                  };
+
+                };
+
+
+              setViewerPost(
+                prev =>
+                  prev
+                    ? updateComments(
+                        prev
+                      )
+                    : prev
+              );
+
+              setViewerPosts(
+                prev =>
+                  prev.map(
+                    updateComments
+                  )
+              );
+
+              setProfileData(
+                prev => {
+
+                  if (!prev) {
+                    return prev;
+                  }
+
+                  return {
+                    ...prev,
+
+                    posts:
+                      (
+                        prev.posts ||
+                        []
+                      ).map(
+                        updateComments
+                      )
+                  };
+                }
+              );
+
+            } catch (error) {
+
+              showAlert({
+                title:
+                  'Ошибка',
+
+                message:
+                  'Ошибка удаления: ' +
+                  (
+                    error.response?.data?.message ||
+                    error.message
+                  ),
+              });
+
+            }
 
           }
-        );
-
-      } catch (error) {
-
-        alert(
-          'Ошибка удаления: ' +
-          (
-            error.response?.data?.message ||
-            error.message
-          )
-        );
-
-      }
-
+      });
     };
 
 
@@ -1701,7 +2140,6 @@ const Profile = () => {
         prev =>
           !prev
       );
-
     };
 
 
@@ -1724,12 +2162,19 @@ const Profile = () => {
             () => {}
           );
 
+        setIsPlaying(
+          true
+        );
+
       } else {
 
         videoRef.current.pause();
 
-      }
+        setIsPlaying(
+          false
+        );
 
+      }
     };
 
 
@@ -1763,12 +2208,11 @@ const Profile = () => {
         );
 
       }
-
     };
 
 
   // =========================================================
-  // VIEWER EDIT MENU
+  // EDIT MENU
   // =========================================================
 
   const openEditMenu =
@@ -1780,14 +2224,15 @@ const Profile = () => {
         prev =>
           !prev
       );
-
     };
 
 
   const openEditModal =
     () => {
 
-      if (!viewerPost) {
+      if (
+        !viewerPost
+      ) {
         return;
       }
 
@@ -1800,8 +2245,13 @@ const Profile = () => {
           ''
       );
 
-      setEditFile(null);
-      setEditPreview(null);
+      setEditFile(
+        null
+      );
+
+      setEditPreview(
+        null
+      );
 
       setIsEditModalOpen(
         true
@@ -1810,13 +2260,8 @@ const Profile = () => {
       setIsEditMenuOpen(
         false
       );
-
     };
 
-
-  // =========================================================
-  // GRID EDIT
-  // =========================================================
 
   const openEditModalFromGrid =
     post => {
@@ -1845,7 +2290,6 @@ const Profile = () => {
       setIsEditModalOpen(
         true
       );
-
     };
 
 
@@ -1863,10 +2307,14 @@ const Profile = () => {
         return;
       }
 
-      if (editPreview) {
+      if (
+        editPreview
+      ) {
+
         URL.revokeObjectURL(
           editPreview
         );
+
       }
 
       setEditFile(
@@ -1878,7 +2326,6 @@ const Profile = () => {
           file
         )
       );
-
     };
 
 
@@ -1931,28 +2378,68 @@ const Profile = () => {
           );
 
         const updatedPost = {
-
           ...post,
-
           ...response.data,
 
           isLikedByMe:
-            response.data
-              .isLikedByMe ??
+            response.data.isLikedByMe ??
             post.isLikedByMe,
 
           isSavedByMe:
-            response.data
-              .isSavedByMe ??
-            post.isSavedByMe
-
+            response.data.isSavedByMe ??
+            post.isSavedByMe,
         };
 
-        updatePostEverywhere(
-          post._id,
-          () =>
-            updatedPost
+
+        const replacePost =
+          item =>
+            sameId(
+              item._id,
+              post._id
+            )
+              ? updatedPost
+              : item;
+
+
+        setViewerPosts(
+          prev =>
+            prev.map(
+              replacePost
+            )
         );
+
+        setProfileData(
+          prev => {
+
+            if (!prev) {
+              return prev;
+            }
+
+            return {
+              ...prev,
+
+              posts:
+                (
+                  prev.posts ||
+                  []
+                ).map(
+                  replacePost
+                )
+            };
+          }
+        );
+
+        setViewerPost(
+          prev =>
+            prev &&
+            sameId(
+              prev._id,
+              post._id
+            )
+              ? updatedPost
+              : prev
+        );
+
 
         setIsEditModalOpen(
           false
@@ -1970,7 +2457,9 @@ const Profile = () => {
           null
         );
 
-        if (editPreview) {
+        if (
+          editPreview
+        ) {
 
           URL.revokeObjectURL(
             editPreview
@@ -1982,15 +2471,27 @@ const Profile = () => {
           null
         );
 
+
+        showAlert({
+          title:
+            'Успех',
+          message:
+            'Пост успешно обновлён.',
+        });
+
       } catch (error) {
 
-        alert(
-          'Ошибка обновления: ' +
-          (
-            error.response?.data?.message ||
-            error.message
-          )
-        );
+        showAlert({
+          title:
+            'Ошибка',
+
+          message:
+            'Ошибка обновления: ' +
+            (
+              error.response?.data?.message ||
+              error.message
+            ),
+        });
 
       } finally {
 
@@ -1999,7 +2500,6 @@ const Profile = () => {
         );
 
       }
-
     };
 
 
@@ -2008,7 +2508,7 @@ const Profile = () => {
   // =========================================================
 
   const handleDeletePost =
-    async (
+    (
       postId
     ) => {
 
@@ -2019,154 +2519,342 @@ const Profile = () => {
         return;
       }
 
-      const confirmed =
-        window.confirm(
-          'Вы уверены, что хотите удалить этот пост?'
-        );
 
-      if (!confirmed) {
-        return;
-      }
+      showAlert({
+        title:
+          'Удаление поста',
 
-      setIsUpdating(
-        true
-      );
+        message:
+          'Вы уверены, что хотите удалить этот пост?',
 
-      try {
+        confirmText:
+          'Удалить',
 
-        await axios.delete(
-          `/posts/${postId}`
-        );
+        cancelText:
+          'Отмена',
 
-        // ---------------------------------------------------
-        // Remove from profile posts
-        // ---------------------------------------------------
+        showCancel:
+          true,
 
-        setProfileData(
-          prev => {
+        onConfirm:
+          async () => {
 
-            if (!prev) {
-              return prev;
-            }
+            setIsUpdating(
+              true
+            );
 
-            return {
+            try {
 
-              ...prev,
-
-              posts:
-                Array.isArray(
-                  prev.posts
-                )
-                  ? prev.posts.filter(
-                      post =>
-                        !sameId(
-                          post._id,
-                          postId
-                        )
-                    )
-                  : []
-
-            };
-
-          }
-        );
+              await axios.delete(
+                `/posts/${postId}`
+              );
 
 
-        // ---------------------------------------------------
-        // Remove from viewer posts
-        // ---------------------------------------------------
+              setProfileData(
+                prev => {
 
-        setViewerPosts(
-          prev =>
-            prev.filter(
-              post =>
-                !sameId(
-                  post._id,
+                  if (!prev) {
+                    return prev;
+                  }
+
+                  return {
+                    ...prev,
+
+                    posts:
+                      (
+                        prev.posts ||
+                        []
+                      ).filter(
+                        post =>
+                          !sameId(
+                            post._id,
+                            postId
+                          )
+                      )
+                  };
+
+                }
+              );
+
+
+              setViewerPosts(
+                prev =>
+                  prev.filter(
+                    post =>
+                      !sameId(
+                        post._id,
+                        postId
+                      )
+                  )
+              );
+
+
+              if (
+                viewerPost &&
+                sameId(
+                  viewerPost._id,
                   postId
                 )
-            )
-        );
+              ) {
+
+                setViewerPost(
+                  null
+                );
+
+                document.body.style.overflow =
+                  '';
+
+              }
 
 
-        // ---------------------------------------------------
-        // If deleted post is opened in viewer
-        // close viewer
-        // ---------------------------------------------------
+              setOpenGridMenuId(
+                null
+              );
+
+              setEditingPost(
+                null
+              );
+
+              showAlert({
+                title:
+                  'Пост удалён',
+
+                message:
+                  'Пост успешно удалён.',
+              });
+
+            } catch (error) {
+
+              showAlert({
+                title:
+                  'Ошибка',
+
+                message:
+                  'Ошибка удаления: ' +
+                  (
+                    error.response?.data?.message ||
+                    error.message
+                  ),
+              });
+
+            } finally {
+
+              setIsUpdating(
+                false
+              );
+
+            }
+
+          }
+      });
+    };
+
+
+  // =========================================================
+  // WHEEL NAVIGATION
+  // =========================================================
+
+  useEffect(() => {
+
+    if (!viewerPost) {
+      return;
+    }
+
+    const handleWheel =
+      e => {
+
+        const sidebar =
+          document.getElementById(
+            'lume-sidebar'
+          );
 
         if (
-          viewerPost &&
-          sameId(
-            viewerPost._id,
-            postId
+          sidebar &&
+          sidebar.contains(
+            e.target
           )
         ) {
+          return;
+        }
 
-          setViewerPost(
-            null
-          );
+        if (
+          isCommentsOpen ||
+          isEditModalOpen
+        ) {
+          return;
+        }
 
-          setViewerIndex(
-            0
-          );
+        if (
+          e.target.tagName ===
+            'INPUT' ||
+          e.target.tagName ===
+            'TEXTAREA'
+        ) {
+          return;
+        }
 
-          setProgress(
-            0
-          );
+        const delta =
+          e.deltaY ||
+          e.wheelDelta ||
+          0;
 
-          setIsCommentsOpen(
-            false
-          );
+        if (
+          Math.abs(delta) <
+          50
+        ) {
+          return;
+        }
 
-          setIsEditMenuOpen(
-            false
-          );
+        e.preventDefault();
 
-          document.body.style.overflow =
-            '';
+        if (
+          delta > 0
+        ) {
+
+          goNext();
+
+        } else {
+
+          goPrev();
 
         }
 
+      };
 
-        // ---------------------------------------------------
-        // Close menus
-        // ---------------------------------------------------
 
-        setOpenGridMenuId(
-          null
-        );
-
-        setEditingPost(
-          null
-        );
-
-        alert(
-          'Пост удалён!'
-        );
-
-      } catch (error) {
-
-        console.error(
-          'Ошибка удаления поста:',
-          error
-        );
-
-        alert(
-          'Ошибка удаления: ' +
-          (
-            error.response?.data?.message ||
-            error.message
-          )
-        );
-
-      } finally {
-
-        setIsUpdating(
+    window.addEventListener(
+      'wheel',
+      handleWheel,
+      {
+        passive:
           false
-        );
-
       }
+    );
+
+
+    return () => {
+
+      window.removeEventListener(
+        'wheel',
+        handleWheel
+      );
 
     };
+
+  }, [
+    viewerPost,
+    viewerIndex,
+    viewerPosts.length,
+    isCommentsOpen,
+    isEditModalOpen,
+  ]);
+
+
+  // =========================================================
+  // KEYBOARD
+  // =========================================================
+
+  useEffect(() => {
+
+    const handleKeyDown =
+      e => {
+
+        if (
+          e.target.tagName ===
+            'INPUT' ||
+          e.target.tagName ===
+            'TEXTAREA'
+        ) {
+          return;
+        }
+
+        if (
+          e.key ===
+          'ArrowDown'
+        ) {
+
+          e.preventDefault();
+
+          if (viewerPost) {
+            goNext();
+          }
+
+        } else if (
+          e.key ===
+          'ArrowUp'
+        ) {
+
+          e.preventDefault();
+
+          if (viewerPost) {
+            goPrev();
+          }
+
+        } else if (
+          e.key ===
+          'Escape'
+        ) {
+
+          if (
+            isEditModalOpen
+          ) {
+
+            setIsEditModalOpen(
+              false
+            );
+
+          } else if (
+            viewerPost
+          ) {
+
+            closeViewer();
+
+          } else {
+
+            setOpenGridMenuId(
+              null
+            );
+
+          }
+
+        } else if (
+          e.key ===
+          ' '
+        ) {
+
+          if (
+            viewerPost
+          ) {
+
+            e.preventDefault();
+
+            handleVideoClick();
+
+          }
+
+        }
+
+      };
+
+
+    window.addEventListener(
+      'keydown',
+      handleKeyDown
+    );
+
+    return () => {
+
+      window.removeEventListener(
+        'keydown',
+        handleKeyDown
+      );
+
+    };
+
+  }, [
+    viewerPost,
+    isEditModalOpen,
+  ]);
 
 
   // =========================================================
@@ -2180,7 +2868,9 @@ const Profile = () => {
       document.body.style.overflow =
         '';
 
-      if (editPreview) {
+      if (
+        editPreview
+      ) {
 
         URL.revokeObjectURL(
           editPreview
@@ -2190,7 +2880,9 @@ const Profile = () => {
 
     };
 
-  }, [editPreview]);
+  }, [
+    editPreview
+  ]);
 
 
   // =========================================================
@@ -2200,7 +2892,11 @@ const Profile = () => {
   if (loading) {
 
     return (
-      <div className="text-center p-10 text-white/50">
+      <div className="
+        text-center
+        p-10
+        text-white/50
+      ">
         Загрузка профиля...
       </div>
     );
@@ -2211,7 +2907,11 @@ const Profile = () => {
   if (!profileData) {
 
     return (
-      <div className="text-center p-10 text-white/50">
+      <div className="
+        text-center
+        p-10
+        text-white/50
+      ">
         Пользователь не найден
       </div>
     );
@@ -2221,7 +2921,7 @@ const Profile = () => {
 
   const {
     user,
-    posts = []
+    posts = [],
   } = profileData;
 
 
@@ -2237,7 +2937,13 @@ const Profile = () => {
   // =========================================================
 
   return (
-    <div className="w-full h-full relative">
+
+    <div className="
+      w-full
+      h-full
+      relative
+    ">
+
 
       {/* =====================================================
           VIEWER
@@ -2249,53 +2955,146 @@ const Profile = () => {
 
           <motion.div
             initial={{
-              opacity: 0
+              opacity:
+                0
             }}
             animate={{
-              opacity: 1
+              opacity:
+                1
             }}
             exit={{
-              opacity: 0
+              opacity:
+                0
             }}
-            className="fixed top-0 right-0 bottom-0 left-[260px] z-50 bg-[#0a0a0a] flex items-center justify-center overflow-hidden"
+            className="
+              fixed
+              top-0
+              right-0
+              bottom-0
+              left-[260px]
+              z-50
+              bg-[#0a0a0a]
+              flex
+              items-center
+              justify-center
+              overflow-hidden
+            "
           >
 
             <div
-              className="flex flex-row items-center justify-center gap-4 md:gap-8 w-full h-full max-w-[1000px] mx-auto px-4"
+              className="
+                flex
+                flex-row
+                items-center
+                justify-center
+                gap-4
+                md:gap-8
+                w-full
+                h-full
+                max-w-[1000px]
+                mx-auto
+                px-4
+              "
               onClick={e =>
                 e.stopPropagation()
               }
             >
 
+
+              {/* =================================================
+                  CLOSE
+              ================================================== */}
+
               <button
-                onClick={() =>
-                  closeViewer()
+                onClick={
+                  closeViewer
                 }
-                className="absolute top-4 right-4 z-50 text-white/80 hover:text-white p-2 bg-black/60 rounded-full backdrop-blur-sm transition"
+                className="
+                  absolute
+                  top-4
+                  right-4
+                  z-50
+                  text-white/80
+                  hover:text-white
+                  p-2
+                  bg-black/60
+                  rounded-full
+                  backdrop-blur-sm
+                  transition
+                "
               >
                 ✕
               </button>
 
 
               <div
-                className={`flex flex-row items-center justify-center gap-4 md:gap-8 transition-all duration-300 ease-in-out w-full ${
-                  isCommentsOpen
-                    ? 'translate-x-[-180px]'
-                    : 'translate-x-0'
-                }`}
+                className={`
+                  flex
+                  flex-row
+                  items-center
+                  justify-center
+                  gap-4
+                  md:gap-8
+                  transition-all
+                  duration-300
+                  ease-in-out
+                  w-full
+
+                  ${
+                    isCommentsOpen
+                      ? 'translate-x-[-180px]'
+                      : 'translate-x-0'
+                  }
+                `}
               >
 
-                {/* MEDIA */}
 
-                <div className="flex-1 flex items-center justify-center min-w-0 h-full">
+                {/* =================================================
+                    MEDIA
+                ================================================== */}
 
-                  <div className="relative w-full max-w-[450px] lg:max-w-[650px] aspect-[1/1] max-h-[85vh] rounded-[24px] overflow-hidden bg-black shadow-2xl">
+                <div className="
+                  flex-1
+                  flex
+                  items-center
+                  justify-center
+                  min-w-0
+                  h-full
+                ">
+
+                  <div className="
+                    relative
+                    w-full
+                    max-w-[450px]
+                    lg:max-w-[650px]
+                    aspect-[1/1]
+                    max-h-[85vh]
+                    rounded-[24px]
+                    overflow-hidden
+                    bg-black
+                    shadow-2xl
+                  ">
+
+
+                    {/* MUTE */}
 
                     <button
                       onClick={
                         toggleMute
                       }
-                      className="absolute top-4 left-4 z-30 bg-black/60 backdrop-blur-sm hover:bg-black/80 p-2 rounded-full text-white transition"
+                      className="
+                        absolute
+                        top-4
+                        left-4
+                        z-30
+                        bg-black/60
+                        backdrop-blur-sm
+                        hover:bg-black/80
+                        p-2
+                        rounded-full
+                        text-white
+                        transition
+                      "
                     >
                       {isMuted
                         ? '🔇'
@@ -2303,7 +3102,17 @@ const Profile = () => {
                     </button>
 
 
-                    <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
+                    {/* AUTHOR MENU */}
+
+                    <div className="
+                      absolute
+                      top-4
+                      right-4
+                      z-30
+                      flex
+                      items-center
+                      gap-2
+                    ">
 
                       {currentUser &&
                         sameId(
@@ -2311,85 +3120,171 @@ const Profile = () => {
                           viewerPost.user?._id
                         ) && (
 
-                          <>
+                        <>
+                          <button
+                            onClick={
+                              openEditMenu
+                            }
+                            className="
+                              bg-black/60
+                              backdrop-blur-sm
+                              hover:bg-black/80
+                              p-2
+                              rounded-full
+                              text-white
+                              transition
+                            "
+                          >
+                            <FiMoreVertical
+                              size={20}
+                            />
+                          </button>
 
-                            <button
-                              onClick={
-                                openEditMenu
-                              }
-                              className="bg-black/60 backdrop-blur-sm hover:bg-black/80 p-2 rounded-full text-white transition"
-                            >
-                              <FiMoreVertical
-                                size={20}
-                              />
-                            </button>
 
+                          <AnimatePresence>
 
-                            <AnimatePresence>
+                            {isEditMenuOpen && (
 
-                              {isEditMenuOpen && (
+                              <motion.div
+                                initial={{
+                                  opacity:
+                                    0,
+                                  scale:
+                                    0.8,
+                                  y:
+                                    -10
+                                }}
+                                animate={{
+                                  opacity:
+                                    1,
+                                  scale:
+                                    1,
+                                  y:
+                                    0
+                                }}
+                                exit={{
+                                  opacity:
+                                    0,
+                                  scale:
+                                    0.8,
+                                  y:
+                                    -10
+                                }}
+                                className="
+                                  absolute
+                                  right-0
+                                  top-12
+                                  bg-black/90
+                                  backdrop-blur-md
+                                  border
+                                  border-white/10
+                                  rounded-xl
+                                  p-2
+                                  min-w-[140px]
+                                  shadow-2xl
+                                "
+                              >
 
-                                <motion.div
-                                  initial={{
-                                    opacity: 0,
-                                    scale: 0.8,
-                                    y: -10
-                                  }}
-                                  animate={{
-                                    opacity: 1,
-                                    scale: 1,
-                                    y: 0
-                                  }}
-                                  exit={{
-                                    opacity: 0,
-                                    scale: 0.8,
-                                    y: -10
-                                  }}
-                                  className="absolute right-0 top-12 bg-black/90 backdrop-blur-md border border-white/10 rounded-xl p-2 min-w-[140px] shadow-2xl"
+                                <button
+                                  onClick={
+                                    openEditModal
+                                  }
+                                  className="
+                                    flex
+                                    items-center
+                                    gap-2
+                                    w-full
+                                    px-3
+                                    py-2
+                                    text-white/80
+                                    hover:text-white
+                                    hover:bg-white/5
+                                    rounded-lg
+                                    transition
+                                  "
                                 >
+                                  <FiEdit2
+                                    size={16}
+                                  />
 
-                                  <button
-                                    onClick={
-                                      openEditModal
-                                    }
-                                    className="flex items-center gap-2 w-full px-3 py-2 text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition"
-                                  >
-                                    <FiEdit2
-                                      size={16}
-                                    />
+                                  <span className="
+                                    text-sm
+                                  ">
+                                    Изменить
+                                  </span>
+                                </button>
 
-                                    <span className="text-sm">
-                                      Изменить
-                                    </span>
-                                  </button>
 
-                                </motion.div>
+                                <button
+                                  onClick={() => {
 
-                              )}
+                                    setIsEditMenuOpen(
+                                      false
+                                    );
 
-                            </AnimatePresence>
+                                    handleDeletePost(
+                                      viewerPost._id
+                                    );
 
-                          </>
+                                  }}
+                                  className="
+                                    flex
+                                    items-center
+                                    gap-2
+                                    w-full
+                                    px-3
+                                    py-2
+                                    text-red-400
+                                    hover:text-red-300
+                                    hover:bg-red-500/10
+                                    rounded-lg
+                                    transition
+                                  "
+                                >
+                                  <FaTrash
+                                    size={14}
+                                  />
 
-                        )}
+                                  <span className="
+                                    text-sm
+                                  ">
+                                    Удалить
+                                  </span>
+                                </button>
 
-                      <button
-                        onClick={
-                          closeViewer
-                        }
-                        className="bg-black/60 backdrop-blur-sm hover:bg-black/80 p-2 rounded-full text-white transition"
-                      >
-                        ✕
-                      </button>
+                              </motion.div>
+
+                            )}
+
+                          </AnimatePresence>
+                        </>
+
+                      )}
+
+
+                      {!(
+                        currentUser &&
+                        sameId(
+                          currentUser._id,
+                          viewerPost.user?._id
+                        )
+                      ) && null}
 
                     </div>
 
+
+                    {/* MEDIA AREA */}
 
                     <div
                       onClick={
                         handleVideoClick
                       }
-                      className="w-full h-full relative"
+                      className="
+                        w-full
+                        h-full
+                        relative
+                        cursor-pointer
+                      "
                     >
 
                       <AnimatePresence
@@ -2401,18 +3296,26 @@ const Profile = () => {
                             viewerPost._id
                           }
                           initial={{
-                            opacity: 0
+                            opacity:
+                              0
                           }}
                           animate={{
-                            opacity: 1
+                            opacity:
+                              1
                           }}
                           exit={{
-                            opacity: 0
+                            opacity:
+                              0
                           }}
                           transition={{
-                            duration: 0.3
+                            duration:
+                              0.3
                           }}
-                          className="w-full h-full relative"
+                          className="
+                            w-full
+                            h-full
+                            relative
+                          "
                         >
 
                           {viewerPost.mediaUrl ? (
@@ -2429,7 +3332,11 @@ const Profile = () => {
                                     viewerPost.mediaUrl
                                   )
                                 }
-                                className="w-full h-full object-cover"
+                                className="
+                                  w-full
+                                  h-full
+                                  object-cover
+                                "
                                 autoPlay
                                 loop
                                 playsInline
@@ -2438,6 +3345,16 @@ const Profile = () => {
                                 }
                                 onTimeUpdate={
                                   handleTimeUpdate
+                                }
+                                onPlay={() =>
+                                  setIsPlaying(
+                                    true
+                                  )
+                                }
+                                onPause={() =>
+                                  setIsPlaying(
+                                    false
+                                  )
                                 }
                               />
 
@@ -2449,7 +3366,11 @@ const Profile = () => {
                                     viewerPost.mediaUrl
                                   )
                                 }
-                                className="w-full h-full object-cover"
+                                className="
+                                  w-full
+                                  h-full
+                                  object-cover
+                                "
                                 alt="Post"
                               />
 
@@ -2457,24 +3378,78 @@ const Profile = () => {
 
                           ) : (
 
-                            <div className="w-full h-full bg-gray-800 flex items-center justify-center text-white/30 text-4xl font-bold text-center p-4">
-                              {
-                                viewerPost.content
-                              }
+                            <div className="
+                              w-full
+                              h-full
+                              bg-gray-800
+                              flex
+                              items-center
+                              justify-center
+                              text-white/30
+                              text-4xl
+                              font-bold
+                              text-center
+                              p-4
+                            ">
+                              {viewerPost.content}
                             </div>
 
                           )}
 
-                          <div className="absolute bottom-0 left-0 right-0 h-[40%] bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none rounded-b-[24px]" />
 
-                          <div className="absolute bottom-6 left-4 z-10 text-left">
+                          {/* GRADIENT */}
+
+                          <div className="
+                            absolute
+                            bottom-0
+                            left-0
+                            right-0
+                            h-[40%]
+                            bg-gradient-to-t
+                            from-black/90
+                            via-black/40
+                            to-transparent
+                            pointer-events-none
+                            rounded-b-[24px]
+                          " />
+
+
+                          {/* AUTHOR */}
+
+                          <div className="
+                            absolute
+                            bottom-6
+                            left-4
+                            z-10
+                            text-left
+                          ">
 
                             <Link
                               to={`/profile/${viewerPost.user?._id}`}
-                              className="inline-flex items-center gap-3 mb-2 hover:opacity-80 transition"
+                              className="
+                                inline-flex
+                                items-center
+                                gap-3
+                                mb-2
+                                hover:opacity-80
+                                transition
+                              "
                             >
 
-                              <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white font-bold text-xs overflow-hidden shrink-0">
+                              <div className="
+                                w-8
+                                h-8
+                                rounded-full
+                                bg-accent
+                                flex
+                                items-center
+                                justify-center
+                                text-white
+                                font-bold
+                                text-xs
+                                overflow-hidden
+                                shrink-0
+                              ">
 
                                 {viewerPost.user?.avatar ? (
 
@@ -2483,49 +3458,153 @@ const Profile = () => {
                                       viewerPost.user.avatar
                                     }
                                     alt="Avatar"
-                                    className="w-full h-full object-cover"
+                                    className="
+                                      w-full
+                                      h-full
+                                      object-cover
+                                    "
                                   />
 
                                 ) : (
 
                                   viewerPost.user?.username
-                                    ?.charAt(
-                                      0
-                                    )
+                                    ?.charAt(0)
                                     .toUpperCase()
 
                                 )}
 
                               </div>
 
-                              <span className="text-white font-bold text-base drop-shadow-lg">
-                                @
-                                {
-                                  viewerPost.user?.username
-                                }
-                              </span>
+                              <div className="
+                                flex
+                                items-center
+                                gap-1
+                              ">
+
+                                <span className="
+                                  text-white
+                                  font-bold
+                                  text-base
+                                  drop-shadow-lg
+                                ">
+                                  @{viewerPost.user?.username}
+                                </span>
+
+                                {viewerPost.user?.isVerified && (
+                                  <span className="
+                                    text-blue-500
+                                    text-lg
+                                  ">
+                                    ✓
+                                  </span>
+                                )}
+
+                              </div>
 
                             </Link>
 
-                            <p className="text-white/90 text-sm drop-shadow-md leading-relaxed max-w-[80%]">
-                              {
-                                viewerPost.content
-                              }
+
+                            <p className="
+                              text-white/90
+                              text-sm
+                              drop-shadow-md
+                              leading-relaxed
+                              max-w-[80%]
+                            ">
+                              {viewerPost.content}
                             </p>
 
                           </div>
 
 
-                          <div className="absolute bottom-0 left-0 w-full h-1 bg-white/20 z-20">
+                          {/* PROGRESS */}
+
+                          <div className="
+                            absolute
+                            bottom-0
+                            left-0
+                            w-full
+                            h-1
+                            bg-white/20
+                            z-20
+                          ">
 
                             <div
-                              className="h-full bg-red-500 transition-all duration-100"
+                              className="
+                                h-full
+                                bg-red-500
+                                transition-all
+                                duration-100
+                              "
                               style={{
-                                width: `${progress}%`
+                                width:
+                                  `${progress}%`
                               }}
                             />
 
                           </div>
+
+
+                          {/* PLAY ICON */}
+
+                          <AnimatePresence>
+
+                            {!isPlaying && (
+
+                              <motion.div
+                                initial={{
+                                  opacity:
+                                    0,
+                                  scale:
+                                    0.5
+                                }}
+                                animate={{
+                                  opacity:
+                                    1,
+                                  scale:
+                                    1
+                                }}
+                                exit={{
+                                  opacity:
+                                    0,
+                                  scale:
+                                    0.5
+                                }}
+                                className="
+                                  absolute
+                                  inset-0
+                                  flex
+                                  items-center
+                                  justify-center
+                                  z-20
+                                  pointer-events-none
+                                "
+                              >
+
+                                <div className="
+                                  w-16
+                                  h-16
+                                  bg-black/60
+                                  backdrop-blur-md
+                                  rounded-full
+                                  flex
+                                  items-center
+                                  justify-center
+                                  text-white
+                                  shadow-lg
+                                ">
+                                  <span className="
+                                    text-2xl
+                                  ">
+                                    ▶
+                                  </span>
+                                </div>
+
+                              </motion.div>
+
+                            )}
+
+                          </AnimatePresence>
 
                         </motion.div>
 
@@ -2538,17 +3617,47 @@ const Profile = () => {
                 </div>
 
 
-                {/* ACTIONS */}
+                {/* =================================================
+                    ACTION BUTTONS
+                ================================================== */}
 
-                <div className="flex flex-col items-center gap-4 py-4 shrink-0 min-w-[60px] md:min-w-[80px]">
+                <div className="
+                  flex
+                  flex-col
+                  items-center
+                  gap-4
+                  py-4
+                  shrink-0
+                  min-w-[60px]
+                  md:min-w-[80px]
+                ">
 
-                  <div className="relative">
+
+                  {/* PROFILE */}
+
+                  <div className="
+                    relative
+                  ">
 
                     <Link
                       to={`/profile/${viewerPost.user?._id}`}
                     >
 
-                      <div className="w-12 h-12 rounded-full border-[2px] border-white/30 bg-gray-800 flex items-center justify-center overflow-hidden cursor-pointer hover:border-accent transition">
+                      <div className="
+                        w-12
+                        h-12
+                        rounded-full
+                        border-[2px]
+                        border-white/30
+                        bg-gray-800
+                        flex
+                        items-center
+                        justify-center
+                        overflow-hidden
+                        cursor-pointer
+                        hover:border-accent
+                        transition
+                      ">
 
                         {viewerPost.user?.avatar ? (
 
@@ -2557,16 +3666,22 @@ const Profile = () => {
                               viewerPost.user.avatar
                             }
                             alt="Avatar"
-                            className="w-full h-full object-cover"
+                            className="
+                              w-full
+                              h-full
+                              object-cover
+                            "
                           />
 
                         ) : (
 
-                          <span className="text-white font-bold text-lg">
+                          <span className="
+                            text-white
+                            font-bold
+                            text-lg
+                          ">
                             {viewerPost.user?.username
-                              ?.charAt(
-                                0
-                              )
+                              ?.charAt(0)
                               .toUpperCase()}
                           </span>
 
@@ -2582,7 +3697,13 @@ const Profile = () => {
                   {/* LIKE */}
 
                   <div
-                    className="flex flex-col items-center gap-1 cursor-pointer"
+                    className="
+                      flex
+                      flex-col
+                      items-center
+                      gap-1
+                      cursor-pointer
+                    "
                     onClick={() =>
                       handleLike(
                         viewerPost._id
@@ -2590,35 +3711,48 @@ const Profile = () => {
                     }
                   >
 
-                    <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
+                    <div className="
+                      w-12
+                      h-12
+                      rounded-full
+                      bg-black/60
+                      backdrop-blur-md
+                      border
+                      border-white/10
+                      flex
+                      items-center
+                      justify-center
+                      hover:bg-black/80
+                      transition
+                    ">
 
-                      <span
-                        className={`text-xl ${
-                          viewerPost.isLikedByMe ||
-                          isIdInArray(
-                            viewerPost.likes,
-                            currentUser?._id
-                          )
-                            ? 'text-red-500'
-                            : 'text-white/80'
-                        }`}
-                      >
+                      {viewerPost.isLikedByMe ||
+                      isIdInArray(
+                        viewerPost.likes,
+                        currentUser?._id
+                      ) ? (
 
-                        {viewerPost.isLikedByMe ||
-                        isIdInArray(
-                          viewerPost.likes,
-                          currentUser?._id
-                        ) ? (
-                          <FaHeart />
-                        ) : (
-                          <FaRegHeart />
-                        )}
+                        <FaHeart className="
+                          text-red-500
+                          text-xl
+                        " />
 
-                      </span>
+                      ) : (
+
+                        <FaRegHeart className="
+                          text-white/80
+                          text-xl
+                        " />
+
+                      )}
 
                     </div>
 
-                    <span className="text-white/80 text-[11px] font-bold">
+                    <span className="
+                      text-white/80
+                      text-[11px]
+                      font-bold
+                    ">
                       {viewerPost.likes?.length ||
                         0}
                     </span>
@@ -2629,7 +3763,13 @@ const Profile = () => {
                   {/* COMMENTS */}
 
                   <div
-                    className="flex flex-col items-center gap-1 cursor-pointer"
+                    className="
+                      flex
+                      flex-col
+                      items-center
+                      gap-1
+                      cursor-pointer
+                    "
                     onClick={() =>
                       setIsCommentsOpen(
                         prev =>
@@ -2638,13 +3778,31 @@ const Profile = () => {
                     }
                   >
 
-                    <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
-
-                      <FaComment className="text-white/80 text-xl" />
-
+                    <div className="
+                      w-12
+                      h-12
+                      rounded-full
+                      bg-black/60
+                      backdrop-blur-md
+                      border
+                      border-white/10
+                      flex
+                      items-center
+                      justify-center
+                      hover:bg-black/80
+                      transition
+                    ">
+                      <FaComment className="
+                        text-white/80
+                        text-xl
+                      " />
                     </div>
 
-                    <span className="text-white/80 text-[11px] font-bold">
+                    <span className="
+                      text-white/80
+                      text-[11px]
+                      font-bold
+                    ">
                       {viewerPost.comments?.length ||
                         0}
                     </span>
@@ -2655,7 +3813,13 @@ const Profile = () => {
                   {/* SAVE */}
 
                   <div
-                    className="flex flex-col items-center gap-1 cursor-pointer"
+                    className="
+                      flex
+                      flex-col
+                      items-center
+                      gap-1
+                      cursor-pointer
+                    "
                     onClick={() =>
                       handleSave(
                         viewerPost._id
@@ -2663,7 +3827,20 @@ const Profile = () => {
                     }
                   >
 
-                    <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition">
+                    <div className="
+                      w-12
+                      h-12
+                      rounded-full
+                      bg-black/60
+                      backdrop-blur-md
+                      border
+                      border-white/10
+                      flex
+                      items-center
+                      justify-center
+                      hover:bg-black/80
+                      transition
+                    ">
 
                       {viewerPost.isSavedByMe ||
                       isIdInArray(
@@ -2671,17 +3848,27 @@ const Profile = () => {
                         currentUser?._id
                       ) ? (
 
-                        <FaBookmark className="text-yellow-400 text-xl" />
+                        <FaBookmark className="
+                          text-yellow-400
+                          text-xl
+                        " />
 
                       ) : (
 
-                        <FiBookmark className="text-white/80 text-xl" />
+                        <FiBookmark className="
+                          text-white/80
+                          text-xl
+                        " />
 
                       )}
 
                     </div>
 
-                    <span className="text-white/80 text-[11px] font-bold">
+                    <span className="
+                      text-white/80
+                      text-[11px]
+                      font-bold
+                    ">
                       {viewerPost.savedBy?.length ||
                         0}
                     </span>
@@ -2689,9 +3876,63 @@ const Profile = () => {
                   </div>
 
 
+                  {/* SHARE */}
+
+                  <div
+                    className="
+                      flex
+                      flex-col
+                      items-center
+                      gap-1
+                      cursor-pointer
+                    "
+                    onClick={() =>
+                      handleShare(
+                        viewerPost
+                      )
+                    }
+                  >
+
+                    <div className="
+                      w-12
+                      h-12
+                      rounded-full
+                      bg-black/60
+                      backdrop-blur-md
+                      border
+                      border-white/10
+                      flex
+                      items-center
+                      justify-center
+                      hover:bg-black/80
+                      transition
+                    ">
+
+                      <FaShare className="
+                        text-white/80
+                        text-xl
+                        hover:text-white
+                        transition
+                      " />
+
+                    </div>
+
+                  </div>
+
+
                   {/* NAVIGATION */}
 
-                  <div className="border-t border-white/10 pt-4 mt-4 flex flex-col gap-3 w-full items-center">
+                  <div className="
+                    border-t
+                    border-white/10
+                    pt-4
+                    mt-4
+                    flex
+                    flex-col
+                    gap-3
+                    w-full
+                    items-center
+                  ">
 
                     <button
                       onClick={
@@ -2701,7 +3942,19 @@ const Profile = () => {
                         viewerIndex ===
                         0
                       }
-                      className="w-10 h-10 bg-black/60 rounded-full border border-white/10 text-white disabled:opacity-30 flex items-center justify-center"
+                      className="
+                        w-10
+                        h-10
+                        bg-black/60
+                        rounded-full
+                        border
+                        border-white/10
+                        text-white
+                        disabled:opacity-30
+                        flex
+                        items-center
+                        justify-center
+                      "
                     >
                       <FaChevronUp
                         size={16}
@@ -2714,10 +3967,21 @@ const Profile = () => {
                       }
                       disabled={
                         viewerIndex ===
-                        viewerPosts.length -
-                          1
+                        viewerPosts.length - 1
                       }
-                      className="w-10 h-10 bg-black/60 rounded-full border border-white/10 text-white disabled:opacity-30 flex items-center justify-center"
+                      className="
+                        w-10
+                        h-10
+                        bg-black/60
+                        rounded-full
+                        border
+                        border-white/10
+                        text-white
+                        disabled:opacity-30
+                        flex
+                        items-center
+                        justify-center
+                      "
                     >
                       <FaChevronDown
                         size={16}
@@ -2731,7 +3995,9 @@ const Profile = () => {
               </div>
 
 
-              {/* COMMENTS PANEL */}
+              {/* =================================================
+                  COMMENTS PANEL
+              ================================================== */}
 
               <AnimatePresence>
 
@@ -2739,26 +4005,57 @@ const Profile = () => {
 
                   <motion.div
                     initial={{
-                      x: '100%'
+                      x:
+                        '100%'
                     }}
                     animate={{
-                      x: 0
+                      x:
+                        0
                     }}
                     exit={{
-                      x: '100%'
+                      x:
+                        '100%'
                     }}
                     transition={{
-                      duration: 0.3
+                      duration:
+                        0.3
                     }}
                     onClick={e =>
                       e.stopPropagation()
                     }
-                    className="absolute right-0 top-0 bottom-0 w-[420px] bg-[#0a0a0a]/95 backdrop-blur-xl border-l border-white/10 z-40 p-6 flex flex-col shadow-2xl"
+                    className="
+                      absolute
+                      right-0
+                      top-0
+                      bottom-0
+                      w-[420px]
+                      bg-[#0a0a0a]/95
+                      backdrop-blur-xl
+                      border-l
+                      border-white/10
+                      z-40
+                      p-6
+                      flex
+                      flex-col
+                      shadow-2xl
+                    "
                   >
 
-                    <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+                    <div className="
+                      flex
+                      justify-between
+                      items-center
+                      mb-6
+                      border-b
+                      border-white/10
+                      pb-4
+                    ">
 
-                      <span className="text-white font-bold text-lg">
+                      <span className="
+                        text-white
+                        font-bold
+                        text-lg
+                      ">
                         Комментарии
                       </span>
 
@@ -2768,7 +4065,11 @@ const Profile = () => {
                             false
                           )
                         }
-                        className="text-white/50 hover:text-white text-xl"
+                        className="
+                          text-white/50
+                          hover:text-white
+                          text-xl
+                        "
                       >
                         ✕
                       </button>
@@ -2776,12 +4077,22 @@ const Profile = () => {
                     </div>
 
 
-                    <div className="flex-1 overflow-y-auto space-y-6 pr-2 pb-20">
+                    <div className="
+                      flex-1
+                      overflow-y-auto
+                      space-y-6
+                      pr-2
+                      pb-20
+                    ">
 
                       {viewerPost.comments?.length ===
                         0 && (
 
-                        <p className="text-white/40 text-center mt-10">
+                        <p className="
+                          text-white/40
+                          text-center
+                          mt-10
+                        ">
                           Нет комментариев
                         </p>
 
@@ -2809,22 +4120,42 @@ const Profile = () => {
                               currentUser?._id
                             );
 
+
                           return (
 
                             <div
                               key={
                                 comment._id
                               }
-                              className="border-b border-white/5 pb-4"
+                              className="
+                                border-b
+                                border-white/5
+                                pb-4
+                              "
                             >
 
-                              <div className="flex gap-3 mb-2">
+                              <div className="
+                                flex
+                                gap-3
+                                mb-2
+                              ">
 
                                 <Link
                                   to={`/profile/${comment.user?._id}`}
                                 >
 
-                                  <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs text-white overflow-hidden">
+                                  <div className="
+                                    w-8
+                                    h-8
+                                    rounded-full
+                                    bg-gray-700
+                                    flex
+                                    items-center
+                                    justify-center
+                                    text-xs
+                                    text-white
+                                    overflow-hidden
+                                  ">
 
                                     {comment.user?.avatar ? (
 
@@ -2833,15 +4164,17 @@ const Profile = () => {
                                           comment.user.avatar
                                         }
                                         alt="Avatar"
-                                        className="w-full h-full object-cover"
+                                        className="
+                                          w-full
+                                          h-full
+                                          object-cover
+                                        "
                                       />
 
                                     ) : (
 
                                       comment.user?.username
-                                        ?.charAt(
-                                          0
-                                        )
+                                        ?.charAt(0)
                                         .toUpperCase()
 
                                     )}
@@ -2851,24 +4184,50 @@ const Profile = () => {
                                 </Link>
 
 
-                                <div className="flex-1">
+                                <div className="
+                                  flex-1
+                                ">
 
-                                  <div className="flex items-center gap-2">
+                                  <div className="
+                                    flex
+                                    items-center
+                                    gap-2
+                                  ">
 
                                     <Link
                                       to={`/profile/${comment.user?._id}`}
-                                      className="text-white/60 text-xs"
+                                      className="
+                                        text-white/60
+                                        text-xs
+                                      "
                                     >
-                                      @
-                                      {
-                                        comment.user?.username
-                                      }
+                                      @{comment.user?.username}
                                     </Link>
 
                                     {isPostAuthor && (
-                                      <span className="text-[10px] text-red-400">
+
+                                      <span className="
+                                        text-[10px]
+                                        text-red-400
+                                        bg-red-500/10
+                                        px-1.5
+                                        py-0.5
+                                        rounded
+                                      ">
                                         Автор
                                       </span>
+
+                                    )}
+
+                                    {comment.user?.isVerified && (
+
+                                      <span className="
+                                        text-blue-500
+                                        text-xs
+                                      ">
+                                        ✓
+                                      </span>
+
                                     )}
 
                                   </div>
@@ -2877,7 +4236,12 @@ const Profile = () => {
                                   {editingCommentId ===
                                   comment._id ? (
 
-                                    <div className="mt-1 flex flex-col gap-2">
+                                    <div className="
+                                      mt-1
+                                      flex
+                                      flex-col
+                                      gap-2
+                                    ">
 
                                       <textarea
                                         value={
@@ -2888,14 +4252,28 @@ const Profile = () => {
                                             e.target.value
                                           )
                                         }
-                                        className="w-full bg-black/40 border border-white/10 text-white rounded-lg px-3 py-2 text-sm"
+                                        className="
+                                          w-full
+                                          bg-black/40
+                                          border
+                                          border-white/10
+                                          text-white
+                                          rounded-lg
+                                          px-3
+                                          py-2
+                                          text-sm
+                                        "
                                         rows="2"
                                       />
 
-                                      <div className="flex gap-2">
+                                      <div className="
+                                        flex
+                                        gap-2
+                                      ">
 
                                         <button
                                           onClick={() => {
+
                                             setEditingCommentId(
                                               null
                                             );
@@ -2903,8 +4281,12 @@ const Profile = () => {
                                             setEditCommentText(
                                               ''
                                             );
+
                                           }}
-                                          className="text-xs text-white/50"
+                                          className="
+                                            text-xs
+                                            text-white/50
+                                          "
                                         >
                                           Отмена
                                         </button>
@@ -2917,7 +4299,10 @@ const Profile = () => {
                                               false
                                             )
                                           }
-                                          className="text-xs text-accent"
+                                          className="
+                                            text-xs
+                                            text-accent
+                                          "
                                         >
                                           Сохранить
                                         </button>
@@ -2928,10 +4313,12 @@ const Profile = () => {
 
                                   ) : (
 
-                                    <p className="text-white/80 text-sm mt-1">
-                                      {
-                                        comment.text
-                                      }
+                                    <p className="
+                                      text-white/80
+                                      text-sm
+                                      mt-1
+                                    ">
+                                      {comment.text}
                                     </p>
 
                                   )}
@@ -2941,10 +4328,20 @@ const Profile = () => {
                               </div>
 
 
-                              <div className="flex items-center gap-4 ml-11 mt-1">
+                              <div className="
+                                flex
+                                items-center
+                                gap-4
+                                ml-11
+                              ">
 
                                 <div
-                                  className="flex items-center gap-1 cursor-pointer"
+                                  className="
+                                    flex
+                                    items-center
+                                    gap-1
+                                    cursor-pointer
+                                  "
                                   onClick={() =>
                                     handleCommentLike(
                                       viewerPost._id,
@@ -2954,12 +4351,21 @@ const Profile = () => {
                                 >
 
                                   {isCommentLiked ? (
-                                    <FaHeart className="text-red-500 text-sm" />
+                                    <FaHeart className="
+                                      text-red-500
+                                      text-sm
+                                    " />
                                   ) : (
-                                    <FaRegHeart className="text-white/40 text-sm" />
+                                    <FaRegHeart className="
+                                      text-white/40
+                                      text-sm
+                                    " />
                                   )}
 
-                                  <span className="text-xs text-white/40">
+                                  <span className="
+                                    text-xs
+                                    text-white/40
+                                  ">
                                     {comment.likes?.length ||
                                       ''}
                                   </span>
@@ -2967,45 +4373,85 @@ const Profile = () => {
                                 </div>
 
 
-                                {isCommentAuthor &&
-                                  !editingCommentId && (
+                                <div
+                                  className="
+                                    flex
+                                    items-center
+                                    gap-1
+                                    cursor-pointer
+                                    text-white/40
+                                    hover:text-white
+                                    text-xs
+                                  "
+                                  onClick={() =>
+                                    document
+                                      .getElementById(
+                                        `reply-input-${comment._id}`
+                                      )
+                                      ?.focus()
+                                  }
+                                >
+                                  <FaReply
+                                    size={12}
+                                  />
 
-                                    <div className="flex gap-2 ml-auto text-white/30">
+                                  <span>
+                                    Ответить
+                                  </span>
+                                </div>
 
-                                      <button
-                                        onClick={() =>
-                                          startEditComment(
-                                            comment._id,
-                                            comment.text
-                                          )
-                                        }
-                                      >
-                                        <FaPencilAlt
-                                          size={12}
-                                        />
-                                      </button>
 
-                                      <button
-                                        onClick={() =>
-                                          deleteComment(
-                                            viewerPost._id,
-                                            comment._id
-                                          )
-                                        }
-                                      >
-                                        <FaTrash
-                                          size={12}
-                                        />
-                                      </button>
+                                {isCommentAuthor && (
 
-                                    </div>
+                                  <div className="
+                                    flex
+                                    gap-2
+                                    ml-auto
+                                    text-white/30
+                                  ">
 
-                                  )}
+                                    <button
+                                      onClick={() =>
+                                        startEditComment(
+                                          comment._id,
+                                          comment.text
+                                        )
+                                      }
+                                    >
+                                      <FaPencilAlt
+                                        size={12}
+                                      />
+                                    </button>
+
+                                    <button
+                                      onClick={() =>
+                                        deleteComment(
+                                          viewerPost._id,
+                                          comment._id,
+                                          false
+                                        )
+                                      }
+                                    >
+                                      <FaTrash
+                                        size={12}
+                                      />
+                                    </button>
+
+                                  </div>
+
+                                )}
 
                               </div>
 
 
-                              <div className="ml-11 mt-2 flex gap-2">
+                              {/* REPLY */}
+
+                              <div className="
+                                ml-11
+                                mt-2
+                                flex
+                                gap-2
+                              ">
 
                                 <input
                                   id={`reply-input-${comment._id}`}
@@ -3014,8 +4460,7 @@ const Profile = () => {
                                   value={
                                     replyTexts[
                                       comment._id
-                                    ] ||
-                                    ''
+                                    ] || ''
                                   }
                                   onChange={e =>
                                     setReplyTexts(
@@ -3042,7 +4487,16 @@ const Profile = () => {
                                     }
 
                                   }}
-                                  className="flex-1 bg-transparent border-b border-white/10 text-white text-xs outline-none"
+                                  className="
+                                    flex-1
+                                    bg-transparent
+                                    border-b
+                                    border-white/10
+                                    text-white
+                                    text-xs
+                                    outline-none
+                                    pb-1
+                                  "
                                 />
 
                                 <button
@@ -3052,7 +4506,10 @@ const Profile = () => {
                                       comment._id
                                     )
                                   }
-                                  className="text-accent text-xs"
+                                  className="
+                                    text-accent
+                                    text-xs
+                                  "
                                 >
                                   Отправить
                                 </button>
@@ -3060,10 +4517,19 @@ const Profile = () => {
                               </div>
 
 
+                              {/* REPLIES */}
+
                               {comment.replies?.length >
                                 0 && (
 
-                                <div className="ml-11 mt-3 space-y-3 border-l-2 border-white/10 pl-3">
+                                <div className="
+                                  ml-11
+                                  mt-3
+                                  space-y-3
+                                  border-l-2
+                                  border-white/10
+                                  pl-3
+                                ">
 
                                   {comment.replies.map(
                                     reply => {
@@ -3078,16 +4544,31 @@ const Profile = () => {
                                         editingCommentId ===
                                         reply._id;
 
+
                                       return (
 
                                         <div
                                           key={
                                             reply._id
                                           }
-                                          className="flex gap-3"
+                                          className="
+                                            flex
+                                            gap-3
+                                          "
                                         >
 
-                                          <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-[10px] text-white overflow-hidden">
+                                          <div className="
+                                            w-6
+                                            h-6
+                                            rounded-full
+                                            bg-gray-700
+                                            flex
+                                            items-center
+                                            justify-center
+                                            text-[10px]
+                                            text-white
+                                            overflow-hidden
+                                          ">
 
                                             {reply.user?.avatar ? (
 
@@ -3096,15 +4577,17 @@ const Profile = () => {
                                                   reply.user.avatar
                                                 }
                                                 alt="Avatar"
-                                                className="w-full h-full object-cover"
+                                                className="
+                                                  w-full
+                                                  h-full
+                                                  object-cover
+                                                "
                                               />
 
                                             ) : (
 
                                               reply.user?.username
-                                                ?.charAt(
-                                                  0
-                                                )
+                                                ?.charAt(0)
                                                 .toUpperCase()
 
                                             )}
@@ -3112,19 +4595,26 @@ const Profile = () => {
                                           </div>
 
 
-                                          <div className="flex-1">
+                                          <div className="
+                                            flex-1
+                                          ">
 
-                                            <div className="text-white/40 text-[11px]">
-                                              @
-                                              {
-                                                reply.user?.username
-                                              }
+                                            <div className="
+                                              text-white/40
+                                              text-[11px]
+                                            ">
+                                              @{reply.user?.username}
                                             </div>
 
 
                                             {isReplyEditing ? (
 
-                                              <div className="mt-1 flex flex-col gap-2">
+                                              <div className="
+                                                mt-1
+                                                flex
+                                                flex-col
+                                                gap-2
+                                              ">
 
                                                 <textarea
                                                   value={
@@ -3135,14 +4625,28 @@ const Profile = () => {
                                                       e.target.value
                                                     )
                                                   }
-                                                  className="w-full bg-black/40 border border-white/10 text-white rounded-lg px-2 py-1 text-xs"
+                                                  className="
+                                                    w-full
+                                                    bg-black/40
+                                                    border
+                                                    border-white/10
+                                                    text-white
+                                                    rounded-lg
+                                                    px-2
+                                                    py-1
+                                                    text-xs
+                                                  "
                                                   rows="2"
                                                 />
 
-                                                <div className="flex gap-2">
+                                                <div className="
+                                                  flex
+                                                  gap-2
+                                                ">
 
                                                   <button
                                                     onClick={() => {
+
                                                       setEditingCommentId(
                                                         null
                                                       );
@@ -3150,8 +4654,12 @@ const Profile = () => {
                                                       setEditCommentText(
                                                         ''
                                                       );
+
                                                     }}
-                                                    className="text-[10px] text-white/50"
+                                                    className="
+                                                      text-[10px]
+                                                      text-white/50
+                                                    "
                                                   >
                                                     Отмена
                                                   </button>
@@ -3164,7 +4672,10 @@ const Profile = () => {
                                                         true
                                                       )
                                                     }
-                                                    className="text-[10px] text-accent"
+                                                    className="
+                                                      text-[10px]
+                                                      text-accent
+                                                    "
                                                   >
                                                     Сохранить
                                                   </button>
@@ -3175,10 +4686,12 @@ const Profile = () => {
 
                                             ) : (
 
-                                              <p className="text-white/70 text-sm mt-1">
-                                                {
-                                                  reply.text
-                                                }
+                                              <p className="
+                                                text-white/70
+                                                text-sm
+                                                mt-1
+                                              ">
+                                                {reply.text}
                                               </p>
 
                                             )}
@@ -3187,38 +4700,43 @@ const Profile = () => {
                                             {isReplyAuthor &&
                                               !isReplyEditing && (
 
-                                                <div className="flex gap-2 mt-1 text-white/20">
+                                              <div className="
+                                                flex
+                                                gap-2
+                                                mt-1
+                                                text-white/20
+                                              ">
 
-                                                  <button
-                                                    onClick={() =>
-                                                      startEditComment(
-                                                        reply._id,
-                                                        reply.text
-                                                      )
-                                                    }
-                                                  >
-                                                    <FaPencilAlt
-                                                      size={10}
-                                                    />
-                                                  </button>
+                                                <button
+                                                  onClick={() =>
+                                                    startEditComment(
+                                                      reply._id,
+                                                      reply.text
+                                                    )
+                                                  }
+                                                >
+                                                  <FaPencilAlt
+                                                    size={10}
+                                                  />
+                                                </button>
 
-                                                  <button
-                                                    onClick={() =>
-                                                      deleteComment(
-                                                        viewerPost._id,
-                                                        reply._id,
-                                                        true
-                                                      )
-                                                    }
-                                                  >
-                                                    <FaTrash
-                                                      size={10}
-                                                    />
-                                                  </button>
+                                                <button
+                                                  onClick={() =>
+                                                    deleteComment(
+                                                      viewerPost._id,
+                                                      reply._id,
+                                                      true
+                                                    )
+                                                  }
+                                                >
+                                                  <FaTrash
+                                                    size={10}
+                                                  />
+                                                </button>
 
-                                                </div>
+                                              </div>
 
-                                              )}
+                                            )}
 
                                           </div>
 
@@ -3243,9 +4761,26 @@ const Profile = () => {
                     </div>
 
 
-                    <div className="p-4 border-t border-white/10 bg-[#0a0a0a]/90 shrink-0">
+                    {/* COMMENT INPUT */}
 
-                      <div className="flex gap-2 bg-black/40 border border-white/10 rounded-full px-4 py-2">
+                    <div className="
+                      p-4
+                      border-t
+                      border-white/10
+                      bg-[#0a0a0a]/90
+                      shrink-0
+                    ">
+
+                      <div className="
+                        flex
+                        gap-2
+                        bg-black/40
+                        border
+                        border-white/10
+                        rounded-full
+                        px-4
+                        py-2
+                      ">
 
                         <input
                           type="text"
@@ -3272,7 +4807,13 @@ const Profile = () => {
                             }
 
                           }}
-                          className="flex-1 bg-transparent text-white text-sm outline-none"
+                          className="
+                            flex-1
+                            bg-transparent
+                            text-white
+                            text-sm
+                            outline-none
+                          "
                         />
 
                         <button
@@ -3281,7 +4822,10 @@ const Profile = () => {
                               viewerPost._id
                             )
                           }
-                          className="text-accent text-sm"
+                          className="
+                            text-accent
+                            text-sm
+                          "
                         >
                           Опубликовать
                         </button>
@@ -3306,18 +4850,49 @@ const Profile = () => {
 
 
       {/* =====================================================
-          PROFILE
+          PROFILE PAGE
       ====================================================== */}
 
       {!viewerPost && (
 
-        <div className="max-w-4xl mx-auto p-4 md:p-6">
+        <div className="
+          max-w-4xl
+          mx-auto
+          p-4
+          md:p-6
+        ">
 
-          {/* HEADER */}
 
-          <div className="bg-white/5 border border-white/10 backdrop-blur-xl rounded-2xl p-8 mb-8 text-center">
+          {/* =================================================
+              PROFILE HEADER
+          ================================================== */}
 
-            <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-r from-accent to-glow overflow-hidden mb-4 border-2 border-white/20">
+          <div className="
+            bg-white/5
+            border
+            border-white/10
+            backdrop-blur-xl
+            rounded-2xl
+            p-8
+            mb-8
+            text-center
+          ">
+
+            {/* AVATAR */}
+
+            <div className="
+              w-24
+              h-24
+              mx-auto
+              rounded-full
+              bg-gradient-to-r
+              from-accent
+              to-glow
+              overflow-hidden
+              mb-4
+              border-2
+              border-white/20
+            ">
 
               {user.avatar ? (
 
@@ -3326,19 +4901,28 @@ const Profile = () => {
                     user.avatar
                   }
                   alt="Avatar"
-                  className="w-full h-full object-cover"
+                  className="
+                    w-full
+                    h-full
+                    object-cover
+                  "
                 />
 
               ) : (
 
-                <div className="w-full h-full flex items-center justify-center text-3xl text-white font-bold">
-
+                <div className="
+                  w-full
+                  h-full
+                  flex
+                  items-center
+                  justify-center
+                  text-3xl
+                  text-white
+                  font-bold
+                ">
                   {user.username
-                    ?.charAt(
-                      0
-                    )
+                    ?.charAt(0)
                     .toUpperCase()}
-
                 </div>
 
               )}
@@ -3346,54 +4930,101 @@ const Profile = () => {
             </div>
 
 
-            <h2 className="text-2xl font-bold text-white">
+            {/* DISPLAY NAME */}
 
+            <h2 className="
+              text-2xl
+              font-bold
+              text-white
+            ">
               {user.displayName ||
                 user.username}
-
             </h2>
 
 
-            <p className="text-white/50 text-sm mb-1">
+            {/* USERNAME */}
+
+            <p className="
+              text-white/50
+              text-sm
+              mb-1
+            ">
               @{user.username}
             </p>
 
 
-            <p className="text-white/50 text-sm mb-4">
+            {/* BIO */}
+
+            <p className="
+              text-white/50
+              text-sm
+              mb-4
+            ">
               {user.bio ||
                 'Пока ничего о себе не написал...'}
             </p>
 
 
-            <div className="flex justify-center gap-8 text-sm mb-6">
+            {/* FOLLOWERS */}
+
+            <div className="
+              flex
+              justify-center
+              gap-8
+              text-sm
+              mb-6
+            ">
 
               <div>
-                <span className="text-white font-bold">
+
+                <span className="
+                  text-white
+                  font-bold
+                ">
                   {user.followers?.length ||
                     0}
                 </span>
 
-                <span className="text-white/50 ml-1">
+                <span className="
+                  text-white/50
+                  ml-1
+                ">
                   подписчиков
                 </span>
+
               </div>
 
 
               <div>
-                <span className="text-white font-bold">
+
+                <span className="
+                  text-white
+                  font-bold
+                ">
                   {user.following?.length ||
                     0}
                 </span>
 
-                <span className="text-white/50 ml-1">
+                <span className="
+                  text-white/50
+                  ml-1
+                ">
                   подписок
                 </span>
+
               </div>
 
             </div>
 
 
-            <div className="flex justify-center gap-3">
+            {/* PROFILE ACTIONS */}
+
+            <div className="
+              flex
+              justify-center
+              gap-3
+              flex-wrap
+            ">
 
               {isOwnProfile ? (
 
@@ -3403,7 +5034,15 @@ const Profile = () => {
                       '/profile/edit'
                     )
                   }
-                  className="px-6 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition"
+                  className="
+                    px-6
+                    py-2
+                    bg-white/10
+                    text-white
+                    rounded-xl
+                    hover:bg-white/20
+                    transition
+                  "
                 >
                   Редактировать профиль
                 </button>
@@ -3415,21 +5054,38 @@ const Profile = () => {
                     onClick={
                       handleFollow
                     }
-                    className={`px-6 py-2 rounded-xl font-semibold transition ${
-                      isFollowing
-                        ? 'bg-white/10 text-white hover:bg-white/20'
-                        : 'bg-accent text-white hover:bg-accent/80'
-                    }`}
+                    className={`
+                      px-6
+                      py-2
+                      rounded-xl
+                      font-semibold
+                      transition
+
+                      ${
+                        isFollowing
+                          ? 'bg-white/10 text-white hover:bg-white/20'
+                          : 'bg-accent text-white hover:bg-accent/80'
+                      }
+                    `}
                   >
                     {isFollowing
                       ? 'Отписаться'
                       : 'Подписаться'}
                   </button>
 
-
                   <Link
                     to={`/chats/${user._id}`}
-                    className="px-6 py-2 bg-white/5 border border-white/20 text-white rounded-xl hover:bg-white/10 transition"
+                    className="
+                      px-6
+                      py-2
+                      bg-white/5
+                      border
+                      border-white/20
+                      text-white
+                      rounded-xl
+                      hover:bg-white/10
+                      transition
+                    "
                   >
                     💬 Написать
                   </Link>
@@ -3443,15 +5099,25 @@ const Profile = () => {
 
 
           {/* =================================================
-              GRID
+              POST GRID
           ================================================== */}
 
-          <div className="grid grid-cols-3 gap-1 md:gap-2">
+          <div className="
+            grid
+            grid-cols-3
+            gap-1
+            md:gap-2
+          ">
 
             {posts.length ===
               0 && (
 
-              <div className="col-span-3 text-center text-white/40 py-10">
+              <div className="
+                col-span-3
+                text-center
+                text-white/40
+                py-10
+              ">
                 У пользователя пока нет постов.
               </div>
 
@@ -3469,6 +5135,7 @@ const Profile = () => {
                   openGridMenuId ===
                   post._id;
 
+
                 return (
 
                   <motion.div
@@ -3481,19 +5148,35 @@ const Profile = () => {
                       )
                     }
                     whileHover={{
-                      scale: 1.02
+                      scale:
+                        1.02
                     }}
-                    className="relative aspect-[1/1] bg-black/40 border border-white/5 rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition"
+                    className="
+                      relative
+                      aspect-[1/1]
+                      bg-black/40
+                      border
+                      border-white/5
+                      rounded-lg
+                      overflow-hidden
+                      cursor-pointer
+                      hover:opacity-90
+                      transition
+                    "
                   >
 
-                    {/* =======================================
-                        THREE DOTS
-                    ======================================== */}
+
+                    {/* GRID MENU */}
 
                     {isOwnProfile && (
 
                       <div
-                        className="absolute top-2 right-2 z-30"
+                        className="
+                          absolute
+                          top-2
+                          right-2
+                          z-30
+                        "
                         onClick={e =>
                           e.stopPropagation()
                         }
@@ -3514,11 +5197,20 @@ const Profile = () => {
                             );
 
                           }}
-                          className="bg-black/60 backdrop-blur-sm hover:bg-black/80 p-2 rounded-full transition"
+                          className="
+                            bg-black/60
+                            backdrop-blur-sm
+                            hover:bg-black/80
+                            p-2
+                            rounded-full
+                            transition
+                          "
                         >
                           <FiMoreVertical
                             size={18}
-                            className="text-white/80 hover:text-white"
+                            className="
+                              text-white/80
+                            "
                           />
                         </button>
 
@@ -3529,24 +5221,43 @@ const Profile = () => {
 
                             <motion.div
                               initial={{
-                                opacity: 0,
-                                scale: 0.9,
-                                y: -5
+                                opacity:
+                                  0,
+                                scale:
+                                  0.9,
+                                y:
+                                  -5
                               }}
                               animate={{
-                                opacity: 1,
-                                scale: 1,
-                                y: 0
+                                opacity:
+                                  1,
+                                scale:
+                                  1,
+                                y:
+                                  0
                               }}
                               exit={{
-                                opacity: 0,
-                                scale: 0.9,
-                                y: -5
+                                opacity:
+                                  0,
+                                scale:
+                                  0.9,
+                                y:
+                                  -5
                               }}
-                              className="absolute right-0 top-11 w-36 bg-black/95 backdrop-blur-xl border border-white/10 rounded-xl p-1.5 shadow-2xl"
+                              className="
+                                absolute
+                                right-0
+                                top-11
+                                w-36
+                                bg-black/95
+                                backdrop-blur-xl
+                                border
+                                border-white/10
+                                rounded-xl
+                                p-1.5
+                                shadow-2xl
+                              "
                             >
-
-                              {/* EDIT */}
 
                               <button
                                 type="button"
@@ -3559,7 +5270,20 @@ const Profile = () => {
                                   );
 
                                 }}
-                                className="flex items-center gap-2 w-full px-3 py-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition text-sm"
+                                className="
+                                  flex
+                                  items-center
+                                  gap-2
+                                  w-full
+                                  px-3
+                                  py-2
+                                  text-white/80
+                                  hover:text-white
+                                  hover:bg-white/10
+                                  rounded-lg
+                                  transition
+                                  text-sm
+                                "
                               >
 
                                 <FiEdit2
@@ -3572,8 +5296,6 @@ const Profile = () => {
 
                               </button>
 
-
-                              {/* DELETE */}
 
                               <button
                                 type="button"
@@ -3590,7 +5312,20 @@ const Profile = () => {
                                   );
 
                                 }}
-                                className="flex items-center gap-2 w-full px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition text-sm"
+                                className="
+                                  flex
+                                  items-center
+                                  gap-2
+                                  w-full
+                                  px-3
+                                  py-2
+                                  text-red-400
+                                  hover:text-red-300
+                                  hover:bg-red-500/10
+                                  rounded-lg
+                                  transition
+                                  text-sm
+                                "
                               >
 
                                 <FaTrash
@@ -3632,10 +5367,16 @@ const Profile = () => {
                             }
 
                           }}
-                          src={getMediaUrl(
-                            post.mediaUrl
-                          )}
-                          className="w-full h-full object-cover"
+                          src={
+                            getMediaUrl(
+                              post.mediaUrl
+                            )
+                          }
+                          className="
+                            w-full
+                            h-full
+                            object-cover
+                          "
                           muted
                           playsInline
                           preload="metadata"
@@ -3649,34 +5390,21 @@ const Profile = () => {
                               null
                             )
                           }
-                          onEnded={e => {
-
-                            if (
-                              hoveredId ===
-                              post._id
-                            ) {
-
-                              e.target.currentTime =
-                                0;
-
-                              e.target
-                                .play()
-                                .catch(
-                                  () => {}
-                                );
-
-                            }
-
-                          }}
                         />
 
                       ) : (
 
                         <img
-                          src={getMediaUrl(
-                            post.mediaUrl
-                          )}
-                          className="w-full h-full object-cover"
+                          src={
+                            getMediaUrl(
+                              post.mediaUrl
+                            )
+                          }
+                          className="
+                            w-full
+                            h-full
+                            object-cover
+                          "
                           alt="Post"
                         />
 
@@ -3684,12 +5412,26 @@ const Profile = () => {
 
                     ) : (
 
-                      <div className="w-full h-full flex items-center justify-center p-4 text-center bg-black/40">
+                      <div className="
+                        w-full
+                        h-full
+                        flex
+                        items-center
+                        justify-center
+                        p-4
+                        text-center
+                        bg-black/40
+                      ">
 
-                        <p className="text-white/90 text-sm font-medium line-clamp-5 whitespace-pre-wrap break-words">
-                          {
-                            post.content
-                          }
+                        <p className="
+                          text-white/90
+                          text-sm
+                          font-medium
+                          line-clamp-5
+                          whitespace-pre-wrap
+                          break-words
+                        ">
+                          {post.content}
                         </p>
 
                       </div>
@@ -3702,7 +5444,19 @@ const Profile = () => {
                     {post.likes?.length >
                       0 && (
 
-                      <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1 text-white/90 text-xs font-semibold drop-shadow-lg">
+                      <div className="
+                        absolute
+                        bottom-2
+                        left-2
+                        z-10
+                        flex
+                        items-center
+                        gap-1
+                        text-white/90
+                        text-xs
+                        font-semibold
+                        drop-shadow-lg
+                      ">
 
                         <FaHeart
                           size={14}
@@ -3733,7 +5487,7 @@ const Profile = () => {
 
 
       {/* =====================================================
-          EDIT MODAL
+          EDIT POST MODAL
       ====================================================== */}
 
       <AnimatePresence>
@@ -3742,15 +5496,28 @@ const Profile = () => {
 
           <motion.div
             initial={{
-              opacity: 0
+              opacity:
+                0
             }}
             animate={{
-              opacity: 1
+              opacity:
+                1
             }}
             exit={{
-              opacity: 0
+              opacity:
+                0
             }}
-            className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+            className="
+              fixed
+              inset-0
+              z-[100]
+              bg-black/80
+              backdrop-blur-md
+              flex
+              items-center
+              justify-center
+              p-4
+            "
             onClick={() =>
               setIsEditModalOpen(
                 false
@@ -3760,27 +5527,50 @@ const Profile = () => {
 
             <motion.div
               initial={{
-                opacity: 0,
-                y: 20,
-                scale: 0.96
+                opacity:
+                  0,
+                y:
+                  20,
+                scale:
+                  0.96
               }}
               animate={{
-                opacity: 1,
-                y: 0,
-                scale: 1
+                opacity:
+                  1,
+                y:
+                  0,
+                scale:
+                  1
               }}
               exit={{
-                opacity: 0,
-                y: 20,
-                scale: 0.96
+                opacity:
+                  0,
+                y:
+                  20,
+                scale:
+                  0.96
               }}
               onClick={e =>
                 e.stopPropagation()
               }
-              className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl"
+              className="
+                bg-[#0a0a0a]
+                border
+                border-white/10
+                rounded-2xl
+                p-6
+                w-full
+                max-w-md
+                shadow-2xl
+              "
             >
 
-              <h3 className="text-xl font-bold text-white mb-4">
+              <h3 className="
+                text-xl
+                font-bold
+                text-white
+                mb-4
+              ">
                 Редактировать пост
               </h3>
 
@@ -3795,14 +5585,33 @@ const Profile = () => {
                     e.target.value
                   )
                 }
-                className="w-full bg-white/5 border border-white/10 text-white rounded-xl px-4 py-3 outline-none resize-none min-h-[120px]"
+                className="
+                  w-full
+                  bg-white/5
+                  border
+                  border-white/10
+                  text-white
+                  rounded-xl
+                  px-4
+                  py-3
+                  outline-none
+                  resize-none
+                  min-h-[120px]
+                "
                 placeholder="Описание поста..."
               />
 
 
               {editPreview && (
 
-                <div className="relative border border-white/10 rounded-xl overflow-hidden mt-4">
+                <div className="
+                  relative
+                  border
+                  border-white/10
+                  rounded-xl
+                  overflow-hidden
+                  mt-4
+                ">
 
                   {editFile?.type?.startsWith(
                     'video/'
@@ -3813,7 +5622,12 @@ const Profile = () => {
                         editPreview
                       }
                       controls
-                      className="w-full max-h-60 object-contain bg-black"
+                      className="
+                        w-full
+                        max-h-60
+                        object-contain
+                        bg-black
+                      "
                     />
 
                   ) : (
@@ -3823,10 +5637,51 @@ const Profile = () => {
                         editPreview
                       }
                       alt="Preview"
-                      className="w-full max-h-60 object-contain bg-black"
+                      className="
+                        w-full
+                        max-h-60
+                        object-contain
+                        bg-black
+                      "
                     />
 
                   )}
+
+
+                  <button
+                    type="button"
+                    onClick={() => {
+
+                      setEditFile(
+                        null
+                      );
+
+                      if (
+                        editPreview
+                      ) {
+                        URL.revokeObjectURL(
+                          editPreview
+                        );
+                      }
+
+                      setEditPreview(
+                        null
+                      );
+
+                    }}
+                    className="
+                      absolute
+                      top-2
+                      right-2
+                      bg-black/60
+                      text-white
+                      rounded-full
+                      p-1
+                      hover:bg-black/80
+                    "
+                  >
+                    ✕
+                  </button>
 
                 </div>
 
@@ -3838,7 +5693,16 @@ const Profile = () => {
                 onClick={() =>
                   editFileInputRef.current?.click()
                 }
-                className="w-full mt-4 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition"
+                className="
+                  w-full
+                  mt-4
+                  py-2
+                  bg-white/10
+                  text-white
+                  rounded-xl
+                  hover:bg-white/20
+                  transition
+                "
               >
                 {editPreview
                   ? 'Заменить медиа'
@@ -3859,7 +5723,11 @@ const Profile = () => {
               />
 
 
-              <div className="flex gap-2 mt-6">
+              <div className="
+                flex
+                gap-2
+                mt-6
+              ">
 
                 <button
                   onClick={() => {
@@ -3872,8 +5740,32 @@ const Profile = () => {
                       null
                     );
 
+                    setEditFile(
+                      null
+                    );
+
+                    if (
+                      editPreview
+                    ) {
+                      URL.revokeObjectURL(
+                        editPreview
+                      );
+                    }
+
+                    setEditPreview(
+                      null
+                    );
+
                   }}
-                  className="flex-1 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition"
+                  className="
+                    flex-1
+                    py-2
+                    bg-white/10
+                    text-white
+                    rounded-xl
+                    hover:bg-white/20
+                    transition
+                  "
                 >
                   Отмена
                 </button>
@@ -3887,7 +5779,14 @@ const Profile = () => {
                     isUpdating ||
                     !editContent.trim()
                   }
-                  className="flex-1 py-2 bg-accent text-white rounded-xl disabled:opacity-50"
+                  className="
+                    flex-1
+                    py-2
+                    bg-accent
+                    text-white
+                    rounded-xl
+                    disabled:opacity-50
+                  "
                 >
                   {isUpdating
                     ? 'Сохранение...'

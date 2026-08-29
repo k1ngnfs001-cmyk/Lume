@@ -102,8 +102,12 @@ exports.createPost = async (
 
     const b64 =
       Buffer
-        .from(req.file.buffer)
-        .toString('base64');
+        .from(
+          req.file.buffer
+        )
+        .toString(
+          'base64'
+        );
 
     const dataURI =
       `data:${req.file.mimetype};base64,${b64}`;
@@ -297,6 +301,77 @@ exports.getFollowingPosts =
   };
 
 // =========================================================
+// GET SINGLE POST
+// PUBLIC SHARE LINK
+// =========================================================
+
+exports.getPostById = async (
+  req,
+  res
+) => {
+  try {
+    const post =
+      await Post.findById(
+        req.params.id
+      )
+        .populate(
+          'user',
+          'username avatar isVerified'
+        )
+        .populate(
+          'comments.user',
+          'username avatar isVerified'
+        )
+        .populate(
+          'comments.replies.user',
+          'username avatar isVerified'
+        );
+
+    if (!post) {
+      return res.status(404).json({
+        message:
+          'Пост не найден'
+      });
+    }
+
+    /*
+      Share link public.
+      Agar user login qilgan bo'lsa,
+      like/save holati ham hisoblanadi.
+    */
+    const userId =
+      req.user?._id || null;
+
+    res.json(
+      getProcessedPost(
+        post,
+        userId
+      )
+    );
+  } catch (error) {
+    console.error(
+      'Ошибка загрузки поста:',
+      error
+    );
+
+    if (
+      error.name ===
+      'CastError'
+    ) {
+      return res.status(404).json({
+        message:
+          'Пост не найден'
+      });
+    }
+
+    res.status(500).json({
+      message:
+        error.message
+    });
+  }
+};
+
+// =========================================================
 // LIKE POST
 // =========================================================
 
@@ -428,6 +503,16 @@ exports.toggleLike = async (
       error
     );
 
+    if (
+      error.name ===
+      'CastError'
+    ) {
+      return res.status(404).json({
+        message:
+          'Пост не найден'
+      });
+    }
+
     res.status(500).json({
       message:
         error.message
@@ -450,7 +535,6 @@ exports.toggleSave = async (
     const userId =
       req.user._id;
 
-    // USER ham olamiz
     const post =
       await Post.findById(
         postId
@@ -568,6 +652,16 @@ exports.toggleSave = async (
       error
     );
 
+    if (
+      error.name ===
+      'CastError'
+    ) {
+      return res.status(404).json({
+        message:
+          'Пост не найден'
+      });
+    }
+
     res.status(500).json({
       message:
         error.message
@@ -624,12 +718,19 @@ exports.addComment = async (
           new:
             true
         }
-      ).populate({
-        path:
-          'comments.user',
-        select:
-          'username avatar isVerified'
-      });
+      )
+        .populate({
+          path:
+            'comments.user',
+          select:
+            'username avatar isVerified'
+        })
+        .populate({
+          path:
+            'comments.replies.user',
+          select:
+            'username avatar isVerified'
+        });
 
     if (!updatedPost) {
       return res.status(404).json({
@@ -676,8 +777,7 @@ exports.addComment = async (
 
           text:
             `Комментарий: "${preview}${
-              trimmed.length >
-              30
+              trimmed.length > 30
                 ? '...'
                 : ''
             }"`
@@ -697,6 +797,16 @@ exports.addComment = async (
       'Ошибка добавления комментария:',
       error
     );
+
+    if (
+      error.name ===
+      'CastError'
+    ) {
+      return res.status(404).json({
+        message:
+          'Пост не найден'
+      });
+    }
 
     res.status(500).json({
       message:
@@ -854,6 +964,16 @@ exports.toggleCommentLike =
         error
       );
 
+      if (
+        error.name ===
+        'CastError'
+      ) {
+        return res.status(404).json({
+          message:
+            'Пост или комментарий не найден'
+        });
+      }
+
       res.status(500).json({
         message:
           error.message
@@ -997,6 +1117,16 @@ exports.addCommentReply =
         'Ошибка добавления ответа:',
         error
       );
+
+      if (
+        error.name ===
+        'CastError'
+      ) {
+        return res.status(404).json({
+          message:
+            'Пост или комментарий не найден'
+        });
+      }
 
       res.status(500).json({
         message:
@@ -1146,6 +1276,16 @@ exports.editComment =
         error
       );
 
+      if (
+        error.name ===
+        'CastError'
+      ) {
+        return res.status(404).json({
+          message:
+            'Пост или комментарий не найден'
+        });
+      }
+
       res.status(500).json({
         message:
           error.message
@@ -1280,6 +1420,16 @@ exports.deleteComment =
         error
       );
 
+      if (
+        error.name ===
+        'CastError'
+      ) {
+        return res.status(404).json({
+          message:
+            'Пост или комментарий не найден'
+        });
+      }
+
       res.status(500).json({
         message:
           error.message
@@ -1408,6 +1558,16 @@ exports.updatePost =
         error
       );
 
+      if (
+        error.name ===
+        'CastError'
+      ) {
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+      }
+
       res.status(500).json({
         message:
           error.message
@@ -1527,6 +1687,16 @@ exports.deletePost =
         '❌ DELETE POST ERROR:',
         error
       );
+
+      if (
+        error.name ===
+        'CastError'
+      ) {
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+      }
 
       res.status(500).json({
         message:

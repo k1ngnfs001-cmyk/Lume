@@ -20,7 +20,8 @@ const {
   addCommentReply,
   editComment,
   deleteComment,
-  deletePost
+  deletePost,
+  getPostById
 } = require(
   '../controllers/postController'
 );
@@ -184,6 +185,11 @@ router.delete(
   '/:postId/comments/:commentId',
   protect,
   deleteComment
+);
+
+router.get(
+  '/:id',
+  getPostById
 );
 
 
