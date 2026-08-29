@@ -32,7 +32,8 @@ import EditProfile from './pages/EditProfile';
 import Chats from './pages/Chats';
 import Search from './pages/Search';
 import AdminPanel from './pages/AdminPanel';
-import PostPage from './pages/PostPage';
+
+import ReelsFeed from './pages/ReelsFeed';
 
 import LeftSidebar from './components/LeftSidebar';
 
@@ -239,14 +240,24 @@ function App() {
 
                     IMPORTANT:
                     Bu route ProtectedRoute ichida emas.
-                    Shu sababli share linkni login qilmagan
-                    odam ham ochishi mumkin.
+
+                    Share link:
+                    /post/:id
+
+                    ReelsFeed ichida URL'dagi ID orqali
+                    faqat shu post yuklanadi.
                 ================================================== */}
 
                 <Route
                   path="/post/:id"
                   element={
-                    <PostPage />
+                    <LayoutWithSidebar
+                      scrollLock={true}
+                    >
+                      <ReelsFeed
+                        singlePost={true}
+                      />
+                    </LayoutWithSidebar>
                   }
                 />
 

@@ -6,7 +6,8 @@ import {
 } from 'react';
 
 import {
-  Link
+  Link,
+  useParams
 } from 'react-router-dom';
 
 import {
@@ -45,8 +46,13 @@ import {
 
 
 const ReelsFeed = ({
-  feedType = 'global'
+  feedType = 'global',
+  singlePost = false
 }) => {
+
+  const {
+    id
+  } = useParams();
 
   const {
     user,
@@ -74,6 +80,11 @@ const ReelsFeed = ({
   ] = useState(true);
 
   const [
+    error,
+    setError
+  ] = useState('');
+
+  const [
     isUpdating,
     setIsUpdating
   ] = useState(false);
@@ -99,7 +110,7 @@ const ReelsFeed = ({
 
 
   // =========================================================
-  // KOMMENTARIYA STATE'LARI
+  // COMMENT STATE
   // =========================================================
 
   const [
@@ -134,7 +145,7 @@ const ReelsFeed = ({
 
 
   // =========================================================
-  // POST TAHRIRLASH STATE'LARI
+  // EDIT POST STATE
   // =========================================================
 
   const [
@@ -209,14 +220,14 @@ const ReelsFeed = ({
 
   const isIdInArray = (
     arr,
-    id
+    targetId
   ) =>
     Array.isArray(arr) &&
     arr.some(
       item =>
         sameId(
           item,
-          id
+          targetId
         )
     );
 
@@ -227,22 +238,84 @@ const ReelsFeed = ({
 
   useEffect(() => {
 
+    let cancelled = false;
+
     const fetchPosts =
       async () => {
 
         setLoading(true);
+        setError('');
 
         try {
+
+          // ===================================================
+          // SHARE PAGE
+          // ===================================================
+
+          if (
+            singlePost &&
+            id
+          ) {
+
+            const res =
+              await axios.get(
+                `/posts/${id}`
+              );
+
+            if (
+              cancelled
+            ) {
+              return;
+            }
+
+            if (
+              res.data
+            ) {
+
+              setPosts([
+                res.data
+              ]);
+
+              setCurrentIndex(
+                0
+              );
+
+            } else {
+
+              setPosts([]);
+
+              setError(
+                'Пост не найден'
+              );
+
+            }
+
+            return;
+          }
+
+
+          // ===================================================
+          // NORMAL FEED
+          // ===================================================
 
           const endpoint =
             feedType === 'following'
               ? '/posts/following'
               : '/posts';
 
+
           const res =
             await axios.get(
               endpoint
             );
+
+
+          if (
+            cancelled
+          ) {
+            return;
+          }
+
 
           setPosts(
             Array.isArray(
@@ -252,29 +325,58 @@ const ReelsFeed = ({
               : []
           );
 
+          setCurrentIndex(
+            0
+          );
+
         } catch (error) {
 
+          if (
+            cancelled
+          ) {
+            return;
+          }
+
           console.error(
-            'Ошибка загрузки ленты:',
+            'Ошибка загрузки постов:',
             error
           );
 
+          const message =
+            error.response?.data?.message ||
+            'Пост не найден';
+
+          setPosts([]);
+          setError(message);
+
         } finally {
 
-          setLoading(false);
+          if (
+            !cancelled
+          ) {
+            setLoading(false);
+          }
 
         }
       };
 
+
     fetchPosts();
 
+
+    return () => {
+      cancelled = true;
+    };
+
   }, [
-    feedType
+    feedType,
+    singlePost,
+    id
   ]);
 
 
   // =========================================================
-  // CURRENT POST CHANGES
+  // RESET WHEN POST CHANGES
   // =========================================================
 
   useEffect(() => {
@@ -299,8 +401,10 @@ const ReelsFeed = ({
     if (
       videoRef.current
     ) {
+
       videoRef.current.muted =
         isMuted;
+
     }
 
   }, [
@@ -328,8 +432,10 @@ const ReelsFeed = ({
 
     return likesArray.some(
       like =>
-        like === user._id ||
-        like?._id === user._id
+        sameId(
+          like,
+          user._id
+        )
     );
   };
 
@@ -353,8 +459,10 @@ const ReelsFeed = ({
 
     return savedArray.some(
       save =>
-        save === user._id ||
-        save?._id === user._id
+        sameId(
+          save,
+          user._id
+        )
     );
   };
 
@@ -372,11 +480,15 @@ const ReelsFeed = ({
       prev =>
         prev.map(
           post =>
-            post._id === postId
+            sameId(
+              post._id,
+              postId
+            )
               ? updater(post)
               : post
         )
     );
+
   };
 
 
@@ -399,10 +511,15 @@ const ReelsFeed = ({
     const targetPost =
       posts.find(
         post =>
-          post._id === postId
+          sameId(
+            post._id,
+            postId
+          )
       );
 
-    if (!targetPost) {
+    if (
+      !targetPost
+    ) {
       return;
     }
 
@@ -436,9 +553,9 @@ const ReelsFeed = ({
                 post.likes ||
                 []
               ).filter(
-                id =>
+                item =>
                   !sameId(
-                    id,
+                    item,
                     user._id
                   )
               )
@@ -482,7 +599,10 @@ const ReelsFeed = ({
         prev =>
           prev.map(
             post =>
-              post._id === postId
+              sameId(
+                post._id,
+                postId
+              )
                 ? originalPost
                 : post
           )
@@ -528,10 +648,15 @@ const ReelsFeed = ({
     const targetPost =
       posts.find(
         post =>
-          post._id === postId
+          sameId(
+            post._id,
+            postId
+          )
       );
 
-    if (!targetPost) {
+    if (
+      !targetPost
+    ) {
       return;
     }
 
@@ -550,7 +675,6 @@ const ReelsFeed = ({
       targetPost;
 
 
-    // Optimistic UI
     updatePostInList(
       postId,
       post => ({
@@ -565,9 +689,9 @@ const ReelsFeed = ({
                 post.savedBy ||
                 []
               ).filter(
-                id =>
+                item =>
                   !sameId(
-                    id,
+                    item,
                     user._id
                   )
               )
@@ -611,7 +735,10 @@ const ReelsFeed = ({
         prev =>
           prev.map(
             post =>
-              post._id === postId
+              sameId(
+                post._id,
+                postId
+              )
                 ? originalPost
                 : post
           )
@@ -649,7 +776,10 @@ const ReelsFeed = ({
     if (
       !user ||
       !targetUserId ||
-      targetUserId === user._id
+      sameId(
+        targetUserId,
+        user._id
+      )
     ) {
       return;
     }
@@ -681,9 +811,11 @@ const ReelsFeed = ({
                     prev.following ||
                     []
                   ).filter(
-                    id =>
-                      id !==
-                      targetUserId
+                    item =>
+                      !sameId(
+                        item,
+                        targetUserId
+                      )
                   )
           };
 
@@ -725,7 +857,9 @@ const ReelsFeed = ({
     postId
   ) => {
 
-    if (!postId) {
+    if (
+      !postId
+    ) {
       return;
     }
 
@@ -735,7 +869,10 @@ const ReelsFeed = ({
     const currentPost =
       posts.find(
         post =>
-          post._id === postId
+          sameId(
+            post._id,
+            postId
+          )
       );
 
     const shareTitle =
@@ -750,7 +887,6 @@ const ReelsFeed = ({
 
     // =======================================================
     // NATIVE SHARE
-    // Telefon va ayrim browserlarda native share ochiladi.
     // =======================================================
 
     if (
@@ -760,6 +896,7 @@ const ReelsFeed = ({
       try {
 
         await navigator.share({
+
           title:
             shareTitle,
 
@@ -768,14 +905,12 @@ const ReelsFeed = ({
 
           url:
             shareUrl
+
         });
 
         return;
 
       } catch (error) {
-
-        // User share oynasini yopsa,
-        // hech qanday xato alert qilmaymiz.
 
         if (
           error?.name ===
@@ -789,7 +924,7 @@ const ReelsFeed = ({
 
 
     // =======================================================
-    // CLIPBOARD FALLBACK
+    // CLIPBOARD
     // =======================================================
 
     try {
@@ -801,6 +936,7 @@ const ReelsFeed = ({
       showAlert({
         title:
           'Ссылка скопирована',
+
         message:
           'Ссылка на этот пост скопирована в буфер обмена.'
       });
@@ -815,6 +951,7 @@ const ReelsFeed = ({
       showAlert({
         title:
           'Ссылка на пост',
+
         message:
           shareUrl
       });
@@ -836,6 +973,7 @@ const ReelsFeed = ({
         prev =>
           !prev
       );
+
     };
 
 
@@ -869,6 +1007,7 @@ const ReelsFeed = ({
         setIsPlaying(
           false
         );
+
       }
     };
 
@@ -921,7 +1060,8 @@ const ReelsFeed = ({
     useCallback(() => {
 
       if (
-        currentIndex > 0
+        currentIndex >
+        0
       ) {
 
         setCurrentIndex(
@@ -1017,6 +1157,7 @@ const ReelsFeed = ({
       }
     );
 
+
     return () => {
 
       window.removeEventListener(
@@ -1091,6 +1232,7 @@ const ReelsFeed = ({
       handleKeyDown
     );
 
+
     return () => {
 
       window.removeEventListener(
@@ -1128,9 +1270,11 @@ const ReelsFeed = ({
         if (
           editPreview
         ) {
+
           URL.revokeObjectURL(
             editPreview
           );
+
         }
 
         setEditPreview(
@@ -1210,11 +1354,15 @@ const ReelsFeed = ({
           prev =>
             prev.map(
               item =>
-                item._id === post._id
+                sameId(
+                  item._id,
+                  post._id
+                )
                   ? updatedPost
                   : item
             )
         );
+
 
         setIsEditModalOpen(
           false
@@ -1223,6 +1371,7 @@ const ReelsFeed = ({
         setEditFile(
           null
         );
+
 
         if (
           editPreview
@@ -1234,9 +1383,11 @@ const ReelsFeed = ({
 
         }
 
+
         setEditPreview(
           null
         );
+
 
         showAlert({
           title:
@@ -1284,10 +1435,14 @@ const ReelsFeed = ({
         return;
       }
 
-      if (!user) {
+      if (
+        !user
+      ) {
+
         showAlert({
           title:
             'Войдите в Lume',
+
           message:
             'Чтобы оставить комментарий, необходимо войти в аккаунт.'
         });
@@ -1319,7 +1474,10 @@ const ReelsFeed = ({
           prev =>
             prev.map(
               post =>
-                post._id === postId
+                sameId(
+                  post._id,
+                  postId
+                )
                   ? {
                       ...post,
 
@@ -1340,6 +1498,7 @@ const ReelsFeed = ({
         showAlert({
           title:
             'Ошибка',
+
           message:
             'Ошибка добавления комментария: ' +
             (
@@ -1368,10 +1527,14 @@ const ReelsFeed = ({
       commentId
     ) => {
 
-      if (!user) {
+      if (
+        !user
+      ) {
+
         showAlert({
           title:
             'Войдите в Lume',
+
           message:
             'Чтобы поставить лайк, необходимо войти в аккаунт.'
         });
@@ -1395,7 +1558,10 @@ const ReelsFeed = ({
           prev =>
             prev.map(
               post =>
-                post._id === postId
+                sameId(
+                  post._id,
+                  postId
+                )
                   ? {
                       ...post,
 
@@ -1405,8 +1571,10 @@ const ReelsFeed = ({
                           []
                         ).map(
                           comment =>
-                            comment._id ===
-                            commentId
+                            sameId(
+                              comment._id,
+                              commentId
+                            )
                               ? updatedComment
                               : comment
                         )
@@ -1420,6 +1588,7 @@ const ReelsFeed = ({
         showAlert({
           title:
             'Ошибка',
+
           message:
             'Ошибка лайка комментария: ' +
             (
@@ -1454,10 +1623,14 @@ const ReelsFeed = ({
         return;
       }
 
-      if (!user) {
+      if (
+        !user
+      ) {
+
         showAlert({
           title:
             'Войдите в Lume',
+
           message:
             'Чтобы ответить на комментарий, необходимо войти в аккаунт.'
         });
@@ -1479,11 +1652,15 @@ const ReelsFeed = ({
           response.data.reply ||
           response.data;
 
+
         setPosts(
           prev =>
             prev.map(
               post =>
-                post._id === postId
+                sameId(
+                  post._id,
+                  postId
+                )
                   ? {
                       ...post,
 
@@ -1493,8 +1670,10 @@ const ReelsFeed = ({
                           []
                         ).map(
                           comment =>
-                            comment._id ===
-                            commentId
+                            sameId(
+                              comment._id,
+                              commentId
+                            )
                               ? {
                                   ...comment,
 
@@ -1525,6 +1704,7 @@ const ReelsFeed = ({
         showAlert({
           title:
             'Ошибка',
+
           message:
             'Ошибка добавления ответа: ' +
             (
@@ -1546,16 +1726,21 @@ const ReelsFeed = ({
     currentText
   ) => {
 
-    if (!user) {
+    if (
+      !user
+    ) {
+
       showAlert({
         title:
           'Войдите в Lume',
+
         message:
           'Чтобы редактировать комментарии, необходимо войти в аккаунт.'
       });
 
       return;
     }
+
 
     setEditingCommentId(
       commentId
@@ -1564,6 +1749,7 @@ const ReelsFeed = ({
     setEditCommentText(
       currentText || ''
     );
+
   };
 
 
@@ -1596,14 +1782,17 @@ const ReelsFeed = ({
             }
           );
 
+
         setPosts(
           prev =>
             prev.map(
               post => {
 
                 if (
-                  post._id !==
-                  postId
+                  !sameId(
+                    post._id,
+                    postId
+                  )
                 ) {
                   return post;
                 }
@@ -1637,10 +1826,13 @@ const ReelsFeed = ({
                                 []
                               ).map(
                                 reply =>
-                                  reply._id ===
-                                  commentId
+                                  sameId(
+                                    reply._id,
+                                    commentId
+                                  )
                                     ? {
                                         ...reply,
+
                                         text:
                                           editCommentText
                                       }
@@ -1650,17 +1842,22 @@ const ReelsFeed = ({
 
                         }
 
-                        return comment._id ===
+                        return sameId(
+                          comment._id,
                           commentId
+                        )
                           ? {
                               ...comment,
+
                               text:
                                 editCommentText
                             }
                           : comment;
+
                       }
                     )
                 };
+
               }
             )
         );
@@ -1679,6 +1876,7 @@ const ReelsFeed = ({
         showAlert({
           title:
             'Ошибка',
+
           message:
             'Ошибка редактирования: ' +
             (
@@ -1702,10 +1900,14 @@ const ReelsFeed = ({
       isReply = false
     ) => {
 
-      if (!user) {
+      if (
+        !user
+      ) {
+
         showAlert({
           title:
             'Войдите в Lume',
+
           message:
             'Чтобы удалить комментарий, необходимо войти в аккаунт.'
         });
@@ -1713,7 +1915,9 @@ const ReelsFeed = ({
         return;
       }
 
+
       showAlert({
+
         title:
           'Удаление комментария',
 
@@ -1750,11 +1954,14 @@ const ReelsFeed = ({
                     post => {
 
                       if (
-                        post._id !==
-                        postId
+                        !sameId(
+                          post._id,
+                          postId
+                        )
                       ) {
                         return post;
                       }
+
 
                       if (
                         isReply
@@ -1777,8 +1984,10 @@ const ReelsFeed = ({
                                     []
                                   ).filter(
                                     reply =>
-                                      reply._id !==
-                                      commentId
+                                      !sameId(
+                                        reply._id,
+                                        commentId
+                                      )
                                   )
                               })
                             )
@@ -1796,8 +2005,10 @@ const ReelsFeed = ({
                             []
                           ).filter(
                             comment =>
-                              comment._id !==
-                              commentId
+                              !sameId(
+                                comment._id,
+                                commentId
+                              )
                           )
                       };
 
@@ -1810,6 +2021,7 @@ const ReelsFeed = ({
               showAlert({
                 title:
                   'Ошибка',
+
                 message:
                   'Ошибка удаления: ' +
                   (
@@ -1831,6 +2043,7 @@ const ReelsFeed = ({
   if (
     loading
   ) {
+
     return (
       <div className="
         w-full
@@ -1844,29 +2057,63 @@ const ReelsFeed = ({
         Lume загружается...
       </div>
     );
+
   }
 
 
   // =========================================================
-  // EMPTY
+  // ERROR
   // =========================================================
 
   if (
+    error ||
     posts.length === 0
   ) {
+
     return (
       <div className="
         w-full
         h-screen
         flex
+        flex-col
         items-center
         justify-center
+        gap-4
         bg-[#0a0a0a]
-        text-white/50
+        text-white
+        px-6
+        text-center
       ">
-        Лента пуста...
+
+        <div className="
+          text-2xl
+          font-bold
+        ">
+          {error || 'Лента пуста...'}
+        </div>
+
+
+        {singlePost && (
+          <Link
+            to="/"
+            className="
+              px-5
+              py-2.5
+              rounded-full
+              bg-white
+              text-black
+              font-semibold
+              hover:bg-white/90
+              transition
+            "
+          >
+            Вернуться в Lume
+          </Link>
+        )}
+
       </div>
     );
+
   }
 
 
@@ -1895,8 +2142,8 @@ const ReelsFeed = ({
   const isFollowingAuthor =
     user?.following
       ?.map(
-        id =>
-          id.toString()
+        item =>
+          item.toString()
       )
       .includes(
         post.user?._id?.toString()
@@ -2328,7 +2575,6 @@ const ReelsFeed = ({
                     <AnimatePresence>
 
                       {!isPlaying && (
-
                         <motion.div
                           initial={{
                             opacity:
@@ -2380,7 +2626,6 @@ const ReelsFeed = ({
                           </div>
 
                         </motion.div>
-
                       )}
 
                     </AnimatePresence>
@@ -2411,9 +2656,7 @@ const ReelsFeed = ({
             md:min-w-[80px]
           ">
 
-            {/* =================================================
-                PROFILE
-            ================================================== */}
+            {/* PROFILE */}
 
             <div className="
               relative
@@ -2585,9 +2828,7 @@ const ReelsFeed = ({
             </div>
 
 
-            {/* =================================================
-                LIKE
-            ================================================== */}
+            {/* LIKE */}
 
             <div
               className="
@@ -2619,19 +2860,22 @@ const ReelsFeed = ({
                 transition
               ">
 
-                <span className={`
+                <span className="
                   text-xl
                   transition-colors
-                  ${
-                    isLiked
-                      ? 'text-red-500'
-                      : 'text-white/80 hover:text-white'
-                  }
-                `}>
+                ">
 
                   {isLiked
-                    ? <FaHeart />
-                    : <FaRegHeart />}
+                    ? (
+                      <FaHeart
+                        className="text-red-500"
+                      />
+                    )
+                    : (
+                      <FaRegHeart
+                        className="text-white/80 hover:text-white"
+                      />
+                    )}
 
                 </span>
 
@@ -2649,9 +2893,7 @@ const ReelsFeed = ({
             </div>
 
 
-            {/* =================================================
-                COMMENTS
-            ================================================== */}
+            {/* COMMENTS */}
 
             <div
               className="
@@ -2709,9 +2951,7 @@ const ReelsFeed = ({
             </div>
 
 
-            {/* =================================================
-                SAVE
-            ================================================== */}
+            {/* SAVE */}
 
             <div
               className="
@@ -2748,7 +2988,6 @@ const ReelsFeed = ({
                   <FaBookmark className="
                     text-yellow-400
                     text-xl
-                    transition-colors
                   " />
 
                 ) : (
@@ -2757,7 +2996,6 @@ const ReelsFeed = ({
                     text-white/80
                     text-xl
                     hover:text-white
-                    transition-colors
                   " />
 
                 )}
@@ -2776,9 +3014,7 @@ const ReelsFeed = ({
             </div>
 
 
-            {/* =================================================
-                SHARE
-            ================================================== */}
+            {/* SHARE */}
 
             <div
               className="
@@ -2822,9 +3058,7 @@ const ReelsFeed = ({
             </div>
 
 
-            {/* =================================================
-                NAVIGATION
-            ================================================== */}
+            {/* NAVIGATION */}
 
             <div className="
               border-t
@@ -2867,6 +3101,7 @@ const ReelsFeed = ({
                   size={16}
                 />
               </button>
+
 
               <button
                 onClick={
@@ -3003,7 +3238,7 @@ const ReelsFeed = ({
               </div>
 
 
-              {/* COMMENT LIST */}
+              {/* COMMENTS */}
 
               <div className="
                 flex-1
@@ -3016,8 +3251,7 @@ const ReelsFeed = ({
 
                 {(
                   !post.comments ||
-                  post.comments.length ===
-                    0
+                  post.comments.length === 0
                 ) && (
 
                   <p className="
@@ -3032,17 +3266,19 @@ const ReelsFeed = ({
 
 
                 {post.comments?.map(
-                  (
-                    comment
-                  ) => {
+                  comment => {
 
                     const isCommentAuthor =
-                      user?._id ===
-                      comment.user?._id;
+                      sameId(
+                        user?._id,
+                        comment.user?._id
+                      );
 
                     const isPostAuthor =
-                      user?._id ===
-                      post.user?._id;
+                      sameId(
+                        user?._id,
+                        post.user?._id
+                      );
 
                     const isLikedByMe =
                       isUserLiked(
@@ -3051,7 +3287,6 @@ const ReelsFeed = ({
 
 
                     return (
-
                       <div
                         key={
                           comment._id
@@ -3063,7 +3298,7 @@ const ReelsFeed = ({
                         "
                       >
 
-                        {/* COMMENT MAIN */}
+                        {/* COMMENT */}
 
                         <div className="
                           flex
@@ -3139,8 +3374,6 @@ const ReelsFeed = ({
                                   text-xs
                                   font-medium
                                   hover:text-white
-                                  transition
-                                  inline-block
                                 "
                               >
                                 @{comment.user?.username}
@@ -3207,8 +3440,6 @@ const ReelsFeed = ({
                                     py-2
                                     text-sm
                                     outline-none
-                                    focus:ring-1
-                                    focus:ring-accent/50
                                     resize-none
                                   "
                                   rows="2"
@@ -3221,6 +3452,7 @@ const ReelsFeed = ({
 
                                   <button
                                     onClick={() => {
+
                                       setEditingCommentId(
                                         null
                                       );
@@ -3228,6 +3460,7 @@ const ReelsFeed = ({
                                       setEditCommentText(
                                         ''
                                       );
+
                                     }}
                                     className="
                                       text-xs
@@ -3249,7 +3482,6 @@ const ReelsFeed = ({
                                     className="
                                       text-xs
                                       text-accent
-                                      hover:opacity-80
                                     "
                                   >
                                     Сохранить
@@ -3276,7 +3508,7 @@ const ReelsFeed = ({
                         </div>
 
 
-                        {/* COMMENT ACTIONS */}
+                        {/* ACTIONS */}
 
                         <div className="
                           flex
@@ -3303,28 +3535,22 @@ const ReelsFeed = ({
 
                             <span className={`
                               text-sm
-                              transition-colors
                               ${
                                 isLikedByMe
                                   ? 'text-red-500'
-                                  : 'text-white/40 hover:text-white'
+                                  : 'text-white/40'
                               }
                             `}>
-
                               {isLikedByMe
                                 ? <FaHeart />
                                 : <FaRegHeart />}
-
                             </span>
 
                             <span className="
                               text-xs
                               text-white/40
                             ">
-                              {comment.likes?.length >
-                              0
-                                ? comment.likes.length
-                                : ''}
+                              {comment.likes?.length || ''}
                             </span>
 
                           </div>
@@ -3338,18 +3564,15 @@ const ReelsFeed = ({
                               cursor-pointer
                               text-white/40
                               hover:text-white
-                              transition
                               text-xs
                             "
-                            onClick={() => {
-
+                            onClick={() =>
                               document
                                 .getElementById(
                                   `reply-input-${comment._id}`
                                 )
-                                ?.focus();
-
-                            }}
+                                ?.focus()
+                            }
                           >
 
                             <FaReply
@@ -3383,7 +3606,6 @@ const ReelsFeed = ({
                                 }
                                 className="
                                   hover:text-white
-                                  transition
                                 "
                               >
                                 <FaPencilAlt
@@ -3401,7 +3623,6 @@ const ReelsFeed = ({
                                 }
                                 className="
                                   hover:text-red-400
-                                  transition
                                 "
                               >
                                 <FaTrash
@@ -3469,8 +3690,6 @@ const ReelsFeed = ({
                               outline-none
                               pb-1
                               placeholder:text-white/30
-                              focus:border-accent/50
-                              transition
                             "
                           />
 
@@ -3485,8 +3704,6 @@ const ReelsFeed = ({
                               text-accent
                               text-xs
                               font-medium
-                              hover:opacity-80
-                              transition
                             "
                           >
                             Отправить
@@ -3510,13 +3727,13 @@ const ReelsFeed = ({
                           ">
 
                             {comment.replies.map(
-                              (
-                                reply
-                              ) => {
+                              reply => {
 
                                 const isReplyAuthor =
-                                  user?._id ===
-                                  reply.user?._id;
+                                  sameId(
+                                    user?._id,
+                                    reply.user?._id
+                                  );
 
                                 const isReplyEditing =
                                   editingCommentId ===
@@ -3537,11 +3754,7 @@ const ReelsFeed = ({
 
                                     <Link
                                       to={`/profile/${reply.user?._id}`}
-                                      className="
-                                        shrink-0
-                                        hover:opacity-80
-                                        transition
-                                      "
+                                      className="shrink-0"
                                     >
 
                                       <div className="
@@ -3602,9 +3815,6 @@ const ReelsFeed = ({
                                             text-white/40
                                             text-[11px]
                                             font-medium
-                                            hover:text-white
-                                            transition
-                                            inline-block
                                           "
                                         >
                                           @{reply.user?.username}
@@ -3653,8 +3863,6 @@ const ReelsFeed = ({
                                               py-1
                                               text-xs
                                               outline-none
-                                              focus:ring-1
-                                              focus:ring-accent/50
                                               resize-none
                                             "
                                             rows="2"
@@ -3680,7 +3888,6 @@ const ReelsFeed = ({
                                               className="
                                                 text-[10px]
                                                 text-white/50
-                                                hover:text-white
                                               "
                                             >
                                               Отмена
@@ -3697,7 +3904,6 @@ const ReelsFeed = ({
                                               className="
                                                 text-[10px]
                                                 text-accent
-                                                hover:opacity-80
                                               "
                                             >
                                               Сохранить
@@ -3740,7 +3946,6 @@ const ReelsFeed = ({
                                             }
                                             className="
                                               hover:text-white
-                                              transition
                                             "
                                           >
                                             <FaPencilAlt
@@ -3758,7 +3963,6 @@ const ReelsFeed = ({
                                             }
                                             className="
                                               hover:text-red-400
-                                              transition
                                             "
                                           >
                                             <FaTrash
@@ -3784,9 +3988,7 @@ const ReelsFeed = ({
                         )}
 
                       </div>
-
                     );
-
                   }
                 )}
 
@@ -3866,8 +4068,6 @@ const ReelsFeed = ({
                       text-accent
                       font-medium
                       text-sm
-                      hover:opacity-80
-                      transition
                       disabled:opacity-50
                     "
                   >
@@ -3929,9 +4129,6 @@ const ReelsFeed = ({
           >
 
             <motion.div
-              key={
-                isEditModalOpen
-              }
               initial={{
                 scale:
                   0.9,
@@ -4003,7 +4200,6 @@ const ReelsFeed = ({
                     focus:ring-accent/50
                     resize-none
                     min-h-[80px]
-                    placeholder:text-white/30
                   "
                   placeholder="Название / Описание поста..."
                 />
@@ -4064,9 +4260,11 @@ const ReelsFeed = ({
                         if (
                           editPreview
                         ) {
+
                           URL.revokeObjectURL(
                             editPreview
                           );
+
                         }
 
                         setEditPreview(
@@ -4076,8 +4274,10 @@ const ReelsFeed = ({
                         if (
                           editFileInputRef.current
                         ) {
+
                           editFileInputRef.current.value =
                             '';
+
                         }
 
                       }}
@@ -4156,9 +4356,11 @@ const ReelsFeed = ({
                     if (
                       editPreview
                     ) {
+
                       URL.revokeObjectURL(
                         editPreview
                       );
+
                     }
 
                     setEditPreview(
