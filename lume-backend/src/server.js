@@ -1,19 +1,42 @@
-const express = require('express');
-const dotenv = require('dotenv');
-const cors = require('cors');
-const path = require('path');
-const http = require('http');
-const socketIO = require('socket.io');
-const connectDB = require('./config/db');
-const jwt = require('jsonwebtoken');
-const Notification = require('./models/Notification');
-const Message = require('./models/Message');
+const express =
+  require('express');
+
+const dotenv =
+  require('dotenv');
+
+const cors =
+  require('cors');
+
+const path =
+  require('path');
+
+const http =
+  require('http');
+
+const socketIO =
+  require('socket.io');
+
+const connectDB =
+  require('./config/db');
+
+const jwt =
+  require('jsonwebtoken');
+
+const Notification =
+  require('./models/Notification');
+
+const Message =
+  require('./models/Message');
+
 
 dotenv.config();
 
 connectDB();
 
-const app = express();
+
+const app =
+  express();
+
 
 // =========================================================
 // CORS
@@ -21,7 +44,9 @@ const app = express();
 
 app.use(
   cors({
-    origin: '*',
+    origin:
+      '*',
+
     methods: [
       'GET',
       'POST',
@@ -30,6 +55,7 @@ app.use(
       'DELETE',
       'OPTIONS'
     ],
+
     allowedHeaders: [
       'Content-Type',
       'Authorization'
@@ -37,16 +63,18 @@ app.use(
   })
 );
 
+
 // =========================================================
-// BODY PARSER
+// BODY
 // =========================================================
 
 app.use(
   express.json()
 );
 
+
 // =========================================================
-// STATIC FILES
+// STATIC
 // =========================================================
 
 app.use(
@@ -59,79 +87,112 @@ app.use(
   )
 );
 
+
 // =========================================================
 // ROUTES
 // =========================================================
 
 app.use(
   '/api/auth',
-  require('./routes/authRoutes')
+  require(
+    './routes/authRoutes'
+  )
 );
 
-const postRoutes =
-  require('./routes/postRoutes');
 
 app.use(
   '/api/posts',
-  postRoutes
+  require(
+    './routes/postRoutes'
+  )
 );
+
 
 app.use(
   '/api/users',
-  require('./routes/userRoutes')
+  require(
+    './routes/userRoutes'
+  )
 );
+
 
 app.use(
   '/api/chats',
-  require('./routes/chatRoutes')
+  require(
+    './routes/chatRoutes'
+  )
 );
+
 
 app.use(
   '/api/stories',
-  require('./routes/storyRoutes')
+  require(
+    './routes/storyRoutes'
+  )
 );
+
 
 app.use(
   '/api/notifications',
-  require('./routes/notificationRoutes')
+  require(
+    './routes/notificationRoutes'
+  )
 );
+
 
 app.use(
   '/api/admin',
-  require('./routes/adminRoutes')
+  require(
+    './routes/adminRoutes'
+  )
 );
+
 
 app.use(
   '/api/search',
-  require('./routes/searchRoutes')
+  require(
+    './routes/searchRoutes'
+  )
 );
+
 
 console.log(
   '✅ POST ROUTES LOADED'
 );
 
+
 // =========================================================
-// BASIC TEST ROUTE
+// TEST
 // =========================================================
 
 app.get(
   '/',
-  (req, res) => {
+  (
+    req,
+    res
+  ) => {
+
     res.json({
       message:
         'Lume API is running',
+
       status:
         'ok'
     });
+
   }
 );
+
 
 // =========================================================
 // HTTP SERVER
 // =========================================================
 
 const server =
-  http.createServer(app);
+  http.createServer(
+    app
+  );
+
 
 // =========================================================
 // SOCKET.IO
@@ -142,7 +203,9 @@ const io =
     server,
     {
       cors: {
-        origin: '*',
+        origin:
+          '*',
+
         methods: [
           'GET',
           'POST'
@@ -151,21 +214,29 @@ const io =
     }
   );
 
+
 app.set(
   'io',
   io
 );
+
 
 // =========================================================
 // SOCKET AUTH
 // =========================================================
 
 io.use(
-  (socket, next) => {
+  (
+    socket,
+    next
+  ) => {
+
     const token =
       socket.handshake.auth?.token;
 
+
     if (!token) {
+
       console.log(
         '❌ Socket token отсутствует'
       );
@@ -175,33 +246,44 @@ io.use(
           'Authentication error'
         )
       );
+
     }
 
+
     try {
+
       const decoded =
         jwt.verify(
           token,
           process.env.JWT_SECRET
         );
 
+
       socket.userId =
         decoded.id.toString();
 
+
       next();
+
     } catch (error) {
+
       console.error(
         '❌ Socket auth error:',
         error.message
       );
+
 
       next(
         new Error(
           'Authentication error'
         )
       );
+
     }
+
   }
 );
+
 
 // =========================================================
 // SOCKET CONNECTION
@@ -209,9 +291,13 @@ io.use(
 
 io.on(
   'connection',
-  (socket) => {
+  (
+    socket
+  ) => {
+
     const userId =
       socket.userId.toString();
+
 
     console.log(
       '🟢 SOCKET CONNECTED'
@@ -227,6 +313,7 @@ io.on(
       socket.id
     );
 
+
     // =======================================================
     // USER ROOM
     // =======================================================
@@ -235,10 +322,12 @@ io.on(
       userId
     );
 
+
     console.log(
       '🏠 JOINED ROOM:',
       userId
     );
+
 
     // =======================================================
     // PRIVATE MESSAGE
@@ -246,7 +335,10 @@ io.on(
 
     socket.on(
       'private-message',
-      async (data) => {
+      async (
+        data
+      ) => {
+
         const {
           receiverId,
           content,
@@ -254,10 +346,13 @@ io.on(
           mediaType
         } = data;
 
+
         try {
+
           if (!receiverId) {
             return;
           }
+
 
           // ---------------------------------------------------
           // CREATE MESSAGE
@@ -265,6 +360,7 @@ io.on(
 
           const message =
             await Message.create({
+
               sender:
                 userId,
 
@@ -280,7 +376,9 @@ io.on(
               mediaType:
                 mediaType ||
                 'none'
+
             });
+
 
           const populatedMsg =
             await message.populate(
@@ -288,8 +386,9 @@ io.on(
               'username avatar'
             );
 
+
           // ---------------------------------------------------
-          // SEND MESSAGE TO RECEIVER
+          // RECEIVER
           // ---------------------------------------------------
 
           io.to(
@@ -299,8 +398,9 @@ io.on(
             populatedMsg
           );
 
+
           // ---------------------------------------------------
-          // SEND MESSAGE TO SENDER
+          // SENDER
           // ---------------------------------------------------
 
           socket.emit(
@@ -308,12 +408,14 @@ io.on(
             populatedMsg
           );
 
+
           // ---------------------------------------------------
-          // CREATE NOTIFICATION
+          // NOTIFICATION
           // ---------------------------------------------------
 
           const notification =
             await Notification.create({
+
               recipient:
                 receiverId,
 
@@ -328,20 +430,31 @@ io.on(
 
               text:
                 content?.trim()
+
                   ? `Новое сообщение: "${content.substring(
                       0,
                       40
                     )}${
-                      content.length > 40
+                      content.length >
+                      40
                         ? '...'
                         : ''
                     }"`
-                  : mediaType === 'video'
+
+                  : mediaType ===
+                    'video'
+
                     ? 'Отправил вам видео'
-                    : mediaType === 'image'
+
+                    : mediaType ===
+                      'image'
+
                       ? 'Отправил вам изображение'
+
                       : 'Отправил вам сообщение'
+
             });
+
 
           const populatedNotification =
             await notification.populate(
@@ -349,8 +462,9 @@ io.on(
               'username avatar'
             );
 
+
           // ---------------------------------------------------
-          // REAL-TIME NOTIFICATION
+          // REAL TIME NOTIFICATION
           // ---------------------------------------------------
 
           io.to(
@@ -360,14 +474,19 @@ io.on(
             populatedNotification
           );
 
+
         } catch (error) {
+
           console.error(
             'Ошибка сохранения сообщения:',
             error
           );
+
         }
+
       }
     );
+
 
     // =======================================================
     // DISCONNECT
@@ -375,7 +494,10 @@ io.on(
 
     socket.on(
       'disconnect',
-      (reason) => {
+      (
+        reason
+      ) => {
+
         console.log(
           '🔴 SOCKET DISCONNECTED'
         );
@@ -394,10 +516,13 @@ io.on(
           'REASON:',
           reason
         );
+
       }
     );
+
   }
 );
+
 
 // =========================================================
 // GLOBAL ERROR HANDLER
@@ -410,20 +535,27 @@ app.use(
     res,
     next
   ) => {
+
     console.error(
       'GLOBAL ERROR:',
       err
     );
 
+
     res.status(
-      err.status || 500
+      err.status ||
+      500
     ).json({
+
       message:
         err.message ||
         'Server error'
+
     });
+
   }
 );
+
 
 // =========================================================
 // SERVER START
@@ -433,10 +565,12 @@ const PORT =
   process.env.PORT ||
   5000;
 
+
 server.listen(
   PORT,
   '0.0.0.0',
   () => {
+
     console.log(
       '======================================'
     );
@@ -452,8 +586,10 @@ server.listen(
     console.log(
       '======================================'
     );
+
   }
 );
+
 
 // =========================================================
 // TIMEOUTS

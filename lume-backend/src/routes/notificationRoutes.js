@@ -1,16 +1,25 @@
-const express = require('express');
+const express =
+  require('express');
 
-const router = express.Router();
+const router =
+  express.Router();
 
 const {
   getMyNotifications,
   markAsRead,
   markAllAsRead
-} = require('../controllers/notificationController');
+} =
+  require(
+    '../controllers/notificationController'
+  );
 
 const {
   protect
-} = require('../middleware/authMiddleware');
+} =
+  require(
+    '../middleware/authMiddleware'
+  );
+
 
 // =========================================================
 // GET ALL
@@ -22,6 +31,7 @@ router.get(
   getMyNotifications
 );
 
+
 // =========================================================
 // MARK ONE
 // =========================================================
@@ -31,6 +41,7 @@ router.put(
   protect,
   markAsRead
 );
+
 
 // =========================================================
 // MARK ALL
@@ -42,4 +53,6 @@ router.put(
   markAllAsRead
 );
 
-module.exports = router;
+
+module.exports =
+  router;

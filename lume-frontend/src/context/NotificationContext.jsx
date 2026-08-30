@@ -12,351 +12,627 @@ import {
   AnimatePresence
 } from 'framer-motion';
 
+import {
+  useNavigate
+} from 'react-router-dom';
+
 import axios from '../api/axios';
-import { useSocket } from './SocketContext';
+
+import {
+  useSocket
+} from './SocketContext';
 
 const NotificationContext =
   createContext(null);
 
+
 export const NotificationProvider = ({
   children
 }) => {
-  const { socket } = useSocket();
+
+  const {
+    socket
+  } = useSocket();
+
+  const navigate =
+    useNavigate();
+
 
   const [
     notifications,
     setNotifications
   ] = useState([]);
 
+
   const [
     unreadCount,
     setUnreadCount
   ] = useState(0);
+
 
   const [
     toast,
     setToast
   ] = useState(null);
 
+
   const isFetchingRef =
     useRef(false);
+
 
   const mountedRef =
     useRef(true);
 
+
   const toastTimerRef =
     useRef(null);
+
 
   const lastNetworkErrorRef =
     useRef(0);
 
+
   // =========================================================
-  // FETCH NOTIFICATIONS
+  // ICON
+  // =========================================================
+
+  const getNotificationIcon =
+    (type) => {
+
+      switch (
+        type
+      ) {
+
+        case 'like':
+          return '❤️';
+
+        case 'save':
+          return '🔖';
+
+        case 'comment':
+          return '💬';
+
+        case 'comment_like':
+          return '❤️';
+
+        case 'reply':
+          return '↩️';
+
+        case 'share':
+          return '↗️';
+
+        case 'follow':
+          return '👤';
+
+        case 'message':
+          return '💬';
+
+        case 'story':
+          return '⭕';
+
+        case 'profile_view':
+          return '👀';
+
+        case 'new_user':
+          return '🆕';
+
+        case 'new_login':
+          return '🔐';
+
+        default:
+          return '🔔';
+
+      }
+
+    };
+
+
+  // =========================================================
+  // FETCH
   // =========================================================
 
   const fetchNotifications =
-    useCallback(async () => {
-      const token =
-        localStorage.getItem(
-          'lumeToken'
-        );
+    useCallback(
+      async () => {
 
-      if (!token) {
-        return;
-      }
-
-      if (isFetchingRef.current) {
-        return;
-      }
-
-      isFetchingRef.current = true;
-
-      try {
-        const res =
-          await axios.get(
-            '/notifications'
+        const token =
+          localStorage.getItem(
+            'lumeToken'
           );
 
-        if (!mountedRef.current) {
+
+        if (!token) {
           return;
         }
 
-        const data =
-          Array.isArray(res.data)
-            ? res.data
-            : [];
 
-        setNotifications(data);
-
-        const unread =
-          data.filter(
-            (notification) =>
-              !notification.isRead
-          ).length;
-
-        setUnreadCount(unread);
-
-        lastNetworkErrorRef.current = 0;
-      } catch (error) {
         if (
-          error.response?.status === 401
+          isFetchingRef.current
         ) {
           return;
         }
 
-        const isNetworkError =
-          !error.response ||
-          error.code === 'ERR_NETWORK' ||
-          error.message === 'Network Error';
 
-        if (isNetworkError) {
-          const now = Date.now();
+        isFetchingRef.current =
+          true;
 
-          if (
-            now -
-              lastNetworkErrorRef.current >
-            60000
-          ) {
-            console.warn(
-              'Lume: server bilan vaqtinchalik aloqa yo‘q.'
+
+        try {
+
+          const res =
+            await axios.get(
+              '/notifications'
             );
 
-            lastNetworkErrorRef.current =
-              now;
+
+          if (
+            !mountedRef.current
+          ) {
+            return;
           }
 
-          return;
+
+          const data =
+            Array.isArray(
+              res.data
+            )
+              ? res.data
+              : [];
+
+
+          setNotifications(
+            data
+          );
+
+
+          const unread =
+            data.filter(
+              notification =>
+                !notification.isRead
+            ).length;
+
+
+          setUnreadCount(
+            unread
+          );
+
+
+          lastNetworkErrorRef.current =
+            0;
+
+
+        } catch (error) {
+
+          if (
+            error.response?.status ===
+            401
+          ) {
+            return;
+          }
+
+
+          const isNetworkError =
+            !error.response ||
+            error.code ===
+              'ERR_NETWORK' ||
+            error.message ===
+              'Network Error';
+
+
+          if (
+            isNetworkError
+          ) {
+
+            const now =
+              Date.now();
+
+
+            if (
+              now -
+                lastNetworkErrorRef.current >
+              60000
+            ) {
+
+              console.warn(
+                'Lume: server bilan vaqtinchalik aloqa yo‘q.'
+              );
+
+
+              lastNetworkErrorRef.current =
+                now;
+
+            }
+
+            return;
+
+          }
+
+
+          console.error(
+            'Ошибка загрузки уведомлений:',
+            error
+          );
+
+        } finally {
+
+          isFetchingRef.current =
+            false;
+
         }
 
-        console.error(
-          'Ошибка загрузки уведомлений:',
-          error
-        );
-      } finally {
-        isFetchingRef.current = false;
-      }
-    }, []);
+      },
+      []
+    );
+
 
   // =========================================================
   // INITIAL FETCH + POLLING
   // =========================================================
 
   useEffect(() => {
-    mountedRef.current = true;
+
+    mountedRef.current =
+      true;
+
 
     fetchNotifications();
 
+
     const interval =
-      setInterval(() => {
-        fetchNotifications();
-      }, 30000);
+      setInterval(
+        () => {
+          fetchNotifications();
+        },
+        30000
+      );
+
 
     return () => {
-      mountedRef.current = false;
-      clearInterval(interval);
+
+      mountedRef.current =
+        false;
+
+      clearInterval(
+        interval
+      );
+
     };
-  }, [fetchNotifications]);
+
+  }, [
+    fetchNotifications
+  ]);
+
 
   // =========================================================
-  // REAL-TIME SOCKET NOTIFICATION
+  // REAL TIME
   // =========================================================
 
   useEffect(() => {
+
     if (!socket) {
       return;
     }
 
+
     const handleNewNotification =
-      (notification) => {
+      (
+        notification
+      ) => {
+
         if (!notification) {
           return;
         }
 
-        setNotifications((prev) => {
-          const exists = prev.some(
-            (item) =>
-              item._id === notification._id
-          );
 
-          if (exists) {
-            return prev;
+        setNotifications(
+          prev => {
+
+            const exists =
+              prev.some(
+                item =>
+                  item._id ===
+                  notification._id
+              );
+
+
+            if (exists) {
+              return prev;
+            }
+
+
+            return [
+              notification,
+              ...prev
+            ];
+
           }
+        );
 
-          return [
-            notification,
-            ...prev
-          ];
-        });
 
-        setUnreadCount((prev) => prev + 1);
+        setUnreadCount(
+          prev =>
+            prev + 1
+        );
 
-        setToast(notification);
 
-        if (toastTimerRef.current) {
+        setToast(
+          notification
+        );
+
+
+        if (
+          toastTimerRef.current
+        ) {
+
           clearTimeout(
             toastTimerRef.current
           );
+
         }
 
+
         toastTimerRef.current =
-          setTimeout(() => {
-            setToast(null);
-          }, 5000);
+          setTimeout(
+            () => {
+
+              setToast(
+                null
+              );
+
+            },
+            5000
+          );
+
       };
+
 
     socket.on(
       'new_notification',
       handleNewNotification
     );
 
+
     return () => {
+
       socket.off(
         'new_notification',
         handleNewNotification
       );
 
-      if (toastTimerRef.current) {
+
+      if (
+        toastTimerRef.current
+      ) {
+
         clearTimeout(
           toastTimerRef.current
         );
+
       }
+
     };
-  }, [socket]);
+
+  }, [
+    socket
+  ]);
+
 
   // =========================================================
-  // MARK ONE AS READ
+  // MARK ONE
   // =========================================================
 
-  const markAsRead = async (id) => {
-    if (!id) {
-      return;
-    }
+  const markAsRead =
+    async (
+      id
+    ) => {
 
-    try {
-      const target =
-        notifications.find(
-          (notification) =>
-            notification._id === id
+      if (!id) {
+        return;
+      }
+
+
+      try {
+
+        const target =
+          notifications.find(
+            notification =>
+              notification._id ===
+              id
+          );
+
+
+        if (
+          !target ||
+          target.isRead
+        ) {
+          return;
+        }
+
+
+        await axios.put(
+          `/notifications/${id}/read`
         );
 
-      if (
-        !target ||
-        target.isRead
-      ) {
-        return;
+
+        if (
+          !mountedRef.current
+        ) {
+          return;
+        }
+
+
+        setNotifications(
+          prev =>
+            prev.map(
+              notification =>
+                notification._id ===
+                id
+                  ? {
+                      ...notification,
+                      isRead:
+                        true
+                    }
+                  : notification
+            )
+        );
+
+
+        setUnreadCount(
+          prev =>
+            Math.max(
+              0,
+              prev - 1
+            )
+        );
+
+
+      } catch (error) {
+
+        console.error(
+          'Ошибка отметки уведомления:',
+          error
+        );
+
       }
 
-      await axios.put(
-        `/notifications/${id}/read`
-      );
+    };
 
-      if (!mountedRef.current) {
-        return;
-      }
-
-      setNotifications((prev) =>
-        prev.map(
-          (notification) =>
-            notification._id === id
-              ? {
-                  ...notification,
-                  isRead: true
-                }
-              : notification
-        )
-      );
-
-      setUnreadCount((prev) =>
-        Math.max(0, prev - 1)
-      );
-    } catch (error) {
-      console.error(
-        'Ошибка отметки уведомления:',
-        error
-      );
-    }
-  };
 
   // =========================================================
-  // MARK ALL AS READ
+  // MARK ALL
   // =========================================================
 
-  const markAllAsRead = async () => {
-    try {
-      await axios.put(
-        '/notifications/read'
-      );
+  const markAllAsRead =
+    async () => {
 
-      if (!mountedRef.current) {
-        return;
+      try {
+
+        await axios.put(
+          '/notifications/read'
+        );
+
+
+        if (
+          !mountedRef.current
+        ) {
+          return;
+        }
+
+
+        setNotifications(
+          prev =>
+            prev.map(
+              notification => ({
+                ...notification,
+                isRead:
+                  true
+              })
+            )
+        );
+
+
+        setUnreadCount(
+          0
+        );
+
+
+      } catch (error) {
+
+        console.error(
+          'Ошибка отметки всех уведомлений:',
+          error
+        );
+
       }
 
-      setNotifications((prev) =>
-        prev.map(
-          (notification) => ({
-            ...notification,
-            isRead: true
-          })
-        )
-      );
+    };
 
-      setUnreadCount(0);
-    } catch (error) {
-      console.error(
-        'Ошибка отметки всех уведомлений:',
-        error
-      );
-    }
-  };
 
   // =========================================================
   // CLOSE TOAST
   // =========================================================
 
-  const closeToast = () => {
-    setToast(null);
+  const closeToast =
+    () => {
 
-    if (toastTimerRef.current) {
-      clearTimeout(
-        toastTimerRef.current
+      setToast(
+        null
       );
-    }
-  };
+
+
+      if (
+        toastTimerRef.current
+      ) {
+
+        clearTimeout(
+          toastTimerRef.current
+        );
+
+      }
+
+    };
+
 
   // =========================================================
-  // ICON
+  // TOAST CLICK
   // =========================================================
 
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case 'like':
-        return '❤️';
+  const handleToastClick =
+    () => {
 
-      case 'save':
-        return '🔖';
+      if (!toast) {
+        return;
+      }
 
-      case 'comment':
-        return '💬';
 
-      case 'comment_like':
-        return '❤️';
+      markAsRead(
+        toast._id
+      );
 
-      case 'reply':
-        return '↩️';
 
-      case 'message':
-        return '💬';
+      if (
+        toast.type ===
+          'like' ||
+        toast.type ===
+          'save' ||
+        toast.type ===
+          'comment' ||
+        toast.type ===
+          'comment_like' ||
+        toast.type ===
+          'reply' ||
+        toast.type ===
+          'share'
+      ) {
 
-      case 'follow':
-        return '👤';
+        if (
+          toast.referenceId
+        ) {
 
-      case 'story':
-        return '⭕';
+          navigate(
+            `/post/${toast.referenceId}`
+          );
 
-      default:
-        return '🔔';
-    }
-  };
+        }
+
+        return;
+      }
+
+
+      if (
+        toast.type ===
+          'profile_view' &&
+        toast.sender?._id
+      ) {
+
+        navigate(
+          `/profile/${toast.sender._id}`
+        );
+
+      }
+
+    };
+
 
   // =========================================================
   // PROVIDER
@@ -372,10 +648,12 @@ export const NotificationProvider = ({
         markAllAsRead
       }}
     >
+
       {children}
 
+
       {/* =====================================================
-          TOP RIGHT GLASS NOTIFICATION
+          GLASS TOAST — TOP RIGHT
       ====================================================== */}
 
       <div
@@ -388,29 +666,47 @@ export const NotificationProvider = ({
           pointer-events-none
         "
       >
+
         <AnimatePresence>
+
           {toast && (
+
             <motion.div
               initial={{
-                opacity: 0,
-                x: 80,
-                scale: 0.95
+                opacity:
+                  0,
+                x:
+                  90,
+                scale:
+                  0.95
               }}
               animate={{
-                opacity: 1,
-                x: 0,
-                scale: 1
+                opacity:
+                  1,
+                x:
+                  0,
+                scale:
+                  1
               }}
               exit={{
-                opacity: 0,
-                x: 80,
-                scale: 0.95
+                opacity:
+                  0,
+                x:
+                  90,
+                scale:
+                  0.95
               }}
               transition={{
-                type: 'spring',
-                stiffness: 350,
-                damping: 28
+                type:
+                  'spring',
+                stiffness:
+                  360,
+                damping:
+                  28
               }}
+              onClick={
+                handleToastClick
+              }
               className="
                 pointer-events-auto
                 relative
@@ -423,8 +719,29 @@ export const NotificationProvider = ({
                 shadow-2xl
                 p-4
                 text-white
+                cursor-pointer
               "
             >
+
+              {/* Glow */}
+
+              <div
+                className="
+                  pointer-events-none
+                  absolute
+                  -top-16
+                  -right-16
+                  w-32
+                  h-32
+                  rounded-full
+                  bg-white/10
+                  blur-3xl
+                "
+              />
+
+
+              {/* Shine */}
+
               <div
                 className="
                   pointer-events-none
@@ -437,33 +754,36 @@ export const NotificationProvider = ({
                 "
               />
 
-              <div
-                className="
-                  relative
-                  flex
-                  gap-3
-                  items-start
-                "
-              >
+
+              <div className="
+                relative
+                flex
+                gap-3
+                items-start
+              ">
+
                 {/* Avatar */}
-                <div
-                  className="
-                    w-11
-                    h-11
-                    shrink-0
-                    rounded-full
-                    overflow-hidden
-                    border
-                    border-white/20
-                    bg-white/10
-                    flex
-                    items-center
-                    justify-center
-                  "
-                >
+
+                <div className="
+                  w-11
+                  h-11
+                  shrink-0
+                  rounded-full
+                  overflow-hidden
+                  border
+                  border-white/20
+                  bg-white/10
+                  flex
+                  items-center
+                  justify-center
+                ">
+
                   {toast.sender?.avatar ? (
+
                     <img
-                      src={toast.sender.avatar}
+                      src={
+                        toast.sender.avatar
+                      }
                       alt="Avatar"
                       className="
                         w-full
@@ -471,93 +791,117 @@ export const NotificationProvider = ({
                         object-cover
                       "
                     />
+
                   ) : (
+
                     <span className="
                       text-sm
                       font-bold
-                      text-white
                     ">
                       {toast.sender?.username
                         ?.charAt(0)
                         .toUpperCase()}
                     </span>
+
                   )}
+
                 </div>
 
-                {/* Content */}
-                <div
-                  className="
-                    flex-1
-                    min-w-0
-                  "
-                >
-                  <div
-                    className="
-                      flex
-                      items-center
-                      gap-2
-                    "
-                  >
-                    <span className="text-lg">
+
+                {/* Text */}
+
+                <div className="
+                  flex-1
+                  min-w-0
+                ">
+
+                  <div className="
+                    flex
+                    items-center
+                    gap-2
+                  ">
+
+                    <span className="
+                      text-lg
+                    ">
                       {getNotificationIcon(
                         toast.type
                       )}
                     </span>
 
-                    <span
-                      className="
-                        font-semibold
-                        text-sm
-                        truncate
-                      "
-                    >
-                      @{toast.sender?.username}
+
+                    <span className="
+                      text-sm
+                      font-semibold
+                      truncate
+                    ">
+                      {toast.sender?.username
+                        ? `@${toast.sender.username}`
+                        : 'Lume'}
                     </span>
+
                   </div>
 
-                  <p
-                    className="
-                      text-white/70
-                      text-sm
-                      mt-1
-                      leading-relaxed
-                    "
-                  >
+
+                  <p className="
+                    text-white/75
+                    text-sm
+                    leading-relaxed
+                    mt-1
+                  ">
                     {toast.text}
                   </p>
 
-                  <p
-                    className="
-                      text-white/35
-                      text-[10px]
-                      mt-2
-                    "
-                  >
+
+                  <p className="
+                    text-white/35
+                    text-[10px]
+                    mt-2
+                  ">
                     Сейчас
                   </p>
+
                 </div>
 
-                {/* Close */}
+
+                {/* CLOSE */}
+
                 <button
-                  onClick={closeToast}
+                  onClick={e => {
+                    e.stopPropagation();
+                    closeToast();
+                  }}
                   className="
                     shrink-0
+                    w-7
+                    h-7
+                    rounded-full
+                    bg-white/5
+                    border
+                    border-white/10
                     text-white/40
                     hover:text-white
+                    hover:bg-white/10
                     transition
-                    text-lg
                   "
                 >
                   ✕
                 </button>
+
               </div>
+
             </motion.div>
+
           )}
+
         </AnimatePresence>
+
       </div>
+
     </NotificationContext.Provider>
   );
 };
+
 
 export const useNotifications =
   () =>

@@ -1,28 +1,28 @@
 import {
   useEffect,
   useState,
-  useRef,
+  useRef
 } from 'react';
 
 import {
   useParams,
   Link,
-  useNavigate,
+  useNavigate
 } from 'react-router-dom';
 
 import {
-  useAuth,
+  useAuth
 } from '../context/AuthContext';
 
 import {
-  useAlert,
+  useAlert
 } from '../context/AlertContext';
 
 import axios from '../api/axios';
 
 import {
   motion,
-  AnimatePresence,
+  AnimatePresence
 } from 'framer-motion';
 
 import {
@@ -35,29 +35,33 @@ import {
   FaBookmark,
   FaTrash,
   FaPencilAlt,
-  FaReply,
+  FaReply
 } from 'react-icons/fa';
 
 import {
   FiBookmark,
   FiMoreVertical,
-  FiEdit2,
+  FiEdit2
 } from 'react-icons/fi';
 
 
 const Profile = () => {
 
   const {
-    id,
+    id
   } = useParams();
+
 
   const {
     user: currentUser,
+    setUser
   } = useAuth();
 
+
   const {
-    showAlert,
+    showAlert
   } = useAlert();
+
 
   const navigate =
     useNavigate();
@@ -69,17 +73,19 @@ const Profile = () => {
 
   const [
     profileData,
-    setProfileData,
+    setProfileData
   ] = useState(null);
+
 
   const [
     isFollowing,
-    setIsFollowing,
+    setIsFollowing
   ] = useState(false);
+
 
   const [
     loading,
-    setLoading,
+    setLoading
   ] = useState(true);
 
 
@@ -89,33 +95,39 @@ const Profile = () => {
 
   const [
     viewerPost,
-    setViewerPost,
+    setViewerPost
   ] = useState(null);
+
 
   const [
     viewerPosts,
-    setViewerPosts,
+    setViewerPosts
   ] = useState([]);
+
 
   const [
     viewerIndex,
-    setViewerIndex,
+    setViewerIndex
   ] = useState(0);
+
 
   const [
     isMuted,
-    setIsMuted,
+    setIsMuted
   ] = useState(true);
+
 
   const [
     progress,
-    setProgress,
+    setProgress
   ] = useState(0);
+
 
   const [
     isPlaying,
-    setIsPlaying,
+    setIsPlaying
   ] = useState(true);
+
 
   const videoRef =
     useRef(null);
@@ -127,71 +139,76 @@ const Profile = () => {
 
   const [
     isCommentsOpen,
-    setIsCommentsOpen,
+    setIsCommentsOpen
   ] = useState(false);
+
 
   const [
     commentText,
-    setCommentText,
+    setCommentText
   ] = useState('');
+
 
   const [
     replyTexts,
-    setReplyTexts,
+    setReplyTexts
   ] = useState({});
+
 
   const [
     editingCommentId,
-    setEditingCommentId,
+    setEditingCommentId
   ] = useState(null);
+
 
   const [
     editCommentText,
-    setEditCommentText,
+    setEditCommentText
   ] = useState('');
 
 
   // =========================================================
-  // POST EDIT
+  // EDIT POST
   // =========================================================
-
-  const [
-    isEditMenuOpen,
-    setIsEditMenuOpen,
-  ] = useState(false);
 
   const [
     isEditModalOpen,
-    setIsEditModalOpen,
+    setIsEditModalOpen
   ] = useState(false);
+
+
+  const [
+    editingPost,
+    setEditingPost
+  ] = useState(null);
+
 
   const [
     editContent,
-    setEditContent,
+    setEditContent
   ] = useState('');
+
 
   const [
     editFile,
-    setEditFile,
+    setEditFile
   ] = useState(null);
+
 
   const [
     editPreview,
-    setEditPreview,
+    setEditPreview
   ] = useState(null);
+
 
   const editFileInputRef =
     useRef(null);
 
-  const [
-    isUpdating,
-    setIsUpdating,
-  ] = useState(false);
 
   const [
-    editingPost,
-    setEditingPost,
-  ] = useState(null);
+    isUpdating,
+    setIsUpdating
+  ] = useState(false);
 
 
   // =========================================================
@@ -200,21 +217,8 @@ const Profile = () => {
 
   const [
     openGridMenuId,
-    setOpenGridMenuId,
+    setOpenGridMenuId
   ] = useState(null);
-
-
-  // =========================================================
-  // VIDEO HOVER
-  // =========================================================
-
-  const [
-    hoveredId,
-    setHoveredId,
-  ] = useState(null);
-
-  const videoRefs =
-    useRef({});
 
 
   // =========================================================
@@ -229,6 +233,7 @@ const Profile = () => {
       return '';
     }
 
+
     if (
       url.startsWith('http://') ||
       url.startsWith('https://')
@@ -236,16 +241,21 @@ const Profile = () => {
       return url;
     }
 
+
     if (
       url.startsWith('/uploads')
     ) {
+
       return (
         'https://lume-5mof.onrender.com' +
         url
       );
+
     }
 
+
     return url;
+
   };
 
 
@@ -261,11 +271,13 @@ const Profile = () => {
       return false;
     }
 
+
     return String(
-      a?._id ?? a
+      a?._id || a
     ) === String(
-      b?._id ?? b
+      b?._id || b
     );
+
   };
 
 
@@ -274,17 +286,17 @@ const Profile = () => {
     id
   ) => {
 
-    if (!Array.isArray(arr)) {
-      return false;
-    }
-
-    return arr.some(
-      item =>
-        sameId(
-          item,
-          id
-        )
+    return (
+      Array.isArray(arr) &&
+      arr.some(
+        item =>
+          sameId(
+            item,
+            id
+          )
+      )
     );
+
   };
 
 
@@ -294,7 +306,9 @@ const Profile = () => {
 
   useEffect(() => {
 
-    let cancelled = false;
+    let cancelled =
+      false;
+
 
     const fetchProfile =
       async () => {
@@ -305,51 +319,64 @@ const Profile = () => {
             true
           );
 
-          const res =
+
+          const response =
             await axios.get(
               `/users/profile/${id}`
             );
 
-          if (cancelled) {
+
+          if (
+            cancelled
+          ) {
             return;
           }
 
+
+          const data =
+            response.data;
+
+
           setProfileData(
-            res.data
+            data
           );
+
 
           setIsFollowing(
             Boolean(
-              res.data?.isFollowing
+              data.isFollowing
             )
           );
 
         } catch (error) {
 
-          if (cancelled) {
+          if (
+            cancelled
+          ) {
             return;
           }
+
 
           console.error(
             'Ошибка загрузки профиля:',
             error
           );
 
+
           showAlert({
             title:
               'Ошибка',
 
             message:
-              'Ошибка загрузки профиля: ' +
-              (
-                error.response?.data?.message ||
-                error.message
-              ),
+              error.response?.data?.message ||
+              'Не удалось загрузить профиль'
           });
 
         } finally {
 
-          if (!cancelled) {
+          if (
+            !cancelled
+          ) {
 
             setLoading(
               false
@@ -366,62 +393,195 @@ const Profile = () => {
       fetchProfile();
     }
 
+
     return () => {
-      cancelled = true;
+
+      cancelled =
+        true;
+
     };
 
   }, [
-    id,
+    id
   ]);
 
 
   // =========================================================
-  // VIDEO HOVER
+  // SHARE PROFILE
   // =========================================================
 
-  useEffect(() => {
+  const handleShareProfile =
+    async () => {
 
-    Object.keys(
-      videoRefs.current
-    ).forEach(
-      postId => {
+      if (
+        !profileData?.user?._id
+      ) {
+        return;
+      }
 
-        const video =
-          videoRefs.current[
-            postId
-          ];
 
-        if (!video) {
+      const profileUser =
+        profileData.user;
+
+
+      const shareUrl =
+        `${window.location.origin}/profile/${profileUser._id}`;
+
+
+      const shareText =
+        `Посмотри профиль @${profileUser.username} в Lume`;
+
+
+      // -------------------------------------------------------
+      // REGISTER SHARE ON SERVER
+      // -------------------------------------------------------
+
+      try {
+
+        await axios.post(
+          `/users/profile/${profileUser._id}/share`
+        );
+
+      } catch (error) {
+
+        console.error(
+          'Ошибка регистрации share профиля:',
+          error
+        );
+
+      }
+
+
+      // -------------------------------------------------------
+      // NATIVE SHARE
+      // -------------------------------------------------------
+
+      if (
+        typeof navigator !==
+          'undefined' &&
+        typeof navigator.share ===
+          'function'
+      ) {
+
+        try {
+
+          await navigator.share({
+
+            title:
+              `@${profileUser.username} в Lume`,
+
+            text:
+              shareText,
+
+            url:
+              shareUrl
+
+          });
+
+
           return;
-        }
 
-        if (
-          postId ===
-          hoveredId
-        ) {
+        } catch (error) {
 
-          video.currentTime = 0;
-
-          video
-            .play()
-            .catch(
-              () => {}
-            );
-
-        } else {
-
-          video.pause();
-
-          video.currentTime = 0;
+          if (
+            error?.name ===
+            'AbortError'
+          ) {
+            return;
+          }
 
         }
 
       }
-    );
 
-  }, [
-    hoveredId,
-  ]);
+
+      // -------------------------------------------------------
+      // CLIPBOARD
+      // -------------------------------------------------------
+
+      try {
+
+        if (
+          navigator.clipboard &&
+          window.isSecureContext
+        ) {
+
+          await navigator.clipboard.writeText(
+            shareUrl
+          );
+
+        } else {
+
+          const textarea =
+            document.createElement(
+              'textarea'
+            );
+
+
+          textarea.value =
+            shareUrl;
+
+
+          textarea.style.position =
+            'fixed';
+
+
+          textarea.style.opacity =
+            '0';
+
+
+          document.body.appendChild(
+            textarea
+          );
+
+
+          textarea.focus();
+          textarea.select();
+
+
+          document.execCommand(
+            'copy'
+          );
+
+
+          document.body.removeChild(
+            textarea
+          );
+
+        }
+
+
+        showAlert({
+
+          title:
+            'Ссылка скопирована',
+
+          message:
+            'Ссылка на профиль скопирована в буфер обмена.'
+
+        });
+
+      } catch (error) {
+
+        console.error(
+          'Ошибка копирования:',
+          error
+        );
+
+
+        showAlert({
+
+          title:
+            'Ссылка на профиль',
+
+          message:
+            shareUrl
+
+        });
+
+      }
+
+    };
 
 
   // =========================================================
@@ -442,21 +602,25 @@ const Profile = () => {
         return;
       }
 
+
       try {
 
-        const res =
+        const response =
           await axios.post(
             `/users/follow/${id}`
           );
 
-        const nextFollowing =
+
+        const following =
           Boolean(
-            res.data.isFollowing
+            response.data.isFollowing
           );
 
+
         setIsFollowing(
-          nextFollowing
+          following
         );
+
 
         setProfileData(
           prev => {
@@ -465,30 +629,36 @@ const Profile = () => {
               return prev;
             }
 
-            const oldFollowers =
+
+            const profileUser =
+              prev.user;
+
+
+            const followers =
               Array.isArray(
-                prev.user?.followers
+                profileUser.followers
               )
-                ? prev.user.followers
+                ? profileUser.followers
                 : [];
 
-            const nextFollowers =
-              nextFollowing
 
-                ? oldFollowers.some(
+            const nextFollowers =
+              following
+
+                ? followers.some(
                     follower =>
                       sameId(
                         follower,
                         currentUser._id
                       )
                   )
-                  ? oldFollowers
+                  ? followers
                   : [
-                      ...oldFollowers,
+                      ...followers,
                       currentUser._id
                     ]
 
-                : oldFollowers.filter(
+                : followers.filter(
                     follower =>
                       !sameId(
                         follower,
@@ -496,18 +666,89 @@ const Profile = () => {
                       )
                   );
 
+
             return {
+
               ...prev,
 
               user: {
-                ...prev.user,
+                ...profileUser,
 
                 followers:
                   nextFollowers
+
               }
+
             };
+
           }
         );
+
+
+        setUser(
+          prev => {
+
+            if (!prev) {
+              return prev;
+            }
+
+
+            const followingList =
+              Array.isArray(
+                prev.following
+              )
+                ? prev.following
+                : [];
+
+
+            const nextFollowing =
+              following
+
+                ? followingList.some(
+                    followingId =>
+                      sameId(
+                        followingId,
+                        id
+                      )
+                  )
+                  ? followingList
+                  : [
+                      ...followingList,
+                      id
+                    ]
+
+                : followingList.filter(
+                    followingId =>
+                      !sameId(
+                        followingId,
+                        id
+                      )
+                  );
+
+
+            const updatedUser = {
+
+              ...prev,
+
+              following:
+                nextFollowing
+
+            };
+
+
+            localStorage.setItem(
+              'lumeUser',
+              JSON.stringify(
+                updatedUser
+              )
+            );
+
+
+            return updatedUser;
+
+          }
+        );
+
 
       } catch (error) {
 
@@ -516,11 +757,8 @@ const Profile = () => {
             'Ошибка',
 
           message:
-            'Ошибка подписки: ' +
-            (
-              error.response?.data?.message ||
-              error.message
-            ),
+            error.response?.data?.message ||
+            'Ошибка подписки'
         });
 
       }
@@ -536,16 +774,10 @@ const Profile = () => {
     post
   ) => {
 
-    if (!profileData) {
-      return;
-    }
-
     const posts =
-      Array.isArray(
-        profileData.posts
-      )
-        ? profileData.posts
-        : [];
+      profileData?.posts ||
+      [];
+
 
     const index =
       posts.findIndex(
@@ -556,9 +788,11 @@ const Profile = () => {
           )
       );
 
+
     setViewerPosts(
       posts
     );
+
 
     setViewerIndex(
       index >= 0
@@ -566,34 +800,40 @@ const Profile = () => {
         : 0
     );
 
+
     setViewerPost(
       post
     );
 
-    setProgress(0);
+
+    setProgress(
+      0
+    );
+
 
     setIsMuted(
       true
     );
 
+
     setIsPlaying(
       true
     );
+
 
     setIsCommentsOpen(
       false
     );
 
-    setIsEditMenuOpen(
-      false
-    );
 
     setOpenGridMenuId(
       null
     );
 
+
     document.body.style.overflow =
       'hidden';
+
   };
 
 
@@ -632,20 +872,10 @@ const Profile = () => {
         false
       );
 
-      setIsEditMenuOpen(
-        false
-      );
-
-      setIsEditModalOpen(
-        false
-      );
-
-      setEditingPost(
-        null
-      );
 
       document.body.style.overflow =
         '';
+
     };
 
 
@@ -663,30 +893,35 @@ const Profile = () => {
         return;
       }
 
-      const nextIndex =
+
+      const index =
         viewerIndex + 1;
 
+
       setViewerIndex(
-        nextIndex
+        index
       );
 
+
       setViewerPost(
-        viewerPosts[
-          nextIndex
-        ]
+        viewerPosts[index]
       );
+
 
       setProgress(
         0
       );
 
+
       setIsPlaying(
         true
       );
 
+
       setIsCommentsOpen(
         false
       );
+
     };
 
 
@@ -703,30 +938,35 @@ const Profile = () => {
         return;
       }
 
-      const prevIndex =
+
+      const index =
         viewerIndex - 1;
 
+
       setViewerIndex(
-        prevIndex
+        index
       );
 
+
       setViewerPost(
-        viewerPosts[
-          prevIndex
-        ]
+        viewerPosts[index]
       );
+
 
       setProgress(
         0
       );
 
+
       setIsPlaying(
         true
       );
 
+
       setIsCommentsOpen(
         false
       );
+
     };
 
 
@@ -740,14 +980,13 @@ const Profile = () => {
     ) => {
 
       if (
-        !postId ||
-        isUpdating ||
         !currentUser?._id
       ) {
         return;
       }
 
-      const targetPost =
+
+      const target =
         viewerPosts.find(
           post =>
             sameId(
@@ -755,41 +994,27 @@ const Profile = () => {
               postId
             )
         ) ||
-        (
-          viewerPost &&
-          sameId(
-            viewerPost._id,
-            postId
-          )
-            ? viewerPost
-            : null
-        );
+        viewerPost;
 
-      if (!targetPost) {
+
+      if (!target) {
         return;
       }
 
+
       const wasLiked =
         Boolean(
-          targetPost.isLikedByMe
+          target.isLikedByMe
         ) ||
         isIdInArray(
-          targetPost.likes,
+          target.likes,
           currentUser._id
         );
 
-      const originalPost =
-        targetPost;
 
-      setIsUpdating(
-        true
-      );
+      const updatePost =
+        post => ({
 
-
-      const updateLocalPost =
-        (
-          post
-        ) => ({
           ...post,
 
           isLikedByMe:
@@ -802,9 +1027,9 @@ const Profile = () => {
                   post.likes ||
                   []
                 ).filter(
-                  item =>
+                  like =>
                     !sameId(
-                      item,
+                      like,
                       currentUser._id
                     )
                 )
@@ -813,7 +1038,20 @@ const Profile = () => {
                   ...(post.likes || []),
                   currentUser._id
                 ]
+
         });
+
+
+      setViewerPost(
+        prev =>
+          prev &&
+          sameId(
+            prev._id,
+            postId
+          )
+            ? updatePost(prev)
+            : prev
+      );
 
 
       setViewerPosts(
@@ -824,12 +1062,11 @@ const Profile = () => {
                 post._id,
                 postId
               )
-                ? updateLocalPost(
-                    post
-                  )
+                ? updatePost(post)
                 : post
           )
       );
+
 
       setProfileData(
         prev => {
@@ -838,7 +1075,9 @@ const Profile = () => {
             return prev;
           }
 
+
           return {
+
             ...prev,
 
             posts:
@@ -851,60 +1090,54 @@ const Profile = () => {
                     post._id,
                     postId
                   )
-                    ? updateLocalPost(
-                        post
-                      )
+                    ? updatePost(post)
                     : post
               )
+
           };
 
         }
       );
 
-      setViewerPost(
-        prev =>
-          prev &&
-          sameId(
-            prev._id,
-            postId
-          )
-            ? updateLocalPost(
-                prev
-              )
-            : prev
-      );
-
 
       try {
 
-        const res =
+        const response =
           await axios.post(
             `/posts/${postId}/like`
           );
 
-        const serverLiked =
-          Boolean(
-            res.data.isLiked
-          );
 
-
-        const applyServer =
+        const serverUpdate =
           post => ({
+
             ...post,
 
             isLikedByMe:
-              serverLiked,
+              Boolean(
+                response.data.isLiked
+              ),
 
             likes:
               Array.isArray(
-                res.data.likes
+                response.data.likes
               )
-                ? res.data.likes
-                : (
-                    post.likes ||
-                    []
-                  )
+                ? response.data.likes
+                : post.likes || []
+
           });
+
+
+        setViewerPost(
+          prev =>
+            prev &&
+            sameId(
+              prev._id,
+              postId
+            )
+              ? serverUpdate(prev)
+              : prev
+        );
 
 
         setViewerPosts(
@@ -915,12 +1148,11 @@ const Profile = () => {
                   post._id,
                   postId
                 )
-                  ? applyServer(
-                      post
-                    )
+                  ? serverUpdate(post)
                   : post
             )
         );
+
 
         setProfileData(
           prev => {
@@ -929,7 +1161,9 @@ const Profile = () => {
               return prev;
             }
 
+
             return {
+
               ...prev,
 
               posts:
@@ -942,58 +1176,21 @@ const Profile = () => {
                       post._id,
                       postId
                     )
-                      ? applyServer(
-                          post
-                        )
+                      ? serverUpdate(post)
                       : post
                 )
+
             };
 
           }
         );
 
-        setViewerPost(
-          prev =>
-            prev &&
-            sameId(
-              prev._id,
-              postId
-            )
-              ? applyServer(
-                  prev
-                )
-              : prev
-        );
 
       } catch (error) {
 
-        setViewerPost(
-          prev =>
-            prev &&
-            sameId(
-              prev._id,
-              postId
-            )
-              ? originalPost
-              : prev
-        );
-
-        showAlert({
-          title:
-            'Ошибка',
-
-          message:
-            'Ошибка лайка: ' +
-            (
-              error.response?.data?.message ||
-              error.message
-            ),
-        });
-
-      } finally {
-
-        setIsUpdating(
-          false
+        console.error(
+          'Ошибка лайка:',
+          error
         );
 
       }
@@ -1011,14 +1208,13 @@ const Profile = () => {
     ) => {
 
       if (
-        !postId ||
-        isUpdating ||
         !currentUser?._id
       ) {
         return;
       }
 
-      const targetPost =
+
+      const target =
         viewerPosts.find(
           post =>
             sameId(
@@ -1026,41 +1222,27 @@ const Profile = () => {
               postId
             )
         ) ||
-        (
-          viewerPost &&
-          sameId(
-            viewerPost._id,
-            postId
-          )
-            ? viewerPost
-            : null
-        );
+        viewerPost;
 
-      if (!targetPost) {
+
+      if (!target) {
         return;
       }
 
+
       const wasSaved =
         Boolean(
-          targetPost.isSavedByMe
+          target.isSavedByMe
         ) ||
         isIdInArray(
-          targetPost.savedBy,
+          target.savedBy,
           currentUser._id
         );
 
-      const originalPost =
-        targetPost;
 
-      setIsUpdating(
-        true
-      );
+      const updatePost =
+        post => ({
 
-
-      const updateLocalPost =
-        (
-          post
-        ) => ({
           ...post,
 
           isSavedByMe:
@@ -1073,9 +1255,9 @@ const Profile = () => {
                   post.savedBy ||
                   []
                 ).filter(
-                  item =>
+                  id =>
                     !sameId(
-                      item,
+                      id,
                       currentUser._id
                     )
                 )
@@ -1084,7 +1266,20 @@ const Profile = () => {
                   ...(post.savedBy || []),
                   currentUser._id
                 ]
+
         });
+
+
+      setViewerPost(
+        prev =>
+          prev &&
+          sameId(
+            prev._id,
+            postId
+          )
+            ? updatePost(prev)
+            : prev
+      );
 
 
       setViewerPosts(
@@ -1095,12 +1290,11 @@ const Profile = () => {
                 post._id,
                 postId
               )
-                ? updateLocalPost(
-                    post
-                  )
+                ? updatePost(post)
                 : post
           )
       );
+
 
       setProfileData(
         prev => {
@@ -1109,7 +1303,9 @@ const Profile = () => {
             return prev;
           }
 
+
           return {
+
             ...prev,
 
             posts:
@@ -1122,57 +1318,54 @@ const Profile = () => {
                     post._id,
                     postId
                   )
-                    ? updateLocalPost(
-                        post
-                      )
+                    ? updatePost(post)
                     : post
               )
+
           };
 
         }
       );
 
-      setViewerPost(
-        prev =>
-          prev &&
-          sameId(
-            prev._id,
-            postId
-          )
-            ? updateLocalPost(
-                prev
-              )
-            : prev
-      );
-
 
       try {
 
-        const res =
+        const response =
           await axios.post(
             `/posts/${postId}/save`
           );
 
 
-        const applyServer =
+        const serverUpdate =
           post => ({
+
             ...post,
 
             isSavedByMe:
               Boolean(
-                res.data.isSaved
+                response.data.isSaved
               ),
 
             savedBy:
               Array.isArray(
-                res.data.savedBy
+                response.data.savedBy
               )
-                ? res.data.savedBy
-                : (
-                    post.savedBy ||
-                    []
-                  )
+                ? response.data.savedBy
+                : post.savedBy || []
+
           });
+
+
+        setViewerPost(
+          prev =>
+            prev &&
+            sameId(
+              prev._id,
+              postId
+            )
+              ? serverUpdate(prev)
+              : prev
+        );
 
 
         setViewerPosts(
@@ -1183,12 +1376,11 @@ const Profile = () => {
                   post._id,
                   postId
                 )
-                  ? applyServer(
-                      post
-                    )
+                  ? serverUpdate(post)
                   : post
             )
         );
+
 
         setProfileData(
           prev => {
@@ -1197,7 +1389,9 @@ const Profile = () => {
               return prev;
             }
 
+
             return {
+
               ...prev,
 
               posts:
@@ -1210,58 +1404,21 @@ const Profile = () => {
                       post._id,
                       postId
                     )
-                      ? applyServer(
-                          post
-                        )
+                      ? serverUpdate(post)
                       : post
                 )
+
             };
 
           }
         );
 
-        setViewerPost(
-          prev =>
-            prev &&
-            sameId(
-              prev._id,
-              postId
-            )
-              ? applyServer(
-                  prev
-                )
-              : prev
-        );
 
       } catch (error) {
 
-        setViewerPost(
-          prev =>
-            prev &&
-            sameId(
-              prev._id,
-              postId
-            )
-              ? originalPost
-              : prev
-        );
-
-        showAlert({
-          title:
-            'Ошибка',
-
-          message:
-            'Ошибка сохранения: ' +
-            (
-              error.response?.data?.message ||
-              error.message
-            ),
-        });
-
-      } finally {
-
-        setIsUpdating(
-          false
+        console.error(
+          'Ошибка сохранения:',
+          error
         );
 
       }
@@ -1270,7 +1427,7 @@ const Profile = () => {
 
 
   // =========================================================
-  // SHARE
+  // SHARE POST
   // =========================================================
 
   const handleShare =
@@ -1284,23 +1441,45 @@ const Profile = () => {
         return;
       }
 
+
       const shareUrl =
         `${window.location.origin}/post/${post._id}`;
 
+
       const username =
         post.user?.username ||
-        profileData?.user?.username ||
         'user';
+
 
       const shareText =
         post.content?.trim()
-          ? post.content
-          : `Посмотри пост @${username} в Lume`;
+          ? post.content.trim()
+          : `Посмотри этот пост @${username} в Lume`;
 
 
-      // =======================================================
+      // -------------------------------------------------------
+      // REGISTER SHARE
+      // -------------------------------------------------------
+
+      try {
+
+        await axios.post(
+          `/posts/${post._id}/share`
+        );
+
+      } catch (error) {
+
+        console.error(
+          'Ошибка регистрации share:',
+          error
+        );
+
+      }
+
+
+      // -------------------------------------------------------
       // NATIVE SHARE
-      // =======================================================
+      // -------------------------------------------------------
 
       if (
         typeof navigator !==
@@ -1312,13 +1491,18 @@ const Profile = () => {
         try {
 
           await navigator.share({
+
             title:
               `Пост @${username} в Lume`,
+
             text:
               shareText,
+
             url:
               shareUrl
+
           });
+
 
           return;
 
@@ -1332,80 +1516,45 @@ const Profile = () => {
           }
 
         }
+
       }
 
 
-      // =======================================================
-      // CLIPBOARD
-      // =======================================================
+      // -------------------------------------------------------
+      // COPY LINK
+      // -------------------------------------------------------
 
       try {
 
-        if (
-          navigator.clipboard &&
-          window.isSecureContext
-        ) {
-
-          await navigator.clipboard.writeText(
-            shareUrl
-          );
-
-        } else {
-
-          const textarea =
-            document.createElement(
-              'textarea'
-            );
-
-          textarea.value =
-            shareUrl;
-
-          textarea.style.position =
-            'fixed';
-
-          textarea.style.opacity =
-            '0';
-
-          document.body.appendChild(
-            textarea
-          );
-
-          textarea.select();
-
-          document.execCommand(
-            'copy'
-          );
-
-          document.body.removeChild(
-            textarea
-          );
-        }
+        await navigator.clipboard.writeText(
+          shareUrl
+        );
 
 
         showAlert({
+
           title:
             'Ссылка скопирована',
 
           message:
-            'Ссылка на этот пост скопирована в буфер обмена.',
+            'Ссылка на пост скопирована в буфер обмена.'
+
         });
 
       } catch (error) {
 
-        console.error(
-          'Ошибка копирования ссылки:',
-          error
-        );
-
         showAlert({
+
           title:
             'Ссылка на пост',
 
           message:
-            shareUrl,
+            shareUrl
+
         });
 
       }
+
     };
 
 
@@ -1421,12 +1570,13 @@ const Profile = () => {
       const text =
         commentText.trim();
 
+
       if (
-        !text ||
-        !postId
+        !text
       ) {
         return;
       }
+
 
       try {
 
@@ -1438,12 +1588,12 @@ const Profile = () => {
             }
           );
 
+
         const newComment =
-          response.data.comment ||
           response.data;
 
 
-        const addComment =
+        const updatePost =
           post => {
 
             if (
@@ -1455,32 +1605,36 @@ const Profile = () => {
               return post;
             }
 
+
             return {
+
               ...post,
 
               comments: [
                 ...(post.comments || []),
                 newComment
               ]
+
             };
+
           };
 
 
         setViewerPost(
           prev =>
             prev
-              ? addComment(
-                  prev
-                )
+              ? updatePost(prev)
               : prev
         );
+
 
         setViewerPosts(
           prev =>
             prev.map(
-              addComment
+              updatePost
             )
         );
+
 
         setProfileData(
           prev => {
@@ -1489,7 +1643,9 @@ const Profile = () => {
               return prev;
             }
 
+
             return {
+
               ...prev,
 
               posts:
@@ -1497,11 +1653,14 @@ const Profile = () => {
                   prev.posts ||
                   []
                 ).map(
-                  addComment
+                  updatePost
                 )
+
             };
+
           }
         );
+
 
         setCommentText(
           ''
@@ -1510,18 +1669,18 @@ const Profile = () => {
       } catch (error) {
 
         showAlert({
+
           title:
             'Ошибка',
 
           message:
-            'Ошибка добавления комментария: ' +
-            (
-              error.response?.data?.message ||
-              error.message
-            ),
+            error.response?.data?.message ||
+            'Ошибка добавления комментария'
+
         });
 
       }
+
     };
 
 
@@ -1542,12 +1701,12 @@ const Profile = () => {
             `/posts/${postId}/comments/${commentId}/like`
           );
 
+
         const updatedComment =
-          response.data.comment ||
-          response.data;
+          response.data.comment;
 
 
-        const updateComments =
+        const updatePost =
           post => {
 
             if (
@@ -1559,7 +1718,9 @@ const Profile = () => {
               return post;
             }
 
+
             return {
+
               ...post,
 
               comments:
@@ -1575,25 +1736,27 @@ const Profile = () => {
                       ? updatedComment
                       : comment
                 )
+
             };
+
           };
 
 
         setViewerPost(
           prev =>
             prev
-              ? updateComments(
-                  prev
-                )
+              ? updatePost(prev)
               : prev
         );
+
 
         setViewerPosts(
           prev =>
             prev.map(
-              updateComments
+              updatePost
             )
         );
+
 
         setProfileData(
           prev => {
@@ -1602,7 +1765,9 @@ const Profile = () => {
               return prev;
             }
 
+
             return {
+
               ...prev,
 
               posts:
@@ -1610,8 +1775,9 @@ const Profile = () => {
                   prev.posts ||
                   []
                 ).map(
-                  updateComments
+                  updatePost
                 )
+
             };
 
           }
@@ -1620,18 +1786,18 @@ const Profile = () => {
       } catch (error) {
 
         showAlert({
+
           title:
             'Ошибка',
 
           message:
-            'Ошибка лайка комментария: ' +
-            (
-              error.response?.data?.message ||
-              error.message
-            ),
+            error.response?.data?.message ||
+            'Ошибка лайка комментария'
+
         });
 
       }
+
     };
 
 
@@ -1650,12 +1816,14 @@ const Profile = () => {
           commentId
         ];
 
+
       if (
         !text ||
         !text.trim()
       ) {
         return;
       }
+
 
       try {
 
@@ -1668,12 +1836,12 @@ const Profile = () => {
             }
           );
 
+
         const reply =
-          response.data.reply ||
-          response.data;
+          response.data.reply;
 
 
-        const updateReplies =
+        const updatePost =
           post => {
 
             if (
@@ -1685,7 +1853,9 @@ const Profile = () => {
               return post;
             }
 
+
             return {
+
               ...post,
 
               comments:
@@ -1694,42 +1864,45 @@ const Profile = () => {
                   []
                 ).map(
                   comment =>
-
                     sameId(
                       comment._id,
                       commentId
                     )
 
                       ? {
+
                           ...comment,
 
                           replies: [
                             ...(comment.replies || []),
                             reply
                           ]
+
                         }
 
                       : comment
                 )
+
             };
+
           };
 
 
         setViewerPost(
           prev =>
             prev
-              ? updateReplies(
-                  prev
-                )
+              ? updatePost(prev)
               : prev
         );
+
 
         setViewerPosts(
           prev =>
             prev.map(
-              updateReplies
+              updatePost
             )
         );
+
 
         setProfileData(
           prev => {
@@ -1738,7 +1911,9 @@ const Profile = () => {
               return prev;
             }
 
+
             return {
+
               ...prev,
 
               posts:
@@ -1746,8 +1921,9 @@ const Profile = () => {
                   prev.posts ||
                   []
                 ).map(
-                  updateReplies
+                  updatePost
                 )
+
             };
 
           }
@@ -1756,53 +1932,55 @@ const Profile = () => {
 
         setReplyTexts(
           prev => ({
+
             ...prev,
 
             [commentId]:
               ''
+
           })
         );
+
 
       } catch (error) {
 
         showAlert({
+
           title:
             'Ошибка',
 
           message:
-            'Ошибка добавления ответа: ' +
-            (
-              error.response?.data?.message ||
-              error.message
-            ),
+            error.response?.data?.message ||
+            'Ошибка добавления ответа'
+
         });
 
       }
+
     };
 
 
   // =========================================================
-  // START EDIT COMMENT
+  // EDIT COMMENT
   // =========================================================
 
-  const startEditComment = (
-    commentId,
-    currentText
-  ) => {
+  const startEditComment =
+    (
+      commentId,
+      currentText
+    ) => {
 
-    setEditingCommentId(
-      commentId
-    );
+      setEditingCommentId(
+        commentId
+      );
 
-    setEditCommentText(
-      currentText || ''
-    );
-  };
+      setEditCommentText(
+        currentText ||
+        ''
+      );
 
+    };
 
-  // =========================================================
-  // SAVE EDIT COMMENT
-  // =========================================================
 
   const saveEditComment =
     async (
@@ -1814,9 +1992,11 @@ const Profile = () => {
       const text =
         editCommentText.trim();
 
+
       if (!text) {
         return;
       }
+
 
       try {
 
@@ -1829,11 +2009,12 @@ const Profile = () => {
             }
           );
 
-        const serverComment =
+
+        const updatedComment =
           response.data.comment;
 
 
-        const updateComments =
+        const updatePost =
           post => {
 
             if (
@@ -1846,9 +2027,12 @@ const Profile = () => {
             }
 
 
-            if (!isReply) {
+            if (
+              !isReply
+            ) {
 
               return {
+
                 ...post,
 
                 comments:
@@ -1861,15 +2045,17 @@ const Profile = () => {
                         comment._id,
                         commentId
                       )
-                        ? serverComment
+                        ? updatedComment
                         : comment
                   )
+
               };
 
             }
 
 
             return {
+
               ...post,
 
               comments:
@@ -1878,6 +2064,7 @@ const Profile = () => {
                   []
                 ).map(
                   comment => ({
+
                     ...comment,
 
                     replies:
@@ -1890,30 +2077,33 @@ const Profile = () => {
                             reply._id,
                             commentId
                           )
-                            ? serverComment
+                            ? updatedComment
                             : reply
                       )
+
                   })
                 )
+
             };
+
           };
 
 
         setViewerPost(
           prev =>
             prev
-              ? updateComments(
-                  prev
-                )
+              ? updatePost(prev)
               : prev
         );
+
 
         setViewerPosts(
           prev =>
             prev.map(
-              updateComments
+              updatePost
             )
         );
+
 
         setProfileData(
           prev => {
@@ -1922,7 +2112,9 @@ const Profile = () => {
               return prev;
             }
 
+
             return {
+
               ...prev,
 
               posts:
@@ -1930,8 +2122,9 @@ const Profile = () => {
                   prev.posts ||
                   []
                 ).map(
-                  updateComments
+                  updatePost
                 )
+
             };
 
           }
@@ -1949,18 +2142,18 @@ const Profile = () => {
       } catch (error) {
 
         showAlert({
+
           title:
             'Ошибка',
 
           message:
-            'Ошибка редактирования: ' +
-            (
-              error.response?.data?.message ||
-              error.message
-            ),
+            error.response?.data?.message ||
+            'Ошибка редактирования'
+
         });
 
       }
+
     };
 
 
@@ -1976,6 +2169,7 @@ const Profile = () => {
     ) => {
 
       showAlert({
+
         title:
           'Удаление комментария',
 
@@ -2006,7 +2200,7 @@ const Profile = () => {
               );
 
 
-              const updateComments =
+              const updatePost =
                 post => {
 
                   if (
@@ -2019,9 +2213,12 @@ const Profile = () => {
                   }
 
 
-                  if (isReply) {
+                  if (
+                    isReply
+                  ) {
 
                     return {
+
                       ...post,
 
                       comments:
@@ -2030,6 +2227,7 @@ const Profile = () => {
                           []
                         ).map(
                           comment => ({
+
                             ...comment,
 
                             replies:
@@ -2043,14 +2241,17 @@ const Profile = () => {
                                     commentId
                                   )
                               )
+
                           })
                         )
+
                     };
 
                   }
 
 
                   return {
+
                     ...post,
 
                     comments:
@@ -2064,6 +2265,7 @@ const Profile = () => {
                             commentId
                           )
                       )
+
                   };
 
                 };
@@ -2072,18 +2274,18 @@ const Profile = () => {
               setViewerPost(
                 prev =>
                   prev
-                    ? updateComments(
-                        prev
-                      )
+                    ? updatePost(prev)
                     : prev
               );
+
 
               setViewerPosts(
                 prev =>
                   prev.map(
-                    updateComments
+                    updatePost
                   )
               );
+
 
               setProfileData(
                 prev => {
@@ -2092,7 +2294,9 @@ const Profile = () => {
                     return prev;
                   }
 
+
                   return {
+
                     ...prev,
 
                     posts:
@@ -2100,171 +2304,44 @@ const Profile = () => {
                         prev.posts ||
                         []
                       ).map(
-                        updateComments
+                        updatePost
                       )
+
                   };
+
                 }
               );
 
             } catch (error) {
 
               showAlert({
+
                 title:
                   'Ошибка',
 
                 message:
-                  'Ошибка удаления: ' +
-                  (
-                    error.response?.data?.message ||
-                    error.message
-                  ),
+                  error.response?.data?.message ||
+                  'Ошибка удаления комментария'
+
               });
 
             }
 
           }
+
       });
+
     };
 
 
   // =========================================================
-  // VIDEO
+  // EDIT POST
   // =========================================================
 
-  const toggleMute =
-    e => {
-
-      e.stopPropagation();
-
-      setIsMuted(
-        prev =>
-          !prev
-      );
-    };
-
-
-  const handleVideoClick =
-    () => {
-
-      if (
-        !videoRef.current
-      ) {
-        return;
-      }
-
-      if (
-        videoRef.current.paused
-      ) {
-
-        videoRef.current
-          .play()
-          .catch(
-            () => {}
-          );
-
-        setIsPlaying(
-          true
-        );
-
-      } else {
-
-        videoRef.current.pause();
-
-        setIsPlaying(
-          false
-        );
-
-      }
-    };
-
-
-  const handleTimeUpdate =
-    () => {
-
-      if (
-        !videoRef.current
-      ) {
-        return;
-      }
-
-      const currentTime =
-        videoRef.current
-          .currentTime;
-
-      const duration =
-        videoRef.current
-          .duration;
-
-      if (
-        duration &&
-        duration > 0
-      ) {
-
-        setProgress(
-          (
-            currentTime /
-            duration
-          ) * 100
-        );
-
-      }
-    };
-
-
-  // =========================================================
-  // EDIT MENU
-  // =========================================================
-
-  const openEditMenu =
-    e => {
-
-      e.stopPropagation();
-
-      setIsEditMenuOpen(
-        prev =>
-          !prev
-      );
-    };
-
-
-  const openEditModal =
-    () => {
-
-      if (
-        !viewerPost
-      ) {
-        return;
-      }
-
-      setEditingPost(
-        null
-      );
-
-      setEditContent(
-        viewerPost.content ||
-          ''
-      );
-
-      setEditFile(
-        null
-      );
-
-      setEditPreview(
-        null
-      );
-
-      setIsEditModalOpen(
-        true
-      );
-
-      setIsEditMenuOpen(
-        false
-      );
-    };
-
-
-  const openEditModalFromGrid =
-    post => {
+  const openEditPost =
+    (
+      post
+    ) => {
 
       setEditingPost(
         post
@@ -2283,29 +2360,28 @@ const Profile = () => {
         null
       );
 
+      setIsEditModalOpen(
+        true
+      );
+
       setOpenGridMenuId(
         null
       );
 
-      setIsEditModalOpen(
-        true
-      );
     };
 
 
-  // =========================================================
-  // EDIT FILE
-  // =========================================================
-
-  const handleEditFileChange =
+  const handleEditFile =
     e => {
 
       const file =
         e.target.files?.[0];
 
+
       if (!file) {
         return;
       }
+
 
       if (
         editPreview
@@ -2317,21 +2393,20 @@ const Profile = () => {
 
       }
 
+
       setEditFile(
         file
       );
+
 
       setEditPreview(
         URL.createObjectURL(
           file
         )
       );
+
     };
 
-
-  // =========================================================
-  // UPDATE POST
-  // =========================================================
 
   const handleUpdatePost =
     async () => {
@@ -2340,36 +2415,43 @@ const Profile = () => {
         editingPost ||
         viewerPost;
 
+
       if (
         !post ||
-        !editContent.trim() ||
-        isUpdating
+        !editContent.trim()
       ) {
         return;
       }
+
 
       setIsUpdating(
         true
       );
 
-      const formData =
-        new FormData();
-
-      formData.append(
-        'content',
-        editContent.trim()
-      );
-
-      if (editFile) {
-
-        formData.append(
-          'media',
-          editFile
-        );
-
-      }
 
       try {
+
+        const formData =
+          new FormData();
+
+
+        formData.append(
+          'content',
+          editContent.trim()
+        );
+
+
+        if (
+          editFile
+        ) {
+
+          formData.append(
+            'media',
+            editFile
+          );
+
+        }
+
 
         const response =
           await axios.put(
@@ -2377,7 +2459,9 @@ const Profile = () => {
             formData
           );
 
+
         const updatedPost = {
+
           ...post,
           ...response.data,
 
@@ -2387,7 +2471,8 @@ const Profile = () => {
 
           isSavedByMe:
             response.data.isSavedByMe ??
-            post.isSavedByMe,
+            post.isSavedByMe
+
         };
 
 
@@ -2401,13 +2486,6 @@ const Profile = () => {
               : item;
 
 
-        setViewerPosts(
-          prev =>
-            prev.map(
-              replacePost
-            )
-        );
-
         setProfileData(
           prev => {
 
@@ -2415,7 +2493,9 @@ const Profile = () => {
               return prev;
             }
 
+
             return {
+
               ...prev,
 
               posts:
@@ -2425,9 +2505,20 @@ const Profile = () => {
                 ).map(
                   replacePost
                 )
+
             };
+
           }
         );
+
+
+        setViewerPosts(
+          prev =>
+            prev.map(
+              replacePost
+            )
+        );
+
 
         setViewerPost(
           prev =>
@@ -2445,17 +2536,16 @@ const Profile = () => {
           false
         );
 
-        setIsEditMenuOpen(
-          false
-        );
 
         setEditingPost(
           null
         );
 
+
         setEditFile(
           null
         );
+
 
         if (
           editPreview
@@ -2467,30 +2557,34 @@ const Profile = () => {
 
         }
 
+
         setEditPreview(
           null
         );
 
 
         showAlert({
+
           title:
             'Успех',
+
           message:
-            'Пост успешно обновлён.',
+            'Пост успешно обновлён.'
+
         });
+
 
       } catch (error) {
 
         showAlert({
+
           title:
             'Ошибка',
 
           message:
-            'Ошибка обновления: ' +
-            (
-              error.response?.data?.message ||
-              error.message
-            ),
+            error.response?.data?.message ||
+            'Ошибка обновления поста'
+
         });
 
       } finally {
@@ -2500,6 +2594,7 @@ const Profile = () => {
         );
 
       }
+
     };
 
 
@@ -2512,15 +2607,8 @@ const Profile = () => {
       postId
     ) => {
 
-      if (
-        !postId ||
-        isUpdating
-      ) {
-        return;
-      }
-
-
       showAlert({
+
         title:
           'Удаление поста',
 
@@ -2539,10 +2627,6 @@ const Profile = () => {
         onConfirm:
           async () => {
 
-            setIsUpdating(
-              true
-            );
-
             try {
 
               await axios.delete(
@@ -2557,7 +2641,9 @@ const Profile = () => {
                     return prev;
                   }
 
+
                   return {
+
                     ...prev,
 
                     posts:
@@ -2571,6 +2657,7 @@ const Profile = () => {
                             postId
                           )
                       )
+
                   };
 
                 }
@@ -2597,12 +2684,7 @@ const Profile = () => {
                 )
               ) {
 
-                setViewerPost(
-                  null
-                );
-
-                document.body.style.overflow =
-                  '';
+                closeViewer();
 
               }
 
@@ -2611,324 +2693,99 @@ const Profile = () => {
                 null
               );
 
-              setEditingPost(
-                null
-              );
 
               showAlert({
+
                 title:
                   'Пост удалён',
 
                 message:
-                  'Пост успешно удалён.',
+                  'Пост успешно удалён.'
+
               });
 
             } catch (error) {
 
               showAlert({
+
                 title:
                   'Ошибка',
 
                 message:
-                  'Ошибка удаления: ' +
-                  (
-                    error.response?.data?.message ||
-                    error.message
-                  ),
+                  error.response?.data?.message ||
+                  'Ошибка удаления поста'
+
               });
-
-            } finally {
-
-              setIsUpdating(
-                false
-              );
 
             }
 
           }
+
       });
-    };
-
-
-  // =========================================================
-  // WHEEL NAVIGATION
-  // =========================================================
-
-  useEffect(() => {
-
-    if (!viewerPost) {
-      return;
-    }
-
-    const handleWheel =
-      e => {
-
-        const sidebar =
-          document.getElementById(
-            'lume-sidebar'
-          );
-
-        if (
-          sidebar &&
-          sidebar.contains(
-            e.target
-          )
-        ) {
-          return;
-        }
-
-        if (
-          isCommentsOpen ||
-          isEditModalOpen
-        ) {
-          return;
-        }
-
-        if (
-          e.target.tagName ===
-            'INPUT' ||
-          e.target.tagName ===
-            'TEXTAREA'
-        ) {
-          return;
-        }
-
-        const delta =
-          e.deltaY ||
-          e.wheelDelta ||
-          0;
-
-        if (
-          Math.abs(delta) <
-          50
-        ) {
-          return;
-        }
-
-        e.preventDefault();
-
-        if (
-          delta > 0
-        ) {
-
-          goNext();
-
-        } else {
-
-          goPrev();
-
-        }
-
-      };
-
-
-    window.addEventListener(
-      'wheel',
-      handleWheel,
-      {
-        passive:
-          false
-      }
-    );
-
-
-    return () => {
-
-      window.removeEventListener(
-        'wheel',
-        handleWheel
-      );
 
     };
-
-  }, [
-    viewerPost,
-    viewerIndex,
-    viewerPosts.length,
-    isCommentsOpen,
-    isEditModalOpen,
-  ]);
-
-
-  // =========================================================
-  // KEYBOARD
-  // =========================================================
-
-  useEffect(() => {
-
-    const handleKeyDown =
-      e => {
-
-        if (
-          e.target.tagName ===
-            'INPUT' ||
-          e.target.tagName ===
-            'TEXTAREA'
-        ) {
-          return;
-        }
-
-        if (
-          e.key ===
-          'ArrowDown'
-        ) {
-
-          e.preventDefault();
-
-          if (viewerPost) {
-            goNext();
-          }
-
-        } else if (
-          e.key ===
-          'ArrowUp'
-        ) {
-
-          e.preventDefault();
-
-          if (viewerPost) {
-            goPrev();
-          }
-
-        } else if (
-          e.key ===
-          'Escape'
-        ) {
-
-          if (
-            isEditModalOpen
-          ) {
-
-            setIsEditModalOpen(
-              false
-            );
-
-          } else if (
-            viewerPost
-          ) {
-
-            closeViewer();
-
-          } else {
-
-            setOpenGridMenuId(
-              null
-            );
-
-          }
-
-        } else if (
-          e.key ===
-          ' '
-        ) {
-
-          if (
-            viewerPost
-          ) {
-
-            e.preventDefault();
-
-            handleVideoClick();
-
-          }
-
-        }
-
-      };
-
-
-    window.addEventListener(
-      'keydown',
-      handleKeyDown
-    );
-
-    return () => {
-
-      window.removeEventListener(
-        'keydown',
-        handleKeyDown
-      );
-
-    };
-
-  }, [
-    viewerPost,
-    isEditModalOpen,
-  ]);
-
-
-  // =========================================================
-  // CLEANUP
-  // =========================================================
-
-  useEffect(() => {
-
-    return () => {
-
-      document.body.style.overflow =
-        '';
-
-      if (
-        editPreview
-      ) {
-
-        URL.revokeObjectURL(
-          editPreview
-        );
-
-      }
-
-    };
-
-  }, [
-    editPreview
-  ]);
 
 
   // =========================================================
   // LOADING
   // =========================================================
 
-  if (loading) {
+  if (
+    loading
+  ) {
 
     return (
+
       <div className="
-        text-center
-        p-10
+        min-h-screen
+        bg-dark
+        flex
+        items-center
+        justify-center
         text-white/50
       ">
         Загрузка профиля...
       </div>
+
     );
 
   }
 
 
-  if (!profileData) {
+  if (
+    !profileData?.user
+  ) {
 
     return (
+
       <div className="
-        text-center
-        p-10
+        min-h-screen
+        bg-dark
+        flex
+        items-center
+        justify-center
         text-white/50
       ">
         Пользователь не найден
       </div>
+
     );
 
   }
 
 
-  const {
-    user,
-    posts = [],
-  } = profileData;
+  const profileUser =
+    profileData.user;
+
+
+  const posts =
+    profileData.posts || [];
 
 
   const isOwnProfile =
     sameId(
       currentUser?._id,
-      id
+      profileUser._id
     );
 
 
@@ -2939,10 +2796,638 @@ const Profile = () => {
   return (
 
     <div className="
-      w-full
-      h-full
-      relative
+      min-h-screen
+      bg-dark
+      text-white
+      p-4
+      md:p-8
     ">
+
+
+      {/* =====================================================
+          PROFILE HEADER
+      ====================================================== */}
+
+      <div className="
+        max-w-4xl
+        mx-auto
+      ">
+
+        <div className="
+          bg-white/5
+          border
+          border-white/10
+          backdrop-blur-xl
+          rounded-3xl
+          p-6
+          md:p-8
+          mb-8
+        ">
+
+          <div className="
+            flex
+            flex-col
+            md:flex-row
+            items-center
+            gap-6
+          ">
+
+            {/* AVATAR */}
+
+            <div className="
+              w-28
+              h-28
+              md:w-32
+              md:h-32
+              rounded-full
+              bg-gray-800
+              border-2
+              border-white/10
+              overflow-hidden
+              flex
+              items-center
+              justify-center
+              shrink-0
+            ">
+
+              {profileUser.avatar ? (
+
+                <img
+                  src={
+                    profileUser.avatar
+                  }
+                  alt="Avatar"
+                  className="
+                    w-full
+                    h-full
+                    object-cover
+                  "
+                />
+
+              ) : (
+
+                <span className="
+                  text-white
+                  text-4xl
+                  font-bold
+                ">
+                  {profileUser.username
+                    ?.charAt(0)
+                    .toUpperCase()}
+                </span>
+
+              )}
+
+            </div>
+
+
+            {/* INFO */}
+
+            <div className="
+              flex-1
+              text-center
+              md:text-left
+              min-w-0
+            ">
+
+              <div className="
+                flex
+                flex-col
+                md:flex-row
+                md:items-center
+                gap-1
+                md:gap-3
+              ">
+
+                <h1 className="
+                  text-2xl
+                  md:text-3xl
+                  font-bold
+                ">
+                  {profileUser.displayName ||
+                    profileUser.username}
+                </h1>
+
+
+                {profileUser.isVerified && (
+
+                  <span className="
+                    text-blue-500
+                    font-bold
+                  ">
+                    ✓
+                  </span>
+
+                )}
+
+              </div>
+
+
+              <p className="
+                text-white/50
+                text-sm
+                mt-1
+              ">
+                @{profileUser.username}
+              </p>
+
+
+              <p className="
+                text-white/70
+                text-sm
+                mt-3
+                whitespace-pre-wrap
+                break-words
+              ">
+                {profileUser.bio ||
+                  'Пока ничего о себе не написал...'}
+              </p>
+
+
+              <div className="
+                flex
+                justify-center
+                md:justify-start
+                gap-6
+                mt-5
+              ">
+
+                <div className="text-center">
+
+                  <div className="
+                    text-white
+                    font-bold
+                  ">
+                    {posts.length}
+                  </div>
+
+                  <div className="
+                    text-white/40
+                    text-xs
+                  ">
+                    постов
+                  </div>
+
+                </div>
+
+
+                <div className="text-center">
+
+                  <div className="
+                    text-white
+                    font-bold
+                  ">
+                    {profileUser.followers?.length ||
+                      0}
+                  </div>
+
+                  <div className="
+                    text-white/40
+                    text-xs
+                  ">
+                    подписчиков
+                  </div>
+
+                </div>
+
+
+                <div className="text-center">
+
+                  <div className="
+                    text-white
+                    font-bold
+                  ">
+                    {profileUser.following?.length ||
+                      0}
+                  </div>
+
+                  <div className="
+                    text-white/40
+                    text-xs
+                  ">
+                    подписок
+                  </div>
+
+                </div>
+
+              </div>
+
+
+              {/* ACTIONS */}
+
+              <div className="
+                flex
+                flex-wrap
+                justify-center
+                md:justify-start
+                gap-3
+                mt-5
+              ">
+
+                {isOwnProfile ? (
+
+                  <button
+                    onClick={() =>
+                      navigate(
+                        '/profile/edit'
+                      )
+                    }
+                    className="
+                      px-5
+                      py-2.5
+                      bg-white/10
+                      border
+                      border-white/10
+                      rounded-xl
+                      hover:bg-white/15
+                      transition
+                      text-sm
+                      font-medium
+                    "
+                  >
+                    Редактировать профиль
+                  </button>
+
+                ) : (
+
+                  <>
+
+                    <button
+                      onClick={
+                        handleFollow
+                      }
+                      className={`
+                        px-5
+                        py-2.5
+                        rounded-xl
+                        transition
+                        text-sm
+                        font-semibold
+
+                        ${
+                          isFollowing
+                            ? 'bg-white/10 hover:bg-white/15'
+                            : 'bg-accent hover:bg-accent/80'
+                        }
+                      `}
+                    >
+                      {isFollowing
+                        ? 'Отписаться'
+                        : 'Подписаться'}
+                    </button>
+
+
+                    <Link
+                      to={`/chats/${profileUser._id}`}
+                      className="
+                        px-5
+                        py-2.5
+                        bg-white/10
+                        border
+                        border-white/10
+                        rounded-xl
+                        hover:bg-white/15
+                        transition
+                        text-sm
+                        font-medium
+                      "
+                    >
+                      Написать
+                    </Link>
+
+                  </>
+
+                )}
+
+
+                {/* SHARE PROFILE */}
+
+                <button
+                  onClick={
+                    handleShareProfile
+                  }
+                  className="
+                    flex
+                    items-center
+                    gap-2
+                    px-5
+                    py-2.5
+                    bg-white/10
+                    border
+                    border-white/10
+                    rounded-xl
+                    hover:bg-white/15
+                    transition
+                    text-sm
+                    font-medium
+                  "
+                >
+
+                  <FaShare
+                    size={14}
+                  />
+
+                  <span>
+                    Поделиться
+                  </span>
+
+                </button>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        {/* ===================================================
+            POSTS
+        ==================================================== */}
+
+        {posts.length ===
+          0 ? (
+
+          <div className="
+            text-center
+            text-white/40
+            py-20
+          ">
+            У пользователя пока нет постов.
+          </div>
+
+        ) : (
+
+          <div className="
+            grid
+            grid-cols-3
+            gap-1
+            md:gap-2
+          ">
+
+            {posts.map(
+              post => (
+
+                <motion.div
+                  key={
+                    post._id
+                  }
+                  onClick={() =>
+                    openViewer(
+                      post
+                    )
+                  }
+                  whileHover={{
+                    scale:
+                      1.01
+                  }}
+                  className="
+                    relative
+                    aspect-square
+                    bg-black/40
+                    border
+                    border-white/5
+                    rounded-lg
+                    overflow-hidden
+                    cursor-pointer
+                  "
+                >
+
+                  {/* GRID MENU */}
+
+                  {isOwnProfile && (
+
+                    <div
+                      className="
+                        absolute
+                        top-2
+                        right-2
+                        z-20
+                      "
+                      onClick={e =>
+                        e.stopPropagation()
+                      }
+                    >
+
+                      <button
+                        onClick={() =>
+                          setOpenGridMenuId(
+                            prev =>
+                              prev ===
+                              post._id
+                                ? null
+                                : post._id
+                          )
+                        }
+                        className="
+                          w-8
+                          h-8
+                          rounded-full
+                          bg-black/60
+                          backdrop-blur-md
+                          border
+                          border-white/10
+                          flex
+                          items-center
+                          justify-center
+                        "
+                      >
+
+                        <FiMoreVertical
+                          className="
+                            text-white
+                          "
+                        />
+
+                      </button>
+
+
+                      {openGridMenuId ===
+                        post._id && (
+
+                        <div className="
+                          absolute
+                          top-10
+                          right-0
+                          w-32
+                          bg-black/95
+                          border
+                          border-white/10
+                          rounded-xl
+                          p-1
+                          shadow-2xl
+                        ">
+
+                          <button
+                            onClick={() =>
+                              openEditPost(
+                                post
+                              )
+                            }
+                            className="
+                              flex
+                              items-center
+                              gap-2
+                              w-full
+                              px-3
+                              py-2
+                              rounded-lg
+                              hover:bg-white/10
+                              text-sm
+                            "
+                          >
+
+                            <FiEdit2
+                              size={14}
+                            />
+
+                            Изменить
+
+                          </button>
+
+
+                          <button
+                            onClick={() =>
+                              handleDeletePost(
+                                post._id
+                              )
+                            }
+                            className="
+                              flex
+                              items-center
+                              gap-2
+                              w-full
+                              px-3
+                              py-2
+                              rounded-lg
+                              hover:bg-red-500/10
+                              text-red-400
+                              text-sm
+                            "
+                          >
+
+                            <FaTrash
+                              size={13}
+                            />
+
+                            Удалить
+
+                          </button>
+
+                        </div>
+
+                      )}
+
+                    </div>
+
+                  )}
+
+
+                  {/* MEDIA */}
+
+                  {post.mediaUrl ? (
+
+                    post.mediaType ===
+                    'video' ? (
+
+                      <video
+                        src={
+                          getMediaUrl(
+                            post.mediaUrl
+                          )
+                        }
+                        className="
+                          w-full
+                          h-full
+                          object-cover
+                        "
+                        muted
+                        playsInline
+                        preload="metadata"
+                      />
+
+                    ) : (
+
+                      <img
+                        src={
+                          getMediaUrl(
+                            post.mediaUrl
+                          )
+                        }
+                        alt="Post"
+                        className="
+                          w-full
+                          h-full
+                          object-cover
+                        "
+                      />
+
+                    )
+
+                  ) : (
+
+                    <div className="
+                      w-full
+                      h-full
+                      bg-black/40
+                      flex
+                      items-center
+                      justify-center
+                      p-5
+                      text-center
+                    ">
+
+                      <p className="
+                        text-white/80
+                        text-sm
+                        line-clamp-6
+                      ">
+                        {post.content}
+                      </p>
+
+                    </div>
+
+                  )}
+
+
+                  {post.likes?.length >
+                    0 && (
+
+                    <div className="
+                      absolute
+                      bottom-2
+                      left-2
+                      text-white
+                      text-xs
+                      flex
+                      items-center
+                      gap-1
+                      drop-shadow-lg
+                    ">
+
+                      <FaHeart
+                        className="
+                          text-red-500
+                        "
+                      />
+
+                      {post.likes.length}
+
+                    </div>
+
+                  )}
+
+                </motion.div>
+
+              )
+            )}
+
+          </div>
+
+        )}
+
+      </div>
 
 
       {/* =====================================================
@@ -2968,11 +3453,8 @@ const Profile = () => {
             }}
             className="
               fixed
-              top-0
-              right-0
-              bottom-0
-              left-[260px]
-              z-50
+              inset-0
+              z-[9999]
               bg-[#0a0a0a]
               flex
               items-center
@@ -2981,682 +3463,271 @@ const Profile = () => {
             "
           >
 
-            <div
+            {/* CLOSE */}
+
+            <button
+              onClick={
+                closeViewer
+              }
               className="
+                absolute
+                top-4
+                right-4
+                z-50
+                w-10
+                h-10
+                rounded-full
+                bg-black/60
+                backdrop-blur-md
+                border
+                border-white/10
+                text-white
                 flex
-                flex-row
                 items-center
                 justify-center
-                gap-4
-                md:gap-8
-                w-full
-                h-full
-                max-w-[1000px]
-                mx-auto
-                px-4
+                hover:bg-black/80
               "
-              onClick={e =>
-                e.stopPropagation()
-              }
             >
+              ✕
+            </button>
 
 
-              {/* =================================================
-                  CLOSE
-              ================================================== */}
+            <div className={`
+              flex
+              items-center
+              justify-center
+              gap-5
+              w-full
+              max-w-[1050px]
+              h-full
+              px-4
 
-              <button
-                onClick={
-                  closeViewer
-                }
-                className="
-                  absolute
-                  top-4
-                  right-4
-                  z-50
-                  text-white/80
-                  hover:text-white
-                  p-2
-                  bg-black/60
-                  rounded-full
-                  backdrop-blur-sm
-                  transition
-                "
-              >
-                ✕
-              </button>
+              ${
+                isCommentsOpen
+                  ? 'mr-[420px]'
+                  : ''
+              }
+            `}>
 
 
-              <div
-                className={`
-                  flex
-                  flex-row
-                  items-center
-                  justify-center
-                  gap-4
-                  md:gap-8
-                  transition-all
-                  duration-300
-                  ease-in-out
-                  w-full
+              {/* MEDIA */}
 
-                  ${
-                    isCommentsOpen
-                      ? 'translate-x-[-180px]'
-                      : 'translate-x-0'
+              <div className="
+                relative
+                w-full
+                max-w-[650px]
+                aspect-square
+                max-h-[85vh]
+                bg-black
+                rounded-[24px]
+                overflow-hidden
+                shadow-2xl
+                shrink-0
+              ">
+
+                {/* MUTE */}
+
+                <button
+                  onClick={
+                    toggleMute
                   }
-                `}
-              >
+                  className="
+                    absolute
+                    top-4
+                    left-4
+                    z-40
+                    w-10
+                    h-10
+                    rounded-full
+                    bg-black/60
+                    backdrop-blur-md
+                    border
+                    border-white/10
+                    text-white
+                  "
+                >
+                  {isMuted
+                    ? '🔇'
+                    : '🔊'}
+                </button>
 
 
-                {/* =================================================
-                    MEDIA
-                ================================================== */}
+                {/* MENU */}
 
-                <div className="
-                  flex-1
-                  flex
-                  items-center
-                  justify-center
-                  min-w-0
-                  h-full
-                ">
+                {isOwnProfile && (
 
                   <div className="
-                    relative
-                    w-full
-                    max-w-[450px]
-                    lg:max-w-[650px]
-                    aspect-[1/1]
-                    max-h-[85vh]
-                    rounded-[24px]
-                    overflow-hidden
-                    bg-black
-                    shadow-2xl
+                    absolute
+                    top-4
+                    right-4
+                    z-40
                   ">
 
-
-                    {/* MUTE */}
-
                     <button
-                      onClick={
-                        toggleMute
-                      }
-                      className="
-                        absolute
-                        top-4
-                        left-4
-                        z-30
-                        bg-black/60
-                        backdrop-blur-sm
-                        hover:bg-black/80
-                        p-2
-                        rounded-full
-                        text-white
-                        transition
-                      "
-                    >
-                      {isMuted
-                        ? '🔇'
-                        : '🔊'}
-                    </button>
-
-
-                    {/* AUTHOR MENU */}
-
-                    <div className="
-                      absolute
-                      top-4
-                      right-4
-                      z-30
-                      flex
-                      items-center
-                      gap-2
-                    ">
-
-                      {currentUser &&
-                        sameId(
-                          currentUser._id,
-                          viewerPost.user?._id
-                        ) && (
-
-                        <>
-                          <button
-                            onClick={
-                              openEditMenu
-                            }
-                            className="
-                              bg-black/60
-                              backdrop-blur-sm
-                              hover:bg-black/80
-                              p-2
-                              rounded-full
-                              text-white
-                              transition
-                            "
-                          >
-                            <FiMoreVertical
-                              size={20}
-                            />
-                          </button>
-
-
-                          <AnimatePresence>
-
-                            {isEditMenuOpen && (
-
-                              <motion.div
-                                initial={{
-                                  opacity:
-                                    0,
-                                  scale:
-                                    0.8,
-                                  y:
-                                    -10
-                                }}
-                                animate={{
-                                  opacity:
-                                    1,
-                                  scale:
-                                    1,
-                                  y:
-                                    0
-                                }}
-                                exit={{
-                                  opacity:
-                                    0,
-                                  scale:
-                                    0.8,
-                                  y:
-                                    -10
-                                }}
-                                className="
-                                  absolute
-                                  right-0
-                                  top-12
-                                  bg-black/90
-                                  backdrop-blur-md
-                                  border
-                                  border-white/10
-                                  rounded-xl
-                                  p-2
-                                  min-w-[140px]
-                                  shadow-2xl
-                                "
-                              >
-
-                                <button
-                                  onClick={
-                                    openEditModal
-                                  }
-                                  className="
-                                    flex
-                                    items-center
-                                    gap-2
-                                    w-full
-                                    px-3
-                                    py-2
-                                    text-white/80
-                                    hover:text-white
-                                    hover:bg-white/5
-                                    rounded-lg
-                                    transition
-                                  "
-                                >
-                                  <FiEdit2
-                                    size={16}
-                                  />
-
-                                  <span className="
-                                    text-sm
-                                  ">
-                                    Изменить
-                                  </span>
-                                </button>
-
-
-                                <button
-                                  onClick={() => {
-
-                                    setIsEditMenuOpen(
-                                      false
-                                    );
-
-                                    handleDeletePost(
-                                      viewerPost._id
-                                    );
-
-                                  }}
-                                  className="
-                                    flex
-                                    items-center
-                                    gap-2
-                                    w-full
-                                    px-3
-                                    py-2
-                                    text-red-400
-                                    hover:text-red-300
-                                    hover:bg-red-500/10
-                                    rounded-lg
-                                    transition
-                                  "
-                                >
-                                  <FaTrash
-                                    size={14}
-                                  />
-
-                                  <span className="
-                                    text-sm
-                                  ">
-                                    Удалить
-                                  </span>
-                                </button>
-
-                              </motion.div>
-
-                            )}
-
-                          </AnimatePresence>
-                        </>
-
-                      )}
-
-
-                      {!(
-                        currentUser &&
-                        sameId(
-                          currentUser._id,
-                          viewerPost.user?._id
+                      onClick={() =>
+                        setIsEditModalOpen(
+                          true
                         )
-                      ) && null}
-
-                    </div>
-
-
-                    {/* MEDIA AREA */}
-
-                    <div
-                      onClick={
-                        handleVideoClick
                       }
                       className="
-                        w-full
-                        h-full
-                        relative
-                        cursor-pointer
+                        w-10
+                        h-10
+                        rounded-full
+                        bg-black/60
+                        backdrop-blur-md
+                        border
+                        border-white/10
+                        text-white
                       "
                     >
-
-                      <AnimatePresence
-                        mode="wait"
-                      >
-
-                        <motion.div
-                          key={
-                            viewerPost._id
-                          }
-                          initial={{
-                            opacity:
-                              0
-                          }}
-                          animate={{
-                            opacity:
-                              1
-                          }}
-                          exit={{
-                            opacity:
-                              0
-                          }}
-                          transition={{
-                            duration:
-                              0.3
-                          }}
-                          className="
-                            w-full
-                            h-full
-                            relative
-                          "
-                        >
-
-                          {viewerPost.mediaUrl ? (
-
-                            viewerPost.mediaType ===
-                            'video' ? (
-
-                              <video
-                                ref={
-                                  videoRef
-                                }
-                                src={
-                                  getMediaUrl(
-                                    viewerPost.mediaUrl
-                                  )
-                                }
-                                className="
-                                  w-full
-                                  h-full
-                                  object-cover
-                                "
-                                autoPlay
-                                loop
-                                playsInline
-                                muted={
-                                  isMuted
-                                }
-                                onTimeUpdate={
-                                  handleTimeUpdate
-                                }
-                                onPlay={() =>
-                                  setIsPlaying(
-                                    true
-                                  )
-                                }
-                                onPause={() =>
-                                  setIsPlaying(
-                                    false
-                                  )
-                                }
-                              />
-
-                            ) : (
-
-                              <img
-                                src={
-                                  getMediaUrl(
-                                    viewerPost.mediaUrl
-                                  )
-                                }
-                                className="
-                                  w-full
-                                  h-full
-                                  object-cover
-                                "
-                                alt="Post"
-                              />
-
-                            )
-
-                          ) : (
-
-                            <div className="
-                              w-full
-                              h-full
-                              bg-gray-800
-                              flex
-                              items-center
-                              justify-center
-                              text-white/30
-                              text-4xl
-                              font-bold
-                              text-center
-                              p-4
-                            ">
-                              {viewerPost.content}
-                            </div>
-
-                          )}
-
-
-                          {/* GRADIENT */}
-
-                          <div className="
-                            absolute
-                            bottom-0
-                            left-0
-                            right-0
-                            h-[40%]
-                            bg-gradient-to-t
-                            from-black/90
-                            via-black/40
-                            to-transparent
-                            pointer-events-none
-                            rounded-b-[24px]
-                          " />
-
-
-                          {/* AUTHOR */}
-
-                          <div className="
-                            absolute
-                            bottom-6
-                            left-4
-                            z-10
-                            text-left
-                          ">
-
-                            <Link
-                              to={`/profile/${viewerPost.user?._id}`}
-                              className="
-                                inline-flex
-                                items-center
-                                gap-3
-                                mb-2
-                                hover:opacity-80
-                                transition
-                              "
-                            >
-
-                              <div className="
-                                w-8
-                                h-8
-                                rounded-full
-                                bg-accent
-                                flex
-                                items-center
-                                justify-center
-                                text-white
-                                font-bold
-                                text-xs
-                                overflow-hidden
-                                shrink-0
-                              ">
-
-                                {viewerPost.user?.avatar ? (
-
-                                  <img
-                                    src={
-                                      viewerPost.user.avatar
-                                    }
-                                    alt="Avatar"
-                                    className="
-                                      w-full
-                                      h-full
-                                      object-cover
-                                    "
-                                  />
-
-                                ) : (
-
-                                  viewerPost.user?.username
-                                    ?.charAt(0)
-                                    .toUpperCase()
-
-                                )}
-
-                              </div>
-
-                              <div className="
-                                flex
-                                items-center
-                                gap-1
-                              ">
-
-                                <span className="
-                                  text-white
-                                  font-bold
-                                  text-base
-                                  drop-shadow-lg
-                                ">
-                                  @{viewerPost.user?.username}
-                                </span>
-
-                                {viewerPost.user?.isVerified && (
-                                  <span className="
-                                    text-blue-500
-                                    text-lg
-                                  ">
-                                    ✓
-                                  </span>
-                                )}
-
-                              </div>
-
-                            </Link>
-
-
-                            <p className="
-                              text-white/90
-                              text-sm
-                              drop-shadow-md
-                              leading-relaxed
-                              max-w-[80%]
-                            ">
-                              {viewerPost.content}
-                            </p>
-
-                          </div>
-
-
-                          {/* PROGRESS */}
-
-                          <div className="
-                            absolute
-                            bottom-0
-                            left-0
-                            w-full
-                            h-1
-                            bg-white/20
-                            z-20
-                          ">
-
-                            <div
-                              className="
-                                h-full
-                                bg-red-500
-                                transition-all
-                                duration-100
-                              "
-                              style={{
-                                width:
-                                  `${progress}%`
-                              }}
-                            />
-
-                          </div>
-
-
-                          {/* PLAY ICON */}
-
-                          <AnimatePresence>
-
-                            {!isPlaying && (
-
-                              <motion.div
-                                initial={{
-                                  opacity:
-                                    0,
-                                  scale:
-                                    0.5
-                                }}
-                                animate={{
-                                  opacity:
-                                    1,
-                                  scale:
-                                    1
-                                }}
-                                exit={{
-                                  opacity:
-                                    0,
-                                  scale:
-                                    0.5
-                                }}
-                                className="
-                                  absolute
-                                  inset-0
-                                  flex
-                                  items-center
-                                  justify-center
-                                  z-20
-                                  pointer-events-none
-                                "
-                              >
-
-                                <div className="
-                                  w-16
-                                  h-16
-                                  bg-black/60
-                                  backdrop-blur-md
-                                  rounded-full
-                                  flex
-                                  items-center
-                                  justify-center
-                                  text-white
-                                  shadow-lg
-                                ">
-                                  <span className="
-                                    text-2xl
-                                  ">
-                                    ▶
-                                  </span>
-                                </div>
-
-                              </motion.div>
-
-                            )}
-
-                          </AnimatePresence>
-
-                        </motion.div>
-
-                      </AnimatePresence>
-
-                    </div>
+                      ⋮
+                    </button>
 
                   </div>
 
-                </div>
+                )}
 
 
-                {/* =================================================
-                    ACTION BUTTONS
-                ================================================== */}
+                {/* MEDIA */}
 
-                <div className="
-                  flex
-                  flex-col
-                  items-center
-                  gap-4
-                  py-4
-                  shrink-0
-                  min-w-[60px]
-                  md:min-w-[80px]
-                ">
+                <div
+                  onClick={
+                    handleVideoClick
+                  }
+                  className="
+                    w-full
+                    h-full
+                    relative
+                    cursor-pointer
+                  "
+                >
+
+                  {viewerPost.mediaUrl ? (
+
+                    viewerPost.mediaType ===
+                    'video' ? (
+
+                      <video
+                        ref={
+                          videoRef
+                        }
+                        src={
+                          getMediaUrl(
+                            viewerPost.mediaUrl
+                          )
+                        }
+                        className="
+                          w-full
+                          h-full
+                          object-cover
+                        "
+                        autoPlay
+                        loop
+                        playsInline
+                        muted={
+                          isMuted
+                        }
+                        onTimeUpdate={
+                          handleTimeUpdate
+                        }
+                        onPlay={() =>
+                          setIsPlaying(
+                            true
+                          )
+                        }
+                        onPause={() =>
+                          setIsPlaying(
+                            false
+                          )
+                        }
+                      />
+
+                    ) : (
+
+                      <img
+                        src={
+                          getMediaUrl(
+                            viewerPost.mediaUrl
+                          )
+                        }
+                        alt="Post"
+                        className="
+                          w-full
+                          h-full
+                          object-cover
+                        "
+                      />
+
+                    )
+
+                  ) : (
+
+                    <div className="
+                      w-full
+                      h-full
+                      bg-gray-800
+                      flex
+                      items-center
+                      justify-center
+                      text-white/40
+                      text-3xl
+                      font-bold
+                      text-center
+                      p-6
+                    ">
+                      {viewerPost.content}
+                    </div>
+
+                  )}
 
 
-                  {/* PROFILE */}
+                  {/* GRADIENT */}
 
                   <div className="
-                    relative
+                    absolute
+                    bottom-0
+                    left-0
+                    right-0
+                    h-[45%]
+                    bg-gradient-to-t
+                    from-black/90
+                    via-black/30
+                    to-transparent
+                    pointer-events-none
+                  " />
+
+
+                  {/* AUTHOR */}
+
+                  <div className="
+                    absolute
+                    left-4
+                    right-4
+                    bottom-6
+                    z-20
                   ">
 
                     <Link
                       to={`/profile/${viewerPost.user?._id}`}
+                      className="
+                        flex
+                        items-center
+                        gap-3
+                        mb-2
+                        w-fit
+                      "
                     >
 
                       <div className="
-                        w-12
-                        h-12
+                        w-9
+                        h-9
                         rounded-full
-                        border-[2px]
-                        border-white/30
-                        bg-gray-800
+                        bg-accent
                         flex
                         items-center
                         justify-center
                         overflow-hidden
-                        cursor-pointer
-                        hover:border-accent
-                        transition
+                        font-bold
                       ">
 
                         {viewerPost.user?.avatar ? (
@@ -3675,320 +3746,111 @@ const Profile = () => {
 
                         ) : (
 
-                          <span className="
-                            text-white
-                            font-bold
-                            text-lg
-                          ">
-                            {viewerPost.user?.username
-                              ?.charAt(0)
-                              .toUpperCase()}
-                          </span>
+                          viewerPost.user?.username
+                            ?.charAt(0)
+                            .toUpperCase()
 
                         )}
 
                       </div>
 
+
+                      <span className="
+                        font-bold
+                        text-white
+                      ">
+                        @{viewerPost.user?.username}
+
+                        {viewerPost.user?.isVerified && (
+
+                          <span className="
+                            text-blue-500
+                            ml-1
+                          ">
+                            ✓
+                          </span>
+
+                        )}
+
+                      </span>
+
                     </Link>
 
-                  </div>
 
-
-                  {/* LIKE */}
-
-                  <div
-                    className="
-                      flex
-                      flex-col
-                      items-center
-                      gap-1
-                      cursor-pointer
-                    "
-                    onClick={() =>
-                      handleLike(
-                        viewerPost._id
-                      )
-                    }
-                  >
-
-                    <div className="
-                      w-12
-                      h-12
-                      rounded-full
-                      bg-black/60
-                      backdrop-blur-md
-                      border
-                      border-white/10
-                      flex
-                      items-center
-                      justify-center
-                      hover:bg-black/80
-                      transition
+                    <p className="
+                      text-white/90
+                      text-sm
+                      leading-relaxed
+                      max-w-[80%]
                     ">
-
-                      {viewerPost.isLikedByMe ||
-                      isIdInArray(
-                        viewerPost.likes,
-                        currentUser?._id
-                      ) ? (
-
-                        <FaHeart className="
-                          text-red-500
-                          text-xl
-                        " />
-
-                      ) : (
-
-                        <FaRegHeart className="
-                          text-white/80
-                          text-xl
-                        " />
-
-                      )}
-
-                    </div>
-
-                    <span className="
-                      text-white/80
-                      text-[11px]
-                      font-bold
-                    ">
-                      {viewerPost.likes?.length ||
-                        0}
-                    </span>
+                      {viewerPost.content}
+                    </p>
 
                   </div>
 
 
-                  {/* COMMENTS */}
-
-                  <div
-                    className="
-                      flex
-                      flex-col
-                      items-center
-                      gap-1
-                      cursor-pointer
-                    "
-                    onClick={() =>
-                      setIsCommentsOpen(
-                        prev =>
-                          !prev
-                      )
-                    }
-                  >
-
-                    <div className="
-                      w-12
-                      h-12
-                      rounded-full
-                      bg-black/60
-                      backdrop-blur-md
-                      border
-                      border-white/10
-                      flex
-                      items-center
-                      justify-center
-                      hover:bg-black/80
-                      transition
-                    ">
-                      <FaComment className="
-                        text-white/80
-                        text-xl
-                      " />
-                    </div>
-
-                    <span className="
-                      text-white/80
-                      text-[11px]
-                      font-bold
-                    ">
-                      {viewerPost.comments?.length ||
-                        0}
-                    </span>
-
-                  </div>
-
-
-                  {/* SAVE */}
-
-                  <div
-                    className="
-                      flex
-                      flex-col
-                      items-center
-                      gap-1
-                      cursor-pointer
-                    "
-                    onClick={() =>
-                      handleSave(
-                        viewerPost._id
-                      )
-                    }
-                  >
-
-                    <div className="
-                      w-12
-                      h-12
-                      rounded-full
-                      bg-black/60
-                      backdrop-blur-md
-                      border
-                      border-white/10
-                      flex
-                      items-center
-                      justify-center
-                      hover:bg-black/80
-                      transition
-                    ">
-
-                      {viewerPost.isSavedByMe ||
-                      isIdInArray(
-                        viewerPost.savedBy,
-                        currentUser?._id
-                      ) ? (
-
-                        <FaBookmark className="
-                          text-yellow-400
-                          text-xl
-                        " />
-
-                      ) : (
-
-                        <FiBookmark className="
-                          text-white/80
-                          text-xl
-                        " />
-
-                      )}
-
-                    </div>
-
-                    <span className="
-                      text-white/80
-                      text-[11px]
-                      font-bold
-                    ">
-                      {viewerPost.savedBy?.length ||
-                        0}
-                    </span>
-
-                  </div>
-
-
-                  {/* SHARE */}
-
-                  <div
-                    className="
-                      flex
-                      flex-col
-                      items-center
-                      gap-1
-                      cursor-pointer
-                    "
-                    onClick={() =>
-                      handleShare(
-                        viewerPost
-                      )
-                    }
-                  >
-
-                    <div className="
-                      w-12
-                      h-12
-                      rounded-full
-                      bg-black/60
-                      backdrop-blur-md
-                      border
-                      border-white/10
-                      flex
-                      items-center
-                      justify-center
-                      hover:bg-black/80
-                      transition
-                    ">
-
-                      <FaShare className="
-                        text-white/80
-                        text-xl
-                        hover:text-white
-                        transition
-                      " />
-
-                    </div>
-
-                  </div>
-
-
-                  {/* NAVIGATION */}
+                  {/* PROGRESS */}
 
                   <div className="
-                    border-t
-                    border-white/10
-                    pt-4
-                    mt-4
-                    flex
-                    flex-col
-                    gap-3
-                    w-full
-                    items-center
+                    absolute
+                    bottom-0
+                    left-0
+                    right-0
+                    h-1
+                    bg-white/20
+                    z-30
                   ">
 
-                    <button
-                      onClick={
-                        goPrev
-                      }
-                      disabled={
-                        viewerIndex ===
-                        0
-                      }
+                    <div
                       className="
-                        w-10
-                        h-10
-                        bg-black/60
-                        rounded-full
-                        border
-                        border-white/10
-                        text-white
-                        disabled:opacity-30
-                        flex
-                        items-center
-                        justify-center
+                        h-full
+                        bg-white
                       "
-                    >
-                      <FaChevronUp
-                        size={16}
-                      />
-                    </button>
-
-                    <button
-                      onClick={
-                        goNext
-                      }
-                      disabled={
-                        viewerIndex ===
-                        viewerPosts.length - 1
-                      }
-                      className="
-                        w-10
-                        h-10
-                        bg-black/60
-                        rounded-full
-                        border
-                        border-white/10
-                        text-white
-                        disabled:opacity-30
-                        flex
-                        items-center
-                        justify-center
-                      "
-                    >
-                      <FaChevronDown
-                        size={16}
-                      />
-                    </button>
+                      style={{
+                        width:
+                          `${progress}%`
+                      }}
+                    />
 
                   </div>
+
+
+                  {!isPlaying &&
+                    viewerPost.mediaType ===
+                      'video' && (
+
+                    <div className="
+                      absolute
+                      inset-0
+                      flex
+                      items-center
+                      justify-center
+                      pointer-events-none
+                    ">
+
+                      <div className="
+                        w-16
+                        h-16
+                        rounded-full
+                        bg-black/60
+                        backdrop-blur-md
+                        flex
+                        items-center
+                        justify-center
+                      ">
+
+                        <FaPlay
+                          size={23}
+                          className="
+                            ml-1
+                          "
+                        />
+
+                      </div>
+
+                    </div>
+
+                  )}
 
                 </div>
 
@@ -3996,756 +3858,743 @@ const Profile = () => {
 
 
               {/* =================================================
-                  COMMENTS PANEL
+                  ACTIONS
               ================================================== */}
 
-              <AnimatePresence>
+              <div className="
+                flex
+                flex-col
+                items-center
+                gap-4
+                shrink-0
+              ">
 
-                {isCommentsOpen && (
 
-                  <motion.div
-                    initial={{
-                      x:
-                        '100%'
-                    }}
-                    animate={{
-                      x:
-                        0
-                    }}
-                    exit={{
-                      x:
-                        '100%'
-                    }}
-                    transition={{
-                      duration:
-                        0.3
-                    }}
-                    onClick={e =>
-                      e.stopPropagation()
+                {/* AUTHOR */}
+
+                <Link
+                  to={`/profile/${viewerPost.user?._id}`}
+                  className="
+                    w-12
+                    h-12
+                    rounded-full
+                    overflow-hidden
+                    border-2
+                    border-white/20
+                    bg-gray-700
+                    flex
+                    items-center
+                    justify-center
+                  "
+                >
+
+                  {viewerPost.user?.avatar ? (
+
+                    <img
+                      src={
+                        viewerPost.user.avatar
+                      }
+                      alt="Avatar"
+                      className="
+                        w-full
+                        h-full
+                        object-cover
+                      "
+                    />
+
+                  ) : (
+
+                    <span className="
+                      text-white
+                      font-bold
+                    ">
+                      {viewerPost.user?.username
+                        ?.charAt(0)
+                        .toUpperCase()}
+                    </span>
+
+                  )}
+
+                </Link>
+
+
+                {/* LIKE */}
+
+                <button
+                  onClick={() =>
+                    handleLike(
+                      viewerPost._id
+                    )
+                  }
+                  className="
+                    flex
+                    flex-col
+                    items-center
+                    gap-1
+                  "
+                >
+
+                  <div className="
+                    w-12
+                    h-12
+                    rounded-full
+                    bg-black/60
+                    backdrop-blur-md
+                    border
+                    border-white/10
+                    flex
+                    items-center
+                    justify-center
+                  ">
+
+                    {viewerPost.isLikedByMe ||
+                    isIdInArray(
+                      viewerPost.likes,
+                      currentUser?._id
+                    ) ? (
+
+                      <FaHeart className="
+                        text-red-500
+                        text-xl
+                      " />
+
+                    ) : (
+
+                      <FaRegHeart className="
+                        text-white/80
+                        text-xl
+                      " />
+
+                    )}
+
+                  </div>
+
+
+                  <span className="
+                    text-white/70
+                    text-[11px]
+                  ">
+                    {viewerPost.likes?.length ||
+                      0}
+                  </span>
+
+                </button>
+
+
+                {/* COMMENT */}
+
+                <button
+                  onClick={() =>
+                    setIsCommentsOpen(
+                      prev =>
+                        !prev
+                    )
+                  }
+                  className="
+                    flex
+                    flex-col
+                    items-center
+                    gap-1
+                  "
+                >
+
+                  <div className="
+                    w-12
+                    h-12
+                    rounded-full
+                    bg-black/60
+                    backdrop-blur-md
+                    border
+                    border-white/10
+                    flex
+                    items-center
+                    justify-center
+                  ">
+
+                    <FaComment className="
+                      text-white/80
+                      text-xl
+                    " />
+
+                  </div>
+
+
+                  <span className="
+                    text-white/70
+                    text-[11px]
+                  ">
+                    {viewerPost.comments?.length ||
+                      0}
+                  </span>
+
+                </button>
+
+
+                {/* SAVE */}
+
+                <button
+                  onClick={() =>
+                    handleSave(
+                      viewerPost._id
+                    )
+                  }
+                  className="
+                    flex
+                    flex-col
+                    items-center
+                    gap-1
+                  "
+                >
+
+                  <div className="
+                    w-12
+                    h-12
+                    rounded-full
+                    bg-black/60
+                    backdrop-blur-md
+                    border
+                    border-white/10
+                    flex
+                    items-center
+                    justify-center
+                  ">
+
+                    {viewerPost.isSavedByMe ||
+                    isIdInArray(
+                      viewerPost.savedBy,
+                      currentUser?._id
+                    ) ? (
+
+                      <FaBookmark className="
+                        text-yellow-400
+                        text-xl
+                      " />
+
+                    ) : (
+
+                      <FiBookmark className="
+                        text-white/80
+                        text-xl
+                      " />
+
+                    )}
+
+                  </div>
+
+
+                  <span className="
+                    text-white/70
+                    text-[11px]
+                  ">
+                    {viewerPost.savedBy?.length ||
+                      0}
+                  </span>
+
+                </button>
+
+
+                {/* SHARE */}
+
+                <button
+                  onClick={() =>
+                    handleShare(
+                      viewerPost
+                    )
+                  }
+                  className="
+                    flex
+                    flex-col
+                    items-center
+                    gap-1
+                  "
+                >
+
+                  <div className="
+                    w-12
+                    h-12
+                    rounded-full
+                    bg-black/60
+                    backdrop-blur-md
+                    border
+                    border-white/10
+                    flex
+                    items-center
+                    justify-center
+                    hover:bg-black/80
+                    transition
+                  ">
+
+                    <FaShare className="
+                      text-white/80
+                      text-xl
+                    " />
+
+                  </div>
+
+                </button>
+
+
+                {/* NAVIGATION */}
+
+                <div className="
+                  border-t
+                  border-white/10
+                  pt-4
+                  mt-2
+                  flex
+                  flex-col
+                  gap-3
+                ">
+
+                  <button
+                    onClick={
+                      goPrev
+                    }
+                    disabled={
+                      viewerIndex ===
+                      0
                     }
                     className="
-                      absolute
-                      right-0
-                      top-0
-                      bottom-0
-                      w-[420px]
-                      bg-[#0a0a0a]/95
-                      backdrop-blur-xl
-                      border-l
+                      w-10
+                      h-10
+                      rounded-full
+                      bg-black/60
+                      border
                       border-white/10
-                      z-40
-                      p-6
                       flex
-                      flex-col
-                      shadow-2xl
+                      items-center
+                      justify-center
+                      disabled:opacity-30
                     "
                   >
+                    <FaChevronUp />
+                  </button>
 
-                    <div className="
-                      flex
-                      justify-between
-                      items-center
-                      mb-6
-                      border-b
+
+                  <button
+                    onClick={
+                      goNext
+                    }
+                    disabled={
+                      viewerIndex ===
+                      viewerPosts.length - 1
+                    }
+                    className="
+                      w-10
+                      h-10
+                      rounded-full
+                      bg-black/60
+                      border
                       border-white/10
-                      pb-4
-                    ">
+                      flex
+                      items-center
+                      justify-center
+                      disabled:opacity-30
+                    "
+                  >
+                    <FaChevronDown />
+                  </button>
 
-                      <span className="
-                        text-white
-                        font-bold
-                        text-lg
+                </div>
+
+              </div>
+
+            </div>
+
+
+            {/* =================================================
+                COMMENTS PANEL
+            ================================================== */}
+
+            <AnimatePresence>
+
+              {isCommentsOpen && (
+
+                <motion.div
+                  initial={{
+                    x:
+                      '100%'
+                  }}
+                  animate={{
+                    x:
+                      0
+                  }}
+                  exit={{
+                    x:
+                      '100%'
+                  }}
+                  transition={{
+                    duration:
+                      0.3
+                  }}
+                  className="
+                    absolute
+                    top-0
+                    right-0
+                    bottom-0
+                    w-[420px]
+                    bg-[#0a0a0a]/95
+                    backdrop-blur-xl
+                    border-l
+                    border-white/10
+                    z-40
+                    p-6
+                    flex
+                    flex-col
+                  "
+                >
+
+                  <div className="
+                    flex
+                    justify-between
+                    items-center
+                    pb-4
+                    border-b
+                    border-white/10
+                  ">
+
+                    <h3 className="
+                      text-white
+                      font-bold
+                      text-lg
+                    ">
+                      Комментарии
+                    </h3>
+
+
+                    <button
+                      onClick={() =>
+                        setIsCommentsOpen(
+                          false
+                        )
+                      }
+                      className="
+                        text-white/50
+                        hover:text-white
+                        text-xl
+                      "
+                    >
+                      ✕
+                    </button>
+
+                  </div>
+
+
+                  <div className="
+                    flex-1
+                    overflow-y-auto
+                    py-5
+                    space-y-5
+                  ">
+
+                    {viewerPost.comments?.length ===
+                      0 && (
+
+                      <p className="
+                        text-white/40
+                        text-center
+                        mt-10
                       ">
-                        Комментарии
-                      </span>
+                        Нет комментариев
+                      </p>
 
-                      <button
-                        onClick={() =>
-                          setIsCommentsOpen(
-                            false
-                          )
-                        }
-                        className="
-                          text-white/50
-                          hover:text-white
-                          text-xl
-                        "
-                      >
-                        ✕
-                      </button>
-
-                    </div>
+                    )}
 
 
-                    <div className="
-                      flex-1
-                      overflow-y-auto
-                      space-y-6
-                      pr-2
-                      pb-20
-                    ">
+                    {viewerPost.comments?.map(
+                      comment => {
 
-                      {viewerPost.comments?.length ===
-                        0 && (
-
-                        <p className="
-                          text-white/40
-                          text-center
-                          mt-10
-                        ">
-                          Нет комментариев
-                        </p>
-
-                      )}
+                        const isAuthor =
+                          sameId(
+                            currentUser?._id,
+                            comment.user?._id
+                          );
 
 
-                      {viewerPost.comments?.map(
-                        comment => {
-
-                          const isCommentAuthor =
-                            sameId(
-                              currentUser?._id,
-                              comment.user?._id
-                            );
-
-                          const isPostAuthor =
-                            sameId(
-                              currentUser?._id,
-                              viewerPost.user?._id
-                            );
-
-                          const isCommentLiked =
-                            isIdInArray(
-                              comment.likes,
-                              currentUser?._id
-                            );
+                        const liked =
+                          isIdInArray(
+                            comment.likes,
+                            currentUser?._id
+                          );
 
 
-                          return (
+                        return (
 
-                            <div
-                              key={
-                                comment._id
-                              }
-                              className="
-                                border-b
-                                border-white/5
-                                pb-4
-                              "
-                            >
+                          <div
+                            key={
+                              comment._id
+                            }
+                            className="
+                              border-b
+                              border-white/5
+                              pb-4
+                            "
+                          >
+
+                            <div className="
+                              flex
+                              gap-3
+                            ">
+
+                              <Link
+                                to={`/profile/${comment.user?._id}`}
+                              >
+                                <div className="
+                                  w-8
+                                  h-8
+                                  rounded-full
+                                  bg-gray-700
+                                  overflow-hidden
+                                  flex
+                                  items-center
+                                  justify-center
+                                  text-xs
+                                  font-bold
+                                ">
+
+                                  {comment.user?.avatar ? (
+
+                                    <img
+                                      src={
+                                        comment.user.avatar
+                                      }
+                                      alt="Avatar"
+                                      className="
+                                        w-full
+                                        h-full
+                                        object-cover
+                                      "
+                                    />
+
+                                  ) : (
+
+                                    comment.user?.username
+                                      ?.charAt(0)
+                                      .toUpperCase()
+
+                                  )}
+
+                                </div>
+                              </Link>
+
 
                               <div className="
-                                flex
-                                gap-3
-                                mb-2
+                                flex-1
                               ">
 
                                 <Link
                                   to={`/profile/${comment.user?._id}`}
-                                >
-
-                                  <div className="
-                                    w-8
-                                    h-8
-                                    rounded-full
-                                    bg-gray-700
-                                    flex
-                                    items-center
-                                    justify-center
+                                  className="
+                                    text-white/60
                                     text-xs
-                                    text-white
-                                    overflow-hidden
-                                  ">
-
-                                    {comment.user?.avatar ? (
-
-                                      <img
-                                        src={
-                                          comment.user.avatar
-                                        }
-                                        alt="Avatar"
-                                        className="
-                                          w-full
-                                          h-full
-                                          object-cover
-                                        "
-                                      />
-
-                                    ) : (
-
-                                      comment.user?.username
-                                        ?.charAt(0)
-                                        .toUpperCase()
-
-                                    )}
-
-                                  </div>
-
+                                  "
+                                >
+                                  @{comment.user?.username}
                                 </Link>
 
 
-                                <div className="
-                                  flex-1
-                                ">
+                                {editingCommentId ===
+                                comment._id ? (
 
                                   <div className="
-                                    flex
-                                    items-center
-                                    gap-2
+                                    mt-2
                                   ">
 
-                                    <Link
-                                      to={`/profile/${comment.user?._id}`}
+                                    <textarea
+                                      value={
+                                        editCommentText
+                                      }
+                                      onChange={e =>
+                                        setEditCommentText(
+                                          e.target.value
+                                        )
+                                      }
                                       className="
-                                        text-white/60
-                                        text-xs
+                                        w-full
+                                        bg-white/5
+                                        border
+                                        border-white/10
+                                        rounded-lg
+                                        p-2
+                                        text-white
+                                        text-sm
+                                        resize-none
                                       "
-                                    >
-                                      @{comment.user?.username}
-                                    </Link>
+                                      rows="2"
+                                    />
 
-                                    {isPostAuthor && (
-
-                                      <span className="
-                                        text-[10px]
-                                        text-red-400
-                                        bg-red-500/10
-                                        px-1.5
-                                        py-0.5
-                                        rounded
-                                      ">
-                                        Автор
-                                      </span>
-
-                                    )}
-
-                                    {comment.user?.isVerified && (
-
-                                      <span className="
-                                        text-blue-500
-                                        text-xs
-                                      ">
-                                        ✓
-                                      </span>
-
-                                    )}
-
-                                  </div>
-
-
-                                  {editingCommentId ===
-                                  comment._id ? (
 
                                     <div className="
-                                      mt-1
                                       flex
-                                      flex-col
-                                      gap-2
+                                      gap-3
+                                      mt-2
                                     ">
 
-                                      <textarea
-                                        value={
-                                          editCommentText
-                                        }
-                                        onChange={e =>
+                                      <button
+                                        onClick={() => {
+
+                                          setEditingCommentId(
+                                            null
+                                          );
+
                                           setEditCommentText(
-                                            e.target.value
+                                            ''
+                                          );
+
+                                        }}
+                                        className="
+                                          text-xs
+                                          text-white/40
+                                        "
+                                      >
+                                        Отмена
+                                      </button>
+
+
+                                      <button
+                                        onClick={() =>
+                                          saveEditComment(
+                                            viewerPost._id,
+                                            comment._id,
+                                            false
                                           )
                                         }
                                         className="
-                                          w-full
-                                          bg-black/40
-                                          border
-                                          border-white/10
-                                          text-white
-                                          rounded-lg
-                                          px-3
-                                          py-2
-                                          text-sm
+                                          text-xs
+                                          text-accent
                                         "
-                                        rows="2"
-                                      />
-
-                                      <div className="
-                                        flex
-                                        gap-2
-                                      ">
-
-                                        <button
-                                          onClick={() => {
-
-                                            setEditingCommentId(
-                                              null
-                                            );
-
-                                            setEditCommentText(
-                                              ''
-                                            );
-
-                                          }}
-                                          className="
-                                            text-xs
-                                            text-white/50
-                                          "
-                                        >
-                                          Отмена
-                                        </button>
-
-                                        <button
-                                          onClick={() =>
-                                            saveEditComment(
-                                              viewerPost._id,
-                                              comment._id,
-                                              false
-                                            )
-                                          }
-                                          className="
-                                            text-xs
-                                            text-accent
-                                          "
-                                        >
-                                          Сохранить
-                                        </button>
-
-                                      </div>
+                                      >
+                                        Сохранить
+                                      </button>
 
                                     </div>
 
-                                  ) : (
-
-                                    <p className="
-                                      text-white/80
-                                      text-sm
-                                      mt-1
-                                    ">
-                                      {comment.text}
-                                    </p>
-
-                                  )}
-
-                                </div>
-
-                              </div>
-
-
-                              <div className="
-                                flex
-                                items-center
-                                gap-4
-                                ml-11
-                              ">
-
-                                <div
-                                  className="
-                                    flex
-                                    items-center
-                                    gap-1
-                                    cursor-pointer
-                                  "
-                                  onClick={() =>
-                                    handleCommentLike(
-                                      viewerPost._id,
-                                      comment._id
-                                    )
-                                  }
-                                >
-
-                                  {isCommentLiked ? (
-                                    <FaHeart className="
-                                      text-red-500
-                                      text-sm
-                                    " />
-                                  ) : (
-                                    <FaRegHeart className="
-                                      text-white/40
-                                      text-sm
-                                    " />
-                                  )}
-
-                                  <span className="
-                                    text-xs
-                                    text-white/40
-                                  ">
-                                    {comment.likes?.length ||
-                                      ''}
-                                  </span>
-
-                                </div>
-
-
-                                <div
-                                  className="
-                                    flex
-                                    items-center
-                                    gap-1
-                                    cursor-pointer
-                                    text-white/40
-                                    hover:text-white
-                                    text-xs
-                                  "
-                                  onClick={() =>
-                                    document
-                                      .getElementById(
-                                        `reply-input-${comment._id}`
-                                      )
-                                      ?.focus()
-                                  }
-                                >
-                                  <FaReply
-                                    size={12}
-                                  />
-
-                                  <span>
-                                    Ответить
-                                  </span>
-                                </div>
-
-
-                                {isCommentAuthor && (
-
-                                  <div className="
-                                    flex
-                                    gap-2
-                                    ml-auto
-                                    text-white/30
-                                  ">
-
-                                    <button
-                                      onClick={() =>
-                                        startEditComment(
-                                          comment._id,
-                                          comment.text
-                                        )
-                                      }
-                                    >
-                                      <FaPencilAlt
-                                        size={12}
-                                      />
-                                    </button>
-
-                                    <button
-                                      onClick={() =>
-                                        deleteComment(
-                                          viewerPost._id,
-                                          comment._id,
-                                          false
-                                        )
-                                      }
-                                    >
-                                      <FaTrash
-                                        size={12}
-                                      />
-                                    </button>
-
                                   </div>
+
+                                ) : (
+
+                                  <p className="
+                                    text-white/80
+                                    text-sm
+                                    mt-1
+                                  ">
+                                    {comment.text}
+                                  </p>
 
                                 )}
 
                               </div>
 
+                            </div>
 
-                              {/* REPLY */}
 
-                              <div className="
-                                ml-11
-                                mt-2
-                                flex
-                                gap-2
-                              ">
+                            <div className="
+                              ml-11
+                              mt-2
+                              flex
+                              items-center
+                              gap-4
+                            ">
 
-                                <input
-                                  id={`reply-input-${comment._id}`}
-                                  type="text"
-                                  placeholder="Написать ответ..."
-                                  value={
-                                    replyTexts[
-                                      comment._id
-                                    ] || ''
+                              <button
+                                onClick={() =>
+                                  handleCommentLike(
+                                    viewerPost._id,
+                                    comment._id
+                                  )
+                                }
+                                className={`
+                                  flex
+                                  items-center
+                                  gap-1
+                                  ${
+                                    liked
+                                      ? 'text-red-500'
+                                      : 'text-white/40'
                                   }
-                                  onChange={e =>
-                                    setReplyTexts(
-                                      prev => ({
-                                        ...prev,
+                                `}
+                              >
 
-                                        [comment._id]:
-                                          e.target.value
-                                      })
+                                {liked
+                                  ? <FaHeart />
+                                  : <FaRegHeart />}
+
+                                <span className="
+                                  text-xs
+                                ">
+                                  {comment.likes?.length ||
+                                    ''}
+                                </span>
+
+                              </button>
+
+
+                              <button
+                                onClick={() =>
+                                  document
+                                    .getElementById(
+                                      `reply-input-${comment._id}`
                                     )
-                                  }
-                                  onKeyDown={e => {
+                                    ?.focus()
+                                }
+                                className="
+                                  flex
+                                  items-center
+                                  gap-1
+                                  text-white/40
+                                  hover:text-white
+                                  text-xs
+                                "
+                              >
 
-                                    if (
-                                      e.key ===
-                                      'Enter'
-                                    ) {
-
-                                      handleReply(
-                                        viewerPost._id,
-                                        comment._id
-                                      );
-
-                                    }
-
-                                  }}
-                                  className="
-                                    flex-1
-                                    bg-transparent
-                                    border-b
-                                    border-white/10
-                                    text-white
-                                    text-xs
-                                    outline-none
-                                    pb-1
-                                  "
+                                <FaReply
+                                  size={12}
                                 />
 
-                                <button
-                                  onClick={() =>
-                                    handleReply(
-                                      viewerPost._id,
-                                      comment._id
-                                    )
-                                  }
-                                  className="
-                                    text-accent
-                                    text-xs
-                                  "
-                                >
-                                  Отправить
-                                </button>
+                                Ответить
 
-                              </div>
+                              </button>
 
 
-                              {/* REPLIES */}
-
-                              {comment.replies?.length >
-                                0 && (
+                              {isAuthor && (
 
                                 <div className="
-                                  ml-11
-                                  mt-3
-                                  space-y-3
-                                  border-l-2
-                                  border-white/10
-                                  pl-3
+                                  ml-auto
+                                  flex
+                                  gap-2
+                                  text-white/30
                                 ">
 
-                                  {comment.replies.map(
-                                    reply => {
-
-                                      const isReplyAuthor =
-                                        sameId(
-                                          currentUser?._id,
-                                          reply.user?._id
-                                        );
-
-                                      const isReplyEditing =
-                                        editingCommentId ===
-                                        reply._id;
-
-
-                                      return (
-
-                                        <div
-                                          key={
-                                            reply._id
-                                          }
-                                          className="
-                                            flex
-                                            gap-3
-                                          "
-                                        >
-
-                                          <div className="
-                                            w-6
-                                            h-6
-                                            rounded-full
-                                            bg-gray-700
-                                            flex
-                                            items-center
-                                            justify-center
-                                            text-[10px]
-                                            text-white
-                                            overflow-hidden
-                                          ">
-
-                                            {reply.user?.avatar ? (
-
-                                              <img
-                                                src={
-                                                  reply.user.avatar
-                                                }
-                                                alt="Avatar"
-                                                className="
-                                                  w-full
-                                                  h-full
-                                                  object-cover
-                                                "
-                                              />
-
-                                            ) : (
-
-                                              reply.user?.username
-                                                ?.charAt(0)
-                                                .toUpperCase()
-
-                                            )}
-
-                                          </div>
-
-
-                                          <div className="
-                                            flex-1
-                                          ">
-
-                                            <div className="
-                                              text-white/40
-                                              text-[11px]
-                                            ">
-                                              @{reply.user?.username}
-                                            </div>
-
-
-                                            {isReplyEditing ? (
-
-                                              <div className="
-                                                mt-1
-                                                flex
-                                                flex-col
-                                                gap-2
-                                              ">
-
-                                                <textarea
-                                                  value={
-                                                    editCommentText
-                                                  }
-                                                  onChange={e =>
-                                                    setEditCommentText(
-                                                      e.target.value
-                                                    )
-                                                  }
-                                                  className="
-                                                    w-full
-                                                    bg-black/40
-                                                    border
-                                                    border-white/10
-                                                    text-white
-                                                    rounded-lg
-                                                    px-2
-                                                    py-1
-                                                    text-xs
-                                                  "
-                                                  rows="2"
-                                                />
-
-                                                <div className="
-                                                  flex
-                                                  gap-2
-                                                ">
-
-                                                  <button
-                                                    onClick={() => {
-
-                                                      setEditingCommentId(
-                                                        null
-                                                      );
-
-                                                      setEditCommentText(
-                                                        ''
-                                                      );
-
-                                                    }}
-                                                    className="
-                                                      text-[10px]
-                                                      text-white/50
-                                                    "
-                                                  >
-                                                    Отмена
-                                                  </button>
-
-                                                  <button
-                                                    onClick={() =>
-                                                      saveEditComment(
-                                                        viewerPost._id,
-                                                        reply._id,
-                                                        true
-                                                      )
-                                                    }
-                                                    className="
-                                                      text-[10px]
-                                                      text-accent
-                                                    "
-                                                  >
-                                                    Сохранить
-                                                  </button>
-
-                                                </div>
-
-                                              </div>
-
-                                            ) : (
-
-                                              <p className="
-                                                text-white/70
-                                                text-sm
-                                                mt-1
-                                              ">
-                                                {reply.text}
-                                              </p>
-
-                                            )}
-
-
-                                            {isReplyAuthor &&
-                                              !isReplyEditing && (
-
-                                              <div className="
-                                                flex
-                                                gap-2
-                                                mt-1
-                                                text-white/20
-                                              ">
-
-                                                <button
-                                                  onClick={() =>
-                                                    startEditComment(
-                                                      reply._id,
-                                                      reply.text
-                                                    )
-                                                  }
-                                                >
-                                                  <FaPencilAlt
-                                                    size={10}
-                                                  />
-                                                </button>
-
-                                                <button
-                                                  onClick={() =>
-                                                    deleteComment(
-                                                      viewerPost._id,
-                                                      reply._id,
-                                                      true
-                                                    )
-                                                  }
-                                                >
-                                                  <FaTrash
-                                                    size={10}
-                                                  />
-                                                </button>
-
-                                              </div>
-
-                                            )}
-
-                                          </div>
-
-                                        </div>
-
-                                      );
-
+                                  <button
+                                    onClick={() =>
+                                      startEditComment(
+                                        comment._id,
+                                        comment.text
+                                      )
                                     }
-                                  )}
+                                  >
+                                    <FaPencilAlt
+                                      size={12}
+                                    />
+                                  </button>
+
+
+                                  <button
+                                    onClick={() =>
+                                      deleteComment(
+                                        viewerPost._id,
+                                        comment._id,
+                                        false
+                                      )
+                                    }
+                                    className="
+                                      hover:text-red-400
+                                    "
+                                  >
+                                    <FaTrash
+                                      size={12}
+                                    />
+                                  </button>
 
                                 </div>
 
@@ -4753,737 +4602,412 @@ const Profile = () => {
 
                             </div>
 
-                          );
 
-                        }
-                      )}
+                            {/* REPLY INPUT */}
 
-                    </div>
+                            <div className="
+                              ml-11
+                              mt-3
+                              flex
+                              gap-2
+                            ">
+
+                              <input
+                                id={`reply-input-${comment._id}`}
+                                value={
+                                  replyTexts[
+                                    comment._id
+                                  ] || ''
+                                }
+                                onChange={e =>
+                                  setReplyTexts(
+                                    prev => ({
+
+                                      ...prev,
+
+                                      [comment._id]:
+                                        e.target.value
+
+                                    })
+                                  )
+                                }
+                                onKeyDown={e => {
+
+                                  if (
+                                    e.key ===
+                                    'Enter'
+                                  ) {
+
+                                    handleReply(
+                                      viewerPost._id,
+                                      comment._id
+                                    );
+
+                                  }
+
+                                }}
+                                placeholder="Написать ответ..."
+                                className="
+                                  flex-1
+                                  bg-transparent
+                                  border-b
+                                  border-white/10
+                                  text-white
+                                  text-xs
+                                  outline-none
+                                  pb-1
+                                "
+                              />
 
 
-                    {/* COMMENT INPUT */}
+                              <button
+                                onClick={() =>
+                                  handleReply(
+                                    viewerPost._id,
+                                    comment._id
+                                  )
+                                }
+                                className="
+                                  text-accent
+                                  text-xs
+                                "
+                              >
+                                Отправить
+                              </button>
+
+                            </div>
+
+
+                            {/* REPLIES */}
+
+                            {comment.replies?.length >
+                              0 && (
+
+                              <div className="
+                                ml-11
+                                mt-4
+                                border-l
+                                border-white/10
+                                pl-3
+                                space-y-3
+                              ">
+
+                                {comment.replies.map(
+                                  reply => {
+
+                                    const isReplyAuthor =
+                                      sameId(
+                                        currentUser?._id,
+                                        reply.user?._id
+                                      );
+
+
+                                    const isEditing =
+                                      editingCommentId ===
+                                      reply._id;
+
+
+                                    return (
+
+                                      <div
+                                        key={
+                                          reply._id
+                                        }
+                                        className="
+                                          flex
+                                          gap-2
+                                        "
+                                      >
+
+                                        <div className="
+                                          w-6
+                                          h-6
+                                          rounded-full
+                                          bg-gray-700
+                                          overflow-hidden
+                                          shrink-0
+                                          flex
+                                          items-center
+                                          justify-center
+                                          text-[9px]
+                                        ">
+
+                                          {reply.user?.avatar ? (
+
+                                            <img
+                                              src={
+                                                reply.user.avatar
+                                              }
+                                              alt="Avatar"
+                                              className="
+                                                w-full
+                                                h-full
+                                                object-cover
+                                              "
+                                            />
+
+                                          ) : (
+
+                                            reply.user?.username
+                                              ?.charAt(0)
+                                              .toUpperCase()
+
+                                          )}
+
+                                        </div>
+
+
+                                        <div className="
+                                          flex-1
+                                        ">
+
+                                          <div className="
+                                            text-white/40
+                                            text-[11px]
+                                          ">
+                                            @{reply.user?.username}
+                                          </div>
+
+
+                                          {isEditing ? (
+
+                                            <div className="
+                                              mt-1
+                                            ">
+
+                                              <textarea
+                                                value={
+                                                  editCommentText
+                                                }
+                                                onChange={e =>
+                                                  setEditCommentText(
+                                                    e.target.value
+                                                  )
+                                                }
+                                                className="
+                                                  w-full
+                                                  bg-white/5
+                                                  border
+                                                  border-white/10
+                                                  rounded-lg
+                                                  p-2
+                                                  text-white
+                                                  text-xs
+                                                  resize-none
+                                                "
+                                                rows="2"
+                                              />
+
+
+                                              <div className="
+                                                flex
+                                                gap-2
+                                                mt-2
+                                              ">
+
+                                                <button
+                                                  onClick={() => {
+
+                                                    setEditingCommentId(
+                                                      null
+                                                    );
+
+                                                    setEditCommentText(
+                                                      ''
+                                                    );
+
+                                                  }}
+                                                  className="
+                                                    text-[10px]
+                                                    text-white/40
+                                                  "
+                                                >
+                                                  Отмена
+                                                </button>
+
+
+                                                <button
+                                                  onClick={() =>
+                                                    saveEditComment(
+                                                      viewerPost._id,
+                                                      reply._id,
+                                                      true
+                                                    )
+                                                  }
+                                                  className="
+                                                    text-[10px]
+                                                    text-accent
+                                                  "
+                                                >
+                                                  Сохранить
+                                                </button>
+
+                                              </div>
+
+                                            </div>
+
+                                          ) : (
+
+                                            <p className="
+                                              text-white/70
+                                              text-sm
+                                            ">
+                                              {reply.text}
+                                            </p>
+
+                                          )}
+
+
+                                          {isReplyAuthor &&
+                                            !isEditing && (
+
+                                            <div className="
+                                              flex
+                                              gap-2
+                                              mt-1
+                                              text-white/20
+                                            ">
+
+                                              <button
+                                                onClick={() =>
+                                                  startEditComment(
+                                                    reply._id,
+                                                    reply.text
+                                                  )
+                                                }
+                                              >
+                                                <FaPencilAlt
+                                                  size={10}
+                                                />
+                                              </button>
+
+
+                                              <button
+                                                onClick={() =>
+                                                  deleteComment(
+                                                    viewerPost._id,
+                                                    reply._id,
+                                                    true
+                                                  )
+                                                }
+                                                className="
+                                                  hover:text-red-400
+                                                "
+                                              >
+                                                <FaTrash
+                                                  size={10}
+                                                />
+                                              </button>
+
+                                            </div>
+
+                                          )}
+
+                                        </div>
+
+                                      </div>
+
+                                    );
+
+                                  }
+                                )}
+
+                              </div>
+
+                            )}
+
+                          </div>
+
+                        );
+
+                      }
+                    )}
+
+                  </div>
+
+
+                  {/* INPUT */}
+
+                  <div className="
+                    pt-4
+                    border-t
+                    border-white/10
+                  ">
 
                     <div className="
-                      p-4
-                      border-t
+                      flex
+                      gap-2
+                      bg-black/40
+                      border
                       border-white/10
-                      bg-[#0a0a0a]/90
-                      shrink-0
+                      rounded-full
+                      px-4
+                      py-2
                     ">
 
-                      <div className="
-                        flex
-                        gap-2
-                        bg-black/40
-                        border
-                        border-white/10
-                        rounded-full
-                        px-4
-                        py-2
-                      ">
+                      <input
+                        value={
+                          commentText
+                        }
+                        onChange={e =>
+                          setCommentText(
+                            e.target.value
+                          )
+                        }
+                        onKeyDown={e => {
 
-                        <input
-                          type="text"
-                          placeholder="Добавить комментарий..."
-                          value={
-                            commentText
-                          }
-                          onChange={e =>
-                            setCommentText(
-                              e.target.value
-                            )
-                          }
-                          onKeyDown={e => {
+                          if (
+                            e.key ===
+                            'Enter'
+                          ) {
 
-                            if (
-                              e.key ===
-                              'Enter'
-                            ) {
-
-                              handleAddComment(
-                                viewerPost._id
-                              );
-
-                            }
-
-                          }}
-                          className="
-                            flex-1
-                            bg-transparent
-                            text-white
-                            text-sm
-                            outline-none
-                          "
-                        />
-
-                        <button
-                          onClick={() =>
                             handleAddComment(
                               viewerPost._id
-                            )
-                          }
-                          className="
-                            text-accent
-                            text-sm
-                          "
-                        >
-                          Опубликовать
-                        </button>
+                            );
 
-                      </div>
+                          }
+
+                        }}
+                        placeholder="Добавить комментарий..."
+                        className="
+                          flex-1
+                          bg-transparent
+                          text-white
+                          text-sm
+                          outline-none
+                        "
+                      />
+
+
+                      <button
+                        onClick={() =>
+                          handleAddComment(
+                            viewerPost._id
+                          )
+                        }
+                        className="
+                          text-accent
+                          text-sm
+                        "
+                      >
+                        Опубликовать
+                      </button>
 
                     </div>
 
-                  </motion.div>
+                  </div>
 
-                )}
+                </motion.div>
 
-              </AnimatePresence>
+              )}
 
-            </div>
+            </AnimatePresence>
 
           </motion.div>
 
         )}
 
       </AnimatePresence>
-
-
-      {/* =====================================================
-          PROFILE PAGE
-      ====================================================== */}
-
-      {!viewerPost && (
-
-        <div className="
-          max-w-4xl
-          mx-auto
-          p-4
-          md:p-6
-        ">
-
-
-          {/* =================================================
-              PROFILE HEADER
-          ================================================== */}
-
-          <div className="
-            bg-white/5
-            border
-            border-white/10
-            backdrop-blur-xl
-            rounded-2xl
-            p-8
-            mb-8
-            text-center
-          ">
-
-            {/* AVATAR */}
-
-            <div className="
-              w-24
-              h-24
-              mx-auto
-              rounded-full
-              bg-gradient-to-r
-              from-accent
-              to-glow
-              overflow-hidden
-              mb-4
-              border-2
-              border-white/20
-            ">
-
-              {user.avatar ? (
-
-                <img
-                  src={
-                    user.avatar
-                  }
-                  alt="Avatar"
-                  className="
-                    w-full
-                    h-full
-                    object-cover
-                  "
-                />
-
-              ) : (
-
-                <div className="
-                  w-full
-                  h-full
-                  flex
-                  items-center
-                  justify-center
-                  text-3xl
-                  text-white
-                  font-bold
-                ">
-                  {user.username
-                    ?.charAt(0)
-                    .toUpperCase()}
-                </div>
-
-              )}
-
-            </div>
-
-
-            {/* DISPLAY NAME */}
-
-            <h2 className="
-              text-2xl
-              font-bold
-              text-white
-            ">
-              {user.displayName ||
-                user.username}
-            </h2>
-
-
-            {/* USERNAME */}
-
-            <p className="
-              text-white/50
-              text-sm
-              mb-1
-            ">
-              @{user.username}
-            </p>
-
-
-            {/* BIO */}
-
-            <p className="
-              text-white/50
-              text-sm
-              mb-4
-            ">
-              {user.bio ||
-                'Пока ничего о себе не написал...'}
-            </p>
-
-
-            {/* FOLLOWERS */}
-
-            <div className="
-              flex
-              justify-center
-              gap-8
-              text-sm
-              mb-6
-            ">
-
-              <div>
-
-                <span className="
-                  text-white
-                  font-bold
-                ">
-                  {user.followers?.length ||
-                    0}
-                </span>
-
-                <span className="
-                  text-white/50
-                  ml-1
-                ">
-                  подписчиков
-                </span>
-
-              </div>
-
-
-              <div>
-
-                <span className="
-                  text-white
-                  font-bold
-                ">
-                  {user.following?.length ||
-                    0}
-                </span>
-
-                <span className="
-                  text-white/50
-                  ml-1
-                ">
-                  подписок
-                </span>
-
-              </div>
-
-            </div>
-
-
-            {/* PROFILE ACTIONS */}
-
-            <div className="
-              flex
-              justify-center
-              gap-3
-              flex-wrap
-            ">
-
-              {isOwnProfile ? (
-
-                <button
-                  onClick={() =>
-                    navigate(
-                      '/profile/edit'
-                    )
-                  }
-                  className="
-                    px-6
-                    py-2
-                    bg-white/10
-                    text-white
-                    rounded-xl
-                    hover:bg-white/20
-                    transition
-                  "
-                >
-                  Редактировать профиль
-                </button>
-
-              ) : (
-
-                <>
-                  <button
-                    onClick={
-                      handleFollow
-                    }
-                    className={`
-                      px-6
-                      py-2
-                      rounded-xl
-                      font-semibold
-                      transition
-
-                      ${
-                        isFollowing
-                          ? 'bg-white/10 text-white hover:bg-white/20'
-                          : 'bg-accent text-white hover:bg-accent/80'
-                      }
-                    `}
-                  >
-                    {isFollowing
-                      ? 'Отписаться'
-                      : 'Подписаться'}
-                  </button>
-
-                  <Link
-                    to={`/chats/${user._id}`}
-                    className="
-                      px-6
-                      py-2
-                      bg-white/5
-                      border
-                      border-white/20
-                      text-white
-                      rounded-xl
-                      hover:bg-white/10
-                      transition
-                    "
-                  >
-                    💬 Написать
-                  </Link>
-                </>
-
-              )}
-
-            </div>
-
-          </div>
-
-
-          {/* =================================================
-              POST GRID
-          ================================================== */}
-
-          <div className="
-            grid
-            grid-cols-3
-            gap-1
-            md:gap-2
-          ">
-
-            {posts.length ===
-              0 && (
-
-              <div className="
-                col-span-3
-                text-center
-                text-white/40
-                py-10
-              ">
-                У пользователя пока нет постов.
-              </div>
-
-            )}
-
-
-            {posts.map(
-              post => {
-
-                const isVideo =
-                  post.mediaType ===
-                  'video';
-
-                const isMenuOpen =
-                  openGridMenuId ===
-                  post._id;
-
-
-                return (
-
-                  <motion.div
-                    key={
-                      post._id
-                    }
-                    onClick={() =>
-                      openViewer(
-                        post
-                      )
-                    }
-                    whileHover={{
-                      scale:
-                        1.02
-                    }}
-                    className="
-                      relative
-                      aspect-[1/1]
-                      bg-black/40
-                      border
-                      border-white/5
-                      rounded-lg
-                      overflow-hidden
-                      cursor-pointer
-                      hover:opacity-90
-                      transition
-                    "
-                  >
-
-
-                    {/* GRID MENU */}
-
-                    {isOwnProfile && (
-
-                      <div
-                        className="
-                          absolute
-                          top-2
-                          right-2
-                          z-30
-                        "
-                        onClick={e =>
-                          e.stopPropagation()
-                        }
-                      >
-
-                        <button
-                          type="button"
-                          onClick={e => {
-
-                            e.stopPropagation();
-
-                            setOpenGridMenuId(
-                              prev =>
-                                prev ===
-                                post._id
-                                  ? null
-                                  : post._id
-                            );
-
-                          }}
-                          className="
-                            bg-black/60
-                            backdrop-blur-sm
-                            hover:bg-black/80
-                            p-2
-                            rounded-full
-                            transition
-                          "
-                        >
-                          <FiMoreVertical
-                            size={18}
-                            className="
-                              text-white/80
-                            "
-                          />
-                        </button>
-
-
-                        <AnimatePresence>
-
-                          {isMenuOpen && (
-
-                            <motion.div
-                              initial={{
-                                opacity:
-                                  0,
-                                scale:
-                                  0.9,
-                                y:
-                                  -5
-                              }}
-                              animate={{
-                                opacity:
-                                  1,
-                                scale:
-                                  1,
-                                y:
-                                  0
-                              }}
-                              exit={{
-                                opacity:
-                                  0,
-                                scale:
-                                  0.9,
-                                y:
-                                  -5
-                              }}
-                              className="
-                                absolute
-                                right-0
-                                top-11
-                                w-36
-                                bg-black/95
-                                backdrop-blur-xl
-                                border
-                                border-white/10
-                                rounded-xl
-                                p-1.5
-                                shadow-2xl
-                              "
-                            >
-
-                              <button
-                                type="button"
-                                onClick={e => {
-
-                                  e.stopPropagation();
-
-                                  openEditModalFromGrid(
-                                    post
-                                  );
-
-                                }}
-                                className="
-                                  flex
-                                  items-center
-                                  gap-2
-                                  w-full
-                                  px-3
-                                  py-2
-                                  text-white/80
-                                  hover:text-white
-                                  hover:bg-white/10
-                                  rounded-lg
-                                  transition
-                                  text-sm
-                                "
-                              >
-
-                                <FiEdit2
-                                  size={15}
-                                />
-
-                                <span>
-                                  Изменить
-                                </span>
-
-                              </button>
-
-
-                              <button
-                                type="button"
-                                onClick={e => {
-
-                                  e.stopPropagation();
-
-                                  setOpenGridMenuId(
-                                    null
-                                  );
-
-                                  handleDeletePost(
-                                    post._id
-                                  );
-
-                                }}
-                                className="
-                                  flex
-                                  items-center
-                                  gap-2
-                                  w-full
-                                  px-3
-                                  py-2
-                                  text-red-400
-                                  hover:text-red-300
-                                  hover:bg-red-500/10
-                                  rounded-lg
-                                  transition
-                                  text-sm
-                                "
-                              >
-
-                                <FaTrash
-                                  size={14}
-                                />
-
-                                <span>
-                                  Удалить
-                                </span>
-
-                              </button>
-
-                            </motion.div>
-
-                          )}
-
-                        </AnimatePresence>
-
-                      </div>
-
-                    )}
-
-
-                    {/* MEDIA */}
-
-                    {post.mediaUrl ? (
-
-                      isVideo ? (
-
-                        <video
-                          ref={el => {
-
-                            if (el) {
-
-                              videoRefs.current[
-                                post._id
-                              ] = el;
-
-                            }
-
-                          }}
-                          src={
-                            getMediaUrl(
-                              post.mediaUrl
-                            )
-                          }
-                          className="
-                            w-full
-                            h-full
-                            object-cover
-                          "
-                          muted
-                          playsInline
-                          preload="metadata"
-                          onMouseEnter={() =>
-                            setHoveredId(
-                              post._id
-                            )
-                          }
-                          onMouseLeave={() =>
-                            setHoveredId(
-                              null
-                            )
-                          }
-                        />
-
-                      ) : (
-
-                        <img
-                          src={
-                            getMediaUrl(
-                              post.mediaUrl
-                            )
-                          }
-                          className="
-                            w-full
-                            h-full
-                            object-cover
-                          "
-                          alt="Post"
-                        />
-
-                      )
-
-                    ) : (
-
-                      <div className="
-                        w-full
-                        h-full
-                        flex
-                        items-center
-                        justify-center
-                        p-4
-                        text-center
-                        bg-black/40
-                      ">
-
-                        <p className="
-                          text-white/90
-                          text-sm
-                          font-medium
-                          line-clamp-5
-                          whitespace-pre-wrap
-                          break-words
-                        ">
-                          {post.content}
-                        </p>
-
-                      </div>
-
-                    )}
-
-
-                    {/* LIKE COUNT */}
-
-                    {post.likes?.length >
-                      0 && (
-
-                      <div className="
-                        absolute
-                        bottom-2
-                        left-2
-                        z-10
-                        flex
-                        items-center
-                        gap-1
-                        text-white/90
-                        text-xs
-                        font-semibold
-                        drop-shadow-lg
-                      ">
-
-                        <FaHeart
-                          size={14}
-                        />
-
-                        <span>
-                          {
-                            post.likes.length
-                          }
-                        </span>
-
-                      </div>
-
-                    )}
-
-                  </motion.div>
-
-                );
-
-              }
-            )}
-
-          </div>
-
-        </div>
-
-      )}
 
 
       {/* =====================================================
@@ -5507,10 +5031,15 @@ const Profile = () => {
               opacity:
                 0
             }}
+            onClick={() =>
+              setIsEditModalOpen(
+                false
+              )
+            }
             className="
               fixed
               inset-0
-              z-[100]
+              z-[10000]
               bg-black/80
               backdrop-blur-md
               flex
@@ -5518,49 +5047,38 @@ const Profile = () => {
               justify-center
               p-4
             "
-            onClick={() =>
-              setIsEditModalOpen(
-                false
-              )
-            }
           >
 
             <motion.div
               initial={{
-                opacity:
-                  0,
-                y:
-                  20,
                 scale:
-                  0.96
+                  0.95,
+                y:
+                  20
               }}
               animate={{
-                opacity:
+                scale:
                   1,
                 y:
-                  0,
-                scale:
-                  1
+                  0
               }}
               exit={{
-                opacity:
-                  0,
-                y:
-                  20,
                 scale:
-                  0.96
+                  0.95,
+                y:
+                  20
               }}
               onClick={e =>
                 e.stopPropagation()
               }
               className="
+                w-full
+                max-w-md
                 bg-[#0a0a0a]
                 border
                 border-white/10
                 rounded-2xl
                 p-6
-                w-full
-                max-w-md
                 shadow-2xl
               "
             >
@@ -5568,7 +5086,6 @@ const Profile = () => {
               <h3 className="
                 text-xl
                 font-bold
-                text-white
                 mb-4
               ">
                 Редактировать пост
@@ -5576,7 +5093,6 @@ const Profile = () => {
 
 
               <textarea
-                autoFocus
                 value={
                   editContent
                 }
@@ -5587,18 +5103,16 @@ const Profile = () => {
                 }
                 className="
                   w-full
+                  min-h-[120px]
                   bg-white/5
                   border
                   border-white/10
-                  text-white
                   rounded-xl
-                  px-4
-                  py-3
+                  p-3
+                  text-white
                   outline-none
                   resize-none
-                  min-h-[120px]
                 "
-                placeholder="Описание поста..."
               />
 
 
@@ -5606,11 +5120,11 @@ const Profile = () => {
 
                 <div className="
                   relative
-                  border
-                  border-white/10
+                  mt-4
                   rounded-xl
                   overflow-hidden
-                  mt-4
+                  border
+                  border-white/10
                 ">
 
                   {editFile?.type?.startsWith(
@@ -5647,42 +5161,6 @@ const Profile = () => {
 
                   )}
 
-
-                  <button
-                    type="button"
-                    onClick={() => {
-
-                      setEditFile(
-                        null
-                      );
-
-                      if (
-                        editPreview
-                      ) {
-                        URL.revokeObjectURL(
-                          editPreview
-                        );
-                      }
-
-                      setEditPreview(
-                        null
-                      );
-
-                    }}
-                    className="
-                      absolute
-                      top-2
-                      right-2
-                      bg-black/60
-                      text-white
-                      rounded-full
-                      p-1
-                      hover:bg-black/80
-                    "
-                  >
-                    ✕
-                  </button>
-
                 </div>
 
               )}
@@ -5696,28 +5174,25 @@ const Profile = () => {
                 className="
                   w-full
                   mt-4
-                  py-2
-                  bg-white/10
-                  text-white
+                  py-2.5
                   rounded-xl
-                  hover:bg-white/20
+                  bg-white/10
+                  hover:bg-white/15
                   transition
                 "
               >
-                {editPreview
-                  ? 'Заменить медиа'
-                  : 'Добавить/Заменить медиа'}
+                Добавить / заменить медиа
               </button>
 
 
               <input
-                type="file"
                 ref={
                   editFileInputRef
                 }
+                type="file"
                 accept="image/*,video/*"
                 onChange={
-                  handleEditFileChange
+                  handleEditFile
                 }
                 className="hidden"
               />
@@ -5725,46 +5200,22 @@ const Profile = () => {
 
               <div className="
                 flex
-                gap-2
-                mt-6
+                gap-3
+                mt-5
               ">
 
                 <button
-                  onClick={() => {
-
+                  onClick={() =>
                     setIsEditModalOpen(
                       false
-                    );
-
-                    setEditingPost(
-                      null
-                    );
-
-                    setEditFile(
-                      null
-                    );
-
-                    if (
-                      editPreview
-                    ) {
-                      URL.revokeObjectURL(
-                        editPreview
-                      );
-                    }
-
-                    setEditPreview(
-                      null
-                    );
-
-                  }}
+                    )
+                  }
                   className="
                     flex-1
-                    py-2
-                    bg-white/10
-                    text-white
+                    py-2.5
                     rounded-xl
-                    hover:bg-white/20
-                    transition
+                    bg-white/10
+                    hover:bg-white/15
                   "
                 >
                   Отмена
@@ -5776,15 +5227,14 @@ const Profile = () => {
                     handleUpdatePost
                   }
                   disabled={
-                    isUpdating ||
-                    !editContent.trim()
+                    isUpdating
                   }
                   className="
                     flex-1
-                    py-2
-                    bg-accent
-                    text-white
+                    py-2.5
                     rounded-xl
+                    bg-accent
+                    hover:bg-accent/80
                     disabled:opacity-50
                   "
                 >
@@ -5804,7 +5254,9 @@ const Profile = () => {
       </AnimatePresence>
 
     </div>
+
   );
+
 };
 
 

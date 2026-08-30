@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const Notification = require('../models/Notification');
 
 
 // =========================================================
@@ -19,6 +20,108 @@ const generateToken = (id) => {
 
 
 // =========================================================
+// ADMIN NOTIFICATION HELPER
+// =========================================================
+
+const notifyAdmins = async ({
+  req,
+  user,
+  type,
+  text
+}) => {
+  try {
+
+    if (!user) {
+      return;
+    }
+
+    const admins =
+      await User.find({
+        isAdmin: true
+      }).select('_id');
+
+
+    if (
+      !admins ||
+      admins.length === 0
+    ) {
+      return;
+    }
+
+
+    const io =
+      req.app.get('io');
+
+
+    for (
+      const admin
+      of admins
+    ) {
+
+      // -----------------------------------------------------
+      // CREATE NOTIFICATION
+      // -----------------------------------------------------
+
+      const notification =
+        await Notification.create({
+          recipient:
+            admin._id,
+
+          sender:
+            user._id,
+
+          type,
+
+          referenceId:
+            user._id,
+
+          text
+        });
+
+
+      // -----------------------------------------------------
+      // POPULATE SENDER
+      // -----------------------------------------------------
+
+      const populatedNotification =
+        await notification.populate(
+          'sender',
+          'username avatar'
+        );
+
+
+      // -----------------------------------------------------
+      // REAL-TIME SOCKET
+      // -----------------------------------------------------
+
+      if (io) {
+
+        io.to(
+          admin._id.toString()
+        ).emit(
+          'new_notification',
+          populatedNotification
+        );
+
+      }
+
+    }
+
+  } catch (error) {
+
+    // Notification xatosi login yoki registerni
+    // buzmasligi kerak.
+
+    console.error(
+      'Ошибка уведомления администраторов:',
+      error
+    );
+
+  }
+};
+
+
+// =========================================================
 // REGISTER
 // =========================================================
 
@@ -26,12 +129,14 @@ exports.register = async (
   req,
   res
 ) => {
+
   const {
     username,
     email,
     password,
     confirmPassword
   } = req.body;
+
 
   try {
 
@@ -45,11 +150,24 @@ exports.register = async (
       !password ||
       !confirmPassword
     ) {
+
       return res.status(400).json({
         message:
           'Заполните все поля'
       });
+
     }
+
+
+    // -------------------------------------------------------
+    // CLEAN VALUES
+    // -------------------------------------------------------
+
+    const cleanUsername =
+      username.trim();
+
+    const cleanEmail =
+      email.trim().toLowerCase();
 
 
     // -------------------------------------------------------
@@ -60,10 +178,12 @@ exports.register = async (
       password !==
       confirmPassword
     ) {
+
       return res.status(400).json({
         message:
           'Пароли не совпадают'
       });
+
     }
 
 
@@ -74,27 +194,12 @@ exports.register = async (
     if (
       password.length < 6
     ) {
+
       return res.status(400).json({
         message:
           'Пароль должен содержать минимум 6 символов'
       });
-    }
 
-
-    // -------------------------------------------------------
-    // EMAIL CHECK
-    // -------------------------------------------------------
-
-    const emailExists =
-      await User.findOne({
-        email
-      });
-
-    if (emailExists) {
-      return res.status(400).json({
-        message:
-          'Email уже зарегистрирован'
-      });
     }
 
 
@@ -104,14 +209,39 @@ exports.register = async (
 
     const usernameExists =
       await User.findOne({
-        username
+        username:
+          cleanUsername
       });
 
+
     if (usernameExists) {
+
       return res.status(400).json({
         message:
           'Это имя пользователя уже занято'
       });
+
+    }
+
+
+    // -------------------------------------------------------
+    // EMAIL CHECK
+    // -------------------------------------------------------
+
+    const emailExists =
+      await User.findOne({
+        email:
+          cleanEmail
+      });
+
+
+    if (emailExists) {
+
+      return res.status(400).json({
+        message:
+          'Email уже зарегистрирован'
+      });
+
     }
 
 
@@ -121,10 +251,31 @@ exports.register = async (
 
     const user =
       await User.create({
-        username,
-        email,
+        username:
+          cleanUsername,
+
+        email:
+          cleanEmail,
+
         password
       });
+
+
+    // =======================================================
+    // NOTIFY ADMINS
+    // =======================================================
+
+    await notifyAdmins({
+      req,
+
+      user,
+
+      type:
+        'new_user',
+
+      text:
+        `@${user.username} зарегистрировался в Lume`
+    });
 
 
     // -------------------------------------------------------
@@ -132,6 +283,7 @@ exports.register = async (
     // -------------------------------------------------------
 
     res.status(201).json({
+
       _id:
         user._id,
 
@@ -163,6 +315,7 @@ exports.register = async (
         generateToken(
           user._id
         )
+
     });
 
   } catch (error) {
@@ -176,7 +329,9 @@ exports.register = async (
       message:
         error.message
     });
+
   }
+
 };
 
 
@@ -188,12 +343,35 @@ exports.login = async (
   req,
   res
 ) => {
+
   const {
     email,
     password
   } = req.body;
 
+
   try {
+
+    // -------------------------------------------------------
+    // REQUIRED
+    // -------------------------------------------------------
+
+    if (
+      !email ||
+      !password
+    ) {
+
+      return res.status(400).json({
+        message:
+          'Введите email и пароль'
+      });
+
+    }
+
+
+    const cleanEmail =
+      email.trim().toLowerCase();
+
 
     // -------------------------------------------------------
     // FIND USER
@@ -201,21 +379,25 @@ exports.login = async (
 
     const user =
       await User.findOne({
-        email
+        email:
+          cleanEmail
       }).select(
         '+password'
       );
 
+
     if (!user) {
+
       return res.status(401).json({
         message:
           'Неверный email или пароль'
       });
+
     }
 
 
     // -------------------------------------------------------
-    // PASSWORD CHECK
+    // PASSWORD
     // -------------------------------------------------------
 
     const isMatch =
@@ -224,11 +406,14 @@ exports.login = async (
         user.password
       );
 
+
     if (!isMatch) {
+
       return res.status(401).json({
         message:
           'Неверный email или пароль'
       });
+
     }
 
 
@@ -239,23 +424,47 @@ exports.login = async (
     if (
       user.isBanned === true
     ) {
+
       console.log(
         '🚫 Заблокированный пользователь пытается войти:',
         user.username
       );
 
+
       return res.status(403).json({
+
         message:
           'Ваш аккаунт заблокирован администратором',
 
         code:
           'USER_BANNED'
+
       });
+
     }
 
 
+    // =======================================================
+    // ADMIN NOTIFICATION
+    // =======================================================
+
+    await notifyAdmins({
+
+      req,
+
+      user,
+
+      type:
+        'new_login',
+
+      text:
+        `@${user.username} вошёл в аккаунт`
+
+    });
+
+
     // -------------------------------------------------------
-    // SUCCESS
+    // TOKEN
     // -------------------------------------------------------
 
     const token =
@@ -264,7 +473,12 @@ exports.login = async (
       );
 
 
+    // -------------------------------------------------------
+    // RESPONSE
+    // -------------------------------------------------------
+
     res.json({
+
       _id:
         user._id,
 
@@ -293,6 +507,7 @@ exports.login = async (
         user.isBanned,
 
       token
+
     });
 
   } catch (error) {
@@ -306,7 +521,9 @@ exports.login = async (
       message:
         error.message
     });
+
   }
+
 };
 
 
@@ -318,6 +535,7 @@ exports.getMe = async (
   req,
   res
 ) => {
+
   try {
 
     const user =
@@ -327,11 +545,14 @@ exports.getMe = async (
         '-password'
       );
 
+
     if (!user) {
+
       return res.status(404).json({
         message:
           'Пользователь не найден'
       });
+
     }
 
 
@@ -342,17 +563,23 @@ exports.getMe = async (
     if (
       user.isBanned === true
     ) {
+
       return res.status(403).json({
+
         message:
           'Ваш аккаунт заблокирован администратором',
 
         code:
           'USER_BANNED'
+
       });
+
     }
 
 
-    res.json(user);
+    res.json(
+      user
+    );
 
   } catch (error) {
 
@@ -365,5 +592,7 @@ exports.getMe = async (
       message:
         'Ошибка получения профиля'
     });
+
   }
+
 };

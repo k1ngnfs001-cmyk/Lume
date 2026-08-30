@@ -22,9 +22,13 @@ const NotificationSchema = new mongoose.Schema(
         'comment',
         'comment_like',
         'reply',
+        'share',
         'follow',
         'message',
-        'story'
+        'story',
+        'profile_view',
+        'new_user',
+        'new_login'
       ],
       required: true
     },
@@ -49,7 +53,8 @@ const NotificationSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model(
-  'Notification',
-  NotificationSchema
-);
+module.exports =
+  mongoose.model(
+    'Notification',
+    NotificationSchema
+  );

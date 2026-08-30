@@ -1,4 +1,5 @@
-const express = require('express');
+const express =
+  require('express');
 
 const router =
   express.Router();
@@ -21,10 +22,12 @@ const {
   editComment,
   deleteComment,
   deletePost,
-  getPostById
-} = require(
-  '../controllers/postController'
-);
+  getPostById,
+  sharePost
+} =
+  require(
+    '../controllers/postController'
+  );
 
 
 // =========================================================
@@ -33,9 +36,11 @@ const {
 
 const {
   protect
-} = require(
-  '../middleware/authMiddleware'
-);
+} =
+  require(
+    '../middleware/authMiddleware'
+  );
+
 
 const upload =
   require(
@@ -44,7 +49,7 @@ const upload =
 
 
 // =========================================================
-// DEBUG: ROUTE LOADED
+// DEBUG
 // =========================================================
 
 console.log(
@@ -53,6 +58,10 @@ console.log(
 
 console.log(
   '✅ DELETE /:id route will be registered'
+);
+
+console.log(
+  '✅ SHARE /:id/share route will be registered'
 );
 
 
@@ -107,6 +116,17 @@ router.post(
 
 
 // =========================================================
+// SHARE POST
+// =========================================================
+
+router.post(
+  '/:id/share',
+  protect,
+  sharePost
+);
+
+
+// =========================================================
 // ADD COMMENT
 // =========================================================
 
@@ -138,6 +158,7 @@ router.delete(
   protect,
   deletePost
 );
+
 
 console.log(
   '✅ DELETE /:id REGISTERED'
@@ -186,6 +207,15 @@ router.delete(
   protect,
   deleteComment
 );
+
+
+// =========================================================
+// GET SINGLE POST
+//
+// IMPORTANT:
+// Bu route eng oxirida turishi kerak,
+// chunki '/:id' boshqa route'larni tutib qolmasligi kerak.
+// =========================================================
 
 router.get(
   '/:id',
