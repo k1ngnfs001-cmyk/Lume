@@ -2,143 +2,215 @@ const express = require('express');
 
 const router = express.Router();
 
+
+// =========================================================
+// CONTROLLERS
+// =========================================================
+
 const {
   createPost,
   getFeed,
-  getFollowingPosts,
-  getPostById,
   toggleLike,
-  toggleSave,
-  sharePost,
   addComment,
+  toggleSave,
+  getFollowingPosts,
+  updatePost,
   toggleCommentLike,
   addCommentReply,
   editComment,
   deleteComment,
-  updatePost,
   deletePost,
+  getPostById,
+  sharePost
 } = require('../controllers/postController');
 
-const auth = require('../middleware/auth');
+
+// =========================================================
+// MIDDLEWARE
+// =========================================================
+
+const {
+  protect
+} = require('../middleware/authMiddleware');
+
+const upload =
+  require('../middleware/uploadMiddleware');
 
 
 // =========================================================
-// POSTS
+// DEBUG
 // =========================================================
 
-router.post(
-  '/',
-  auth,
-  createPost
+console.log(
+  '✅ postRoutes.js loaded'
 );
 
-router.get(
-  '/',
-  auth,
-  getFeed
+console.log(
+  '✅ DELETE /:id route will be registered'
 );
+
+console.log(
+  '✅ SHARE /:id/share route will be registered'
+);
+
+
+// =========================================================
+// CREATE / GET POSTS
+// =========================================================
+
+router
+  .route('/')
+  .post(
+    protect,
+    upload.single('media'),
+    createPost
+  )
+  .get(
+    protect,
+    getFeed
+  );
+
+
+// =========================================================
+// FOLLOWING POSTS
+// =========================================================
 
 router.get(
   '/following',
-  auth,
+  protect,
   getFollowingPosts
 );
 
 
 // =========================================================
-// SINGLE POST
-// =========================================================
-
-router.get(
-  '/:id',
-  auth,
-  getPostById
-);
-
-
-// =========================================================
-// LIKE
+// LIKE POST
 // =========================================================
 
 router.post(
   '/:id/like',
-  auth,
+  protect,
   toggleLike
 );
 
 
 // =========================================================
-// SAVE
+// SAVE POST
 // =========================================================
 
 router.post(
   '/:id/save',
-  auth,
+  protect,
   toggleSave
 );
 
 
 // =========================================================
-// SHARE
+// SHARE POST
 // =========================================================
 
 router.post(
   '/:id/share',
-  auth,
+  protect,
   sharePost
 );
 
 
 // =========================================================
-// COMMENTS
+// ADD COMMENT
 // =========================================================
 
 router.post(
-  '/:id/comments',
-  auth,
+  '/:id/comment',
+  protect,
   addComment
 );
 
+
+// =========================================================
+// UPDATE POST
+// =========================================================
+
+router.put(
+  '/:id',
+  protect,
+  upload.single('media'),
+  updatePost
+);
+
+
+// =========================================================
+// DELETE POST
+// =========================================================
+
+router.delete(
+  '/:id',
+  protect,
+  deletePost
+);
+
+console.log(
+  '✅ DELETE /:id REGISTERED'
+);
+
+
+// =========================================================
+// COMMENT LIKE
+// =========================================================
+
 router.post(
   '/:postId/comments/:commentId/like',
-  auth,
+  protect,
   toggleCommentLike
 );
 
+
+// =========================================================
+// REPLY
+// =========================================================
+
 router.post(
   '/:postId/comments/:commentId/reply',
-  auth,
+  protect,
   addCommentReply
 );
 
+
+// =========================================================
+// EDIT COMMENT
+// =========================================================
+
 router.put(
   '/:postId/comments/:commentId',
-  auth,
+  protect,
   editComment
 );
 
+
+// =========================================================
+// DELETE COMMENT
+// =========================================================
+
 router.delete(
   '/:postId/comments/:commentId',
-  auth,
+  protect,
   deleteComment
 );
 
 
 // =========================================================
-// UPDATE / DELETE POST
+// GET SINGLE POST
+// PUBLIC SHARE LINK
 // =========================================================
 
-router.put(
+router.get(
   '/:id',
-  auth,
-  updatePost
-);
-
-router.delete(
-  '/:id',
-  auth,
-  deletePost
+  getPostById
 );
 
 
-module.exports = router;
+// =========================================================
+// EXPORT
+// =========================================================
+
+module.exports =
+  router;
