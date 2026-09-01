@@ -1,21 +1,41 @@
 const mongoose = require('mongoose');
 
+
 const NotificationSchema = new mongoose.Schema(
   {
+    // =====================================================
+    // RECIPIENT
+    // Kimga notification boradi
+    // =====================================================
+
     recipient: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true
+      required: true,
+      index: true,
     },
+
+
+    // =====================================================
+    // SENDER
+    // Kim notification yubordi
+    // =====================================================
 
     sender: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true
+      required: true,
     },
+
+
+    // =====================================================
+    // TYPE
+    // Notification turi
+    // =====================================================
 
     type: {
       type: String,
+
       enum: [
         'like',
         'save',
@@ -24,34 +44,55 @@ const NotificationSchema = new mongoose.Schema(
         'reply',
         'share',
         'follow',
-        'message',
-        'story',
-        'profile_view',
-        'new_user',
-        'new_login'
       ],
-      required: true
+
+      required: true,
     },
+
+
+    // =====================================================
+    // REFERENCE
+    // Qaysi post/comment bilan bog'langan
+    // =====================================================
 
     referenceId: {
       type: mongoose.Schema.Types.ObjectId,
-      default: null
+      default: null,
     },
+
+
+    // =====================================================
+    // TEXT
+    // Notification matni
+    // =====================================================
 
     text: {
       type: String,
-      default: ''
+      default: '',
     },
+
+
+    // =====================================================
+    // READ STATUS
+    // =====================================================
 
     isRead: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
   },
+
+
+  // =======================================================
+  // TIMESTAMPS
+  // createdAt / updatedAt avtomatik yaratiladi
+  // =======================================================
+
   {
-    timestamps: true
+    timestamps: true,
   }
 );
+
 
 module.exports =
   mongoose.model(

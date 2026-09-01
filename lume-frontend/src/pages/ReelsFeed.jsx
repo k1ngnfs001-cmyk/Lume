@@ -858,7 +858,8 @@ const ReelsFeed = ({
   ) => {
 
     if (
-      !postId
+      !postId ||
+      !user?._id
     ) {
       return;
     }
@@ -884,6 +885,39 @@ const ReelsFeed = ({
       currentPost?.content ||
       'Посмотри этот пост в Lume';
 
+    // =======================================================
+    // CREATE NOTIFICATION FIRST
+    // =======================================================
+
+    try {
+
+      const response =
+        await axios.post(
+          `/posts/${postId}/share`
+        );
+
+      console.log(
+        '✅ SHARE NOTIFICATION CREATED:',
+        response.data
+      );
+
+    } catch (error) {
+
+      console.error(
+        '❌ SHARE NOTIFICATION ERROR:',
+        error
+      );
+
+      showAlert({
+        title:
+          'Ошибка',
+        message:
+          error.response?.data?.message ||
+          'Не удалось поделиться постом.'
+      });
+
+      return;
+    }
 
     // =======================================================
     // NATIVE SHARE
@@ -896,16 +930,12 @@ const ReelsFeed = ({
       try {
 
         await navigator.share({
-
           title:
             shareTitle,
-
           text:
             shareText,
-
           url:
             shareUrl
-
         });
 
         return;
@@ -920,11 +950,11 @@ const ReelsFeed = ({
         }
 
       }
+
     }
 
-
     // =======================================================
-    // CLIPBOARD
+    // CLIPBOARD FALLBACK
     // =======================================================
 
     try {
@@ -936,7 +966,6 @@ const ReelsFeed = ({
       showAlert({
         title:
           'Ссылка скопирована',
-
         message:
           'Ссылка на этот пост скопирована в буфер обмена.'
       });
@@ -951,7 +980,6 @@ const ReelsFeed = ({
       showAlert({
         title:
           'Ссылка на пост',
-
         message:
           shareUrl
       });
