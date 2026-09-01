@@ -1,117 +1,2159 @@
+const Post = require('../models/Post');
+const Notification = require('../models/Notification');
+const cloudinary = require('../config/cloudinary');
+const User = require('../models/User');
+
+
+// =========================================================
+// HELPERS
+// =========================================================
+
+const sameId = (a, b) => {
+  if (a == null || b == null) {
+    return false;
+  }
+
+  return a.toString() === b.toString();
+};
+
+
+// =========================================================
+// EMIT NOTIFICATION
+// =========================================================
+
+const emitNotification = async (
+  req,
+  notification
+) => {
+  try {
+    const io = req.app.get('io');
+
+    if (!io) {
+      console.warn(
+        '⚠️ Socket.io instance not found'
+      );
+      return;
+    }
+
+    const populated =
+      await Notification.findById(
+        notification._id
+      ).populate(
+        'sender',
+        'username avatar isVerified'
+      );
+
+    if (!populated) {
+      return;
+    }
+
+    io.to(
+      notification.recipient.toString()
+    ).emit(
+      'new_notification',
+      populated
+    );
+
+    console.log(
+      '✅ NOTIFICATION EMITTED TO:',
+      notification.recipient.toString()
+    );
+
+  } catch (error) {
+    console.error(
+      '❌ Ошибка отправки уведомления через Socket:',
+      error
+    );
+  }
+};
+
+
+// =========================================================
+// CREATE NOTIFICATION
+// =========================================================
+
+const createNotification = async ({
+  req,
+  recipient,
+  sender,
+  type,
+  referenceId = null,
+  text = ''
+}) => {
+
+  if (
+    !recipient ||
+    !sender
+  ) {
+    console.warn(
+      '⚠️ Notification skipped: recipient or sender missing'
+    );
+
+    return null;
+  }
+
+  try {
+
+    const notification =
+      await Notification.create({
+        recipient,
+        sender,
+        type,
+        referenceId,
+        text
+      });
+
+    console.log(
+      '✅ NOTIFICATION CREATED:',
+      notification._id.toString()
+    );
+
+    console.log(
+      '   recipient:',
+      recipient.toString()
+    );
+
+    console.log(
+      '   sender:',
+      sender.toString()
+    );
+
+    console.log(
+      '   type:',
+      type
+    );
+
+    console.log(
+      '   referenceId:',
+      referenceId
+        ? referenceId.toString()
+        : null
+    );
+
+
+    await emitNotification(
+      req,
+      notification
+    );
+
+
+    return notification;
+
+  } catch (error) {
+
+    console.error(
+      '❌ Ошибка создания уведомления:',
+      error
+    );
+
+    // Muhim:
+    // Xatoni yutib yubormaymiz.
+    // Share request ham xato qaytaradi.
+    throw error;
+  }
+};
+
+
+// =========================================================
+// PROCESS POST
+// =========================================================
+
+const getProcessedPost = (
+  post,
+  userId
+) => {
+
+  const obj =
+    post.toObject
+      ? post.toObject()
+      : post;
+
+  return {
+    ...obj,
+
+    isLikedByMe:
+      Array.isArray(
+        obj.likes
+      ) &&
+      obj.likes.some(
+        id =>
+          sameId(
+            id,
+            userId
+          )
+      ),
+
+    isSavedByMe:
+      Array.isArray(
+        obj.savedBy
+      ) &&
+      obj.savedBy.some(
+        id =>
+          sameId(
+            id,
+            userId
+          )
+      )
+  };
+};
+
+
+// =========================================================
+// CREATE POST
+// =========================================================
+
+exports.createPost = async (
+  req,
+  res
+) => {
+
+  try {
+
+    const {
+      content = ''
+    } = req.body;
+
+    if (!req.file) {
+
+      return res.status(400).json({
+        message:
+          'Медиа-файл не найден или не загружен.'
+      });
+
+    }
+
+    const b64 =
+      Buffer
+        .from(
+          req.file.buffer
+        )
+        .toString(
+          'base64'
+        );
+
+    const dataURI =
+      `data:${req.file.mimetype};base64,${b64}`;
+
+    const result =
+      await cloudinary.uploader.upload(
+        dataURI,
+        {
+          folder:
+            'lume_posts',
+
+          resource_type:
+            'auto'
+        }
+      );
+
+    const post =
+      await Post.create({
+
+        user:
+          req.user._id,
+
+        content,
+
+        mediaUrl:
+          result.secure_url,
+
+        mediaType:
+          result.resource_type ===
+          'video'
+            ? 'video'
+            : 'image'
+      });
+
+    await post.populate([
+      {
+        path:
+          'user',
+
+        select:
+          'username avatar isVerified'
+      },
+
+      {
+        path:
+          'comments.user',
+
+        select:
+          'username avatar isVerified'
+      },
+
+      {
+        path:
+          'comments.replies.user',
+
+        select:
+          'username avatar isVerified'
+      }
+    ]);
+
+    res.status(201).json(
+      getProcessedPost(
+        post,
+        req.user._id
+      )
+    );
+
+  } catch (error) {
+
+    console.error(
+      '❌ Ошибка создания поста:',
+      error
+    );
+
+    res.status(500).json({
+      message:
+        error.message
+    });
+  }
+};
+
+
+// =========================================================
+// GET FEED
+// =========================================================
+
+exports.getFeed = async (
+  req,
+  res
+) => {
+
+  try {
+
+    const userId =
+      req.user._id;
+
+    const posts =
+      await Post.find()
+        .sort({
+          createdAt:
+            -1
+        })
+        .populate(
+          'user',
+          'username avatar isVerified'
+        )
+        .populate(
+          'comments.user',
+          'username avatar isVerified'
+        )
+        .populate(
+          'comments.replies.user',
+          'username avatar isVerified'
+        );
+
+    res.json(
+      posts.map(
+        post =>
+          getProcessedPost(
+            post,
+            userId
+          )
+      )
+    );
+
+  } catch (error) {
+
+    console.error(
+      '❌ Ошибка загрузки ленты:',
+      error
+    );
+
+    res.status(500).json({
+      message:
+        error.message
+    });
+  }
+};
+
+
+// =========================================================
+// GET FOLLOWING POSTS
+// =========================================================
+
+exports.getFollowingPosts =
+  async (
+    req,
+    res
+  ) => {
+
+    try {
+
+      const userId =
+        req.user._id;
+
+      const currentUser =
+        await User.findById(
+          userId
+        ).select(
+          'following'
+        );
+
+      const followingIds =
+        currentUser?.following ||
+        [];
+
+      const posts =
+        await Post.find({
+          user: {
+            $in:
+              followingIds
+          }
+        })
+          .sort({
+            createdAt:
+              -1
+          })
+          .populate(
+            'user',
+            'username avatar isVerified'
+          )
+          .populate(
+            'comments.user',
+            'username avatar isVerified'
+          )
+          .populate(
+            'comments.replies.user',
+            'username avatar isVerified'
+          );
+
+      res.json(
+        posts.map(
+          post =>
+            getProcessedPost(
+              post,
+              userId
+            )
+        )
+      );
+
+    } catch (error) {
+
+      console.error(
+        '❌ Ошибка загрузки подписок:',
+        error
+      );
+
+      res.status(500).json({
+        message:
+          error.message
+      });
+    }
+  };
+
+
+// =========================================================
+// GET SINGLE POST
+// PUBLIC SHARE LINK
+// =========================================================
+
+exports.getPostById =
+  async (
+    req,
+    res
+  ) => {
+
+    try {
+
+      const post =
+        await Post.findById(
+          req.params.id
+        )
+          .populate(
+            'user',
+            'username avatar isVerified'
+          )
+          .populate(
+            'comments.user',
+            'username avatar isVerified'
+          )
+          .populate(
+            'comments.replies.user',
+            'username avatar isVerified'
+          );
+
+      if (!post) {
+
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+
+      }
+
+      const userId =
+        req.user?._id ||
+        null;
+
+      res.json(
+        getProcessedPost(
+          post,
+          userId
+        )
+      );
+
+    } catch (error) {
+
+      console.error(
+        '❌ Ошибка загрузки поста:',
+        error
+      );
+
+      if (
+        error.name ===
+        'CastError'
+      ) {
+
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+      }
+
+      res.status(500).json({
+        message:
+          error.message
+      });
+    }
+  };
+
+
+// =========================================================
+// LIKE POST
+// =========================================================
+
+exports.toggleLike =
+  async (
+    req,
+    res
+  ) => {
+
+    try {
+
+      const postId =
+        req.params.id;
+
+      const userId =
+        req.user._id;
+
+      const post =
+        await Post.findById(
+          postId
+        ).select(
+          'user likes'
+        );
+
+      if (!post) {
+
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+
+      }
+
+      const isLiked =
+        Array.isArray(
+          post.likes
+        ) &&
+        post.likes.some(
+          id =>
+            sameId(
+              id,
+              userId
+            )
+        );
+
+      const updatedPost =
+        await Post.findByIdAndUpdate(
+          postId,
+
+          isLiked
+            ? {
+                $pull: {
+                  likes:
+                    userId
+                }
+              }
+            : {
+                $addToSet: {
+                  likes:
+                    userId
+                }
+              },
+
+          {
+            new:
+              true,
+
+            select:
+              'user likes'
+          }
+        );
+
+      if (!updatedPost) {
+
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+
+      }
+
+      if (
+        !isLiked &&
+        !sameId(
+          post.user,
+          userId
+        )
+      ) {
+
+        await createNotification({
+
+          req,
+
+          recipient:
+            post.user,
+
+          sender:
+            userId,
+
+          type:
+            'like',
+
+          referenceId:
+            post._id,
+
+          text:
+            'Понравился ваш пост'
+        });
+
+      }
+
+      res.json({
+
+        success:
+          true,
+
+        isLiked:
+          !isLiked,
+
+        likes:
+          updatedPost.likes ||
+          [],
+
+        likesCount:
+          (
+            updatedPost.likes ||
+            []
+          ).length
+      });
+
+    } catch (error) {
+
+      console.error(
+        '❌ Ошибка лайка:',
+        error
+      );
+
+      if (
+        error.name ===
+        'CastError'
+      ) {
+
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+      }
+
+      res.status(500).json({
+        message:
+          error.message
+      });
+    }
+  };
+
+
+// =========================================================
+// SAVE POST
+// =========================================================
+
+exports.toggleSave =
+  async (
+    req,
+    res
+  ) => {
+
+    try {
+
+      const postId =
+        req.params.id;
+
+      const userId =
+        req.user._id;
+
+      const post =
+        await Post.findById(
+          postId
+        ).select(
+          'user savedBy'
+        );
+
+      if (!post) {
+
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+
+      }
+
+      const isSaved =
+        Array.isArray(
+          post.savedBy
+        ) &&
+        post.savedBy.some(
+          id =>
+            sameId(
+              id,
+              userId
+            )
+        );
+
+      const updatedPost =
+        await Post.findByIdAndUpdate(
+          postId,
+
+          isSaved
+            ? {
+                $pull: {
+                  savedBy:
+                    userId
+                }
+              }
+            : {
+                $addToSet: {
+                  savedBy:
+                    userId
+                }
+              },
+
+          {
+            new:
+              true,
+
+            select:
+              'savedBy'
+          }
+        );
+
+      if (!updatedPost) {
+
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+
+      }
+
+      if (
+        !isSaved &&
+        !sameId(
+          post.user,
+          userId
+        )
+      ) {
+
+        await createNotification({
+
+          req,
+
+          recipient:
+            post.user,
+
+          sender:
+            userId,
+
+          type:
+            'save',
+
+          referenceId:
+            post._id,
+
+          text:
+            'Сохранил ваш пост'
+        });
+
+      }
+
+      res.json({
+
+        success:
+          true,
+
+        isSaved:
+          !isSaved,
+
+        savedBy:
+          updatedPost.savedBy ||
+          [],
+
+        savedCount:
+          (
+            updatedPost.savedBy ||
+            []
+          ).length
+      });
+
+    } catch (error) {
+
+      console.error(
+        '❌ Ошибка сохранения:',
+        error
+      );
+
+      if (
+        error.name ===
+        'CastError'
+      ) {
+
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+      }
+
+      res.status(500).json({
+        message:
+          error.message
+      });
+    }
+  };
+
+
 // =========================================================
 // SHARE POST
 // =========================================================
 
-exports.sharePost = async (req, res) => {
-  try {
-    const postId = req.params.id;
-    const senderId = req.user._id;
+exports.sharePost =
+  async (
+    req,
+    res
+  ) => {
 
-    console.log('========== SHARE POST ==========');
-    console.log('POST ID:', postId);
-    console.log('SENDER:', senderId.toString());
+    try {
 
-    const post = await Post.findById(postId)
-      .select('user')
-      .lean();
+      const postId =
+        req.params.id;
 
-    if (!post) {
-      return res.status(404).json({
-        success: false,
-        message: 'Пост не найден',
-      });
-    }
+      const userId =
+        req.user._id;
 
-    const ownerId = post.user;
-
-    console.log(
-      'POST OWNER:',
-      ownerId ? ownerId.toString() : null
-    );
-
-    // -----------------------------------------------------
-    // НЕ ОТПРАВЛЯЕМ УВЕДОМЛЕНИЕ САМОМУ СЕБЕ
-    // -----------------------------------------------------
-
-    if (!sameId(ownerId, senderId)) {
-      const notification = await Notification.create({
-        recipient: ownerId,
-        sender: senderId,
-        type: 'share',
-        referenceId: post._id,
-        text: 'Поделился вашим постом',
-      });
 
       console.log(
-        'NOTIFICATION CREATED:',
-        notification._id.toString()
+        '========================================'
       );
 
-      // ---------------------------------------------------
-      // SOCKET.IO
-      // ---------------------------------------------------
+      console.log(
+        '📤 SHARE POST REQUEST'
+      );
 
-      const io = req.app.get('io');
+      console.log(
+        'POST ID:',
+        postId
+      );
 
-      if (io) {
-        const populatedNotification =
-          await Notification.findById(
-            notification._id
-          ).populate(
-            'sender',
-            'username avatar isVerified'
-          );
+      console.log(
+        'SHARING USER:',
+        userId.toString()
+      );
 
-        io.to(ownerId.toString()).emit(
-          'new_notification',
-          populatedNotification
+
+      // =====================================================
+      // FIND POST
+      // =====================================================
+
+      const post =
+        await Post.findById(
+          postId
+        ).select(
+          'user'
         );
+
+
+      if (!post) {
 
         console.log(
-          'SOCKET NOTIFICATION SENT TO:',
-          ownerId.toString()
+          '❌ POST NOT FOUND'
         );
+
+        return res.status(404).json({
+          success:
+            false,
+
+          message:
+            'Пост не найден'
+        });
+
+      }
+
+
+      console.log(
+        'POST OWNER:',
+        post.user.toString()
+      );
+
+
+      // =====================================================
+      // OWN POST
+      // =====================================================
+
+      if (
+        sameId(
+          post.user,
+          userId
+        )
+      ) {
+
+        console.log(
+          'ℹ️ USER SHARED THEIR OWN POST'
+        );
+
       } else {
-        console.warn(
-          'Socket.io instance not found'
+
+        // ===================================================
+        // CREATE NOTIFICATION
+        // ===================================================
+
+        const notification =
+          await createNotification({
+
+            req,
+
+            recipient:
+              post.user,
+
+            sender:
+              userId,
+
+            type:
+              'share',
+
+            referenceId:
+              post._id,
+
+            text:
+              'Поделился вашим постом'
+
+          });
+
+
+        console.log(
+          '✅ SHARE NOTIFICATION ID:',
+          notification?._id?.toString()
         );
       }
-    }
 
-    const shareUrl =
-      `${req.protocol}://${req.get('host')}/post/${post._id}`;
 
-    console.log(
-      'SHARE URL:',
-      shareUrl
-    );
+      // =====================================================
+      // SHARE URL
+      // =====================================================
 
-    console.log(
-      '================================'
-    );
+      const shareUrl =
+        `${req.protocol}://${req.get(
+          'host'
+        )}/post/${post._id}`;
 
-    return res.json({
-      success: true,
-      shareUrl,
-      postId: post._id,
-    });
 
-  } catch (error) {
-    console.error(
-      '❌ SHARE POST ERROR:',
-      error
-    );
+      console.log(
+        'SHARE URL:',
+        shareUrl
+      );
 
-    if (error.name === 'CastError') {
-      return res.status(404).json({
-        success: false,
-        message: 'Пост не найден',
+      console.log(
+        '========================================'
+      );
+
+
+      return res.json({
+
+        success:
+          true,
+
+        shareUrl,
+
+        postId:
+          post._id
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        '❌ SHARE POST ERROR:',
+        error
+      );
+
+      console.log(
+        '========================================'
+      );
+
+
+      if (
+        error.name ===
+        'CastError'
+      ) {
+
+        return res.status(404).json({
+          success:
+            false,
+
+          message:
+            'Пост не найден'
+        });
+
+      }
+
+
+      return res.status(500).json({
+
+        success:
+          false,
+
+        message:
+          error.message
+
       });
     }
+  };
 
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
+
+// =========================================================
+// ADD COMMENT
+// =========================================================
+
+exports.addComment =
+  async (
+    req,
+    res
+  ) => {
+
+    try {
+
+      const {
+        text = ''
+      } =
+        req.body;
+
+      const postId =
+        req.params.id;
+
+      const trimmed =
+        text.trim();
+
+      if (!trimmed) {
+
+        return res.status(400).json({
+          message:
+            'Комментарий пустой'
+        });
+
+      }
+
+      const newComment = {
+
+        user:
+          req.user._id,
+
+        text:
+          trimmed
+      };
+
+      const updatedPost =
+        await Post.findByIdAndUpdate(
+
+          postId,
+
+          {
+            $push: {
+              comments:
+                newComment
+            }
+          },
+
+          {
+            new:
+              true
+          }
+
+        )
+          .populate({
+            path:
+              'comments.user',
+
+            select:
+              'username avatar isVerified'
+          })
+          .populate({
+            path:
+              'comments.replies.user',
+
+            select:
+              'username avatar isVerified'
+          });
+
+      if (!updatedPost) {
+
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+
+      }
+
+      const addedComment =
+        updatedPost.comments[
+          updatedPost.comments.length - 1
+        ];
+
+
+      if (
+        !sameId(
+          updatedPost.user,
+          req.user._id
+        )
+      ) {
+
+        const preview =
+          trimmed.substring(
+            0,
+            30
+          );
+
+        await createNotification({
+
+          req,
+
+          recipient:
+            updatedPost.user,
+
+          sender:
+            req.user._id,
+
+          type:
+            'comment',
+
+          referenceId:
+            updatedPost._id,
+
+          text:
+            `Комментарий: "${preview}${
+              trimmed.length > 30
+                ? '...'
+                : ''
+            }"`
+        });
+
+      }
+
+      res.status(201).json(
+        addedComment
+      );
+
+    } catch (error) {
+
+      console.error(
+        '❌ Ошибка добавления комментария:',
+        error
+      );
+
+      if (
+        error.name ===
+        'CastError'
+      ) {
+
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+      }
+
+      res.status(500).json({
+        message:
+          error.message
+      });
+    }
+  };
+
+
+// =========================================================
+// LIKE COMMENT
+// =========================================================
+
+exports.toggleCommentLike =
+  async (
+    req,
+    res
+  ) => {
+
+    try {
+
+      const {
+        postId,
+        commentId
+      } = req.params;
+
+      const userId =
+        req.user._id;
+
+      const post =
+        await Post.findById(
+          postId
+        );
+
+      if (!post) {
+
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+      }
+
+      const comment =
+        post.comments.id(
+          commentId
+        );
+
+      if (!comment) {
+
+        return res.status(404).json({
+          message:
+            'Комментарий не найден'
+        });
+      }
+
+      const isLiked =
+        Array.isArray(
+          comment.likes
+        ) &&
+        comment.likes.some(
+          id =>
+            sameId(
+              id,
+              userId
+            )
+        );
+
+      await Post.updateOne(
+
+        {
+          _id:
+            postId,
+
+          'comments._id':
+            commentId
+        },
+
+        isLiked
+
+          ? {
+              $pull: {
+                'comments.$.likes':
+                  userId
+              }
+            }
+
+          : {
+              $addToSet: {
+                'comments.$.likes':
+                  userId
+              }
+            }
+      );
+
+      const updatedPost =
+        await Post.findById(
+          postId
+        ).populate(
+          'comments.user comments.replies.user',
+          'username avatar isVerified'
+        );
+
+      if (!updatedPost) {
+
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+      }
+
+      const updatedComment =
+        updatedPost.comments.id(
+          commentId
+        );
+
+      if (
+        !isLiked &&
+        !sameId(
+          comment.user,
+          userId
+        )
+      ) {
+
+        await createNotification({
+
+          req,
+
+          recipient:
+            comment.user,
+
+          sender:
+            userId,
+
+          type:
+            'comment_like',
+
+          referenceId:
+            post._id,
+
+          text:
+            'Поставил лайк вашему комментарию'
+
+        });
+
+      }
+
+      res.json({
+
+        success:
+          true,
+
+        isLiked:
+          !isLiked,
+
+        comment:
+          updatedComment
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        '❌ Ошибка лайка комментария:',
+        error
+      );
+
+      if (
+        error.name ===
+        'CastError'
+      ) {
+
+        return res.status(404).json({
+          message:
+            'Пост или комментарий не найден'
+        });
+      }
+
+      res.status(500).json({
+        message:
+          error.message
+      });
+    }
+  };
+
+
+// =========================================================
+// ADD REPLY
+// =========================================================
+
+exports.addCommentReply =
+  async (
+    req,
+    res
+  ) => {
+
+    try {
+
+      const {
+        postId,
+        commentId
+      } = req.params;
+
+      const {
+        text = ''
+      } = req.body;
+
+      const trimmed =
+        text.trim();
+
+      if (!trimmed) {
+
+        return res.status(400).json({
+          message:
+            'Ответ пустой'
+        });
+      }
+
+      const newReply = {
+
+        user:
+          req.user._id,
+
+        text:
+          trimmed
+      };
+
+      const updatedPost =
+        await Post.findOneAndUpdate(
+
+          {
+            _id:
+              postId,
+
+            'comments._id':
+              commentId
+          },
+
+          {
+            $push: {
+              'comments.$.replies':
+                newReply
+            }
+          },
+
+          {
+            new:
+              true
+          }
+
+        ).populate(
+          'comments.user comments.replies.user',
+          'username avatar isVerified'
+        );
+
+      if (!updatedPost) {
+
+        return res.status(404).json({
+          message:
+            'Пост или комментарий не найден'
+        });
+      }
+
+      const parentComment =
+        updatedPost.comments.id(
+          commentId
+        );
+
+      if (!parentComment) {
+
+        return res.status(404).json({
+          message:
+            'Комментарий не найден'
+        });
+      }
+
+      const addedReply =
+        parentComment.replies[
+          parentComment.replies.length - 1
+        ];
+
+
+      if (
+        !sameId(
+          parentComment.user,
+          req.user._id
+        )
+      ) {
+
+        await createNotification({
+
+          req,
+
+          recipient:
+            parentComment.user,
+
+          sender:
+            req.user._id,
+
+          type:
+            'reply',
+
+          referenceId:
+            updatedPost._id,
+
+          text:
+            'Ответил на ваш комментарий'
+
+        });
+
+      }
+
+      res.status(201).json({
+
+        success:
+          true,
+
+        reply:
+          addedReply,
+
+        commentId
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        '❌ Ошибка добавления ответа:',
+        error
+      );
+
+      if (
+        error.name ===
+        'CastError'
+      ) {
+
+        return res.status(404).json({
+          message:
+            'Пост или комментарий не найден'
+        });
+      }
+
+      res.status(500).json({
+        message:
+          error.message
+      });
+    }
+  };
+
+
+// =========================================================
+// EDIT COMMENT / REPLY
+// =========================================================
+
+exports.editComment =
+  async (
+    req,
+    res
+  ) => {
+
+    try {
+
+      const {
+        postId,
+        commentId
+      } = req.params;
+
+      const {
+        text = '',
+        isReply = false
+      } = req.body;
+
+      const trimmed =
+        text.trim();
+
+      if (!trimmed) {
+
+        return res.status(400).json({
+          message:
+            'Текст не может быть пустым'
+        });
+      }
+
+      const post =
+        await Post.findById(
+          postId
+        );
+
+      if (!post) {
+
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+      }
+
+      let targetComment =
+        null;
+
+      if (isReply) {
+
+        for (
+          const comment
+          of post.comments
+        ) {
+
+          const reply =
+            comment.replies.id(
+              commentId
+            );
+
+          if (reply) {
+
+            targetComment =
+              reply;
+
+            break;
+          }
+        }
+
+      } else {
+
+        targetComment =
+          post.comments.id(
+            commentId
+          );
+      }
+
+      if (!targetComment) {
+
+        return res.status(404).json({
+          message:
+            isReply
+              ? 'Ответ не найден'
+              : 'Комментарий не найден'
+        });
+      }
+
+      if (
+        !sameId(
+          targetComment.user,
+          req.user._id
+        ) &&
+        !req.user.isAdmin
+      ) {
+
+        return res.status(403).json({
+          message:
+            isReply
+              ? 'Вы не можете редактировать чужой ответ'
+              : 'Вы не можете редактировать чужой комментарий'
+        });
+      }
+
+      targetComment.text =
+        trimmed;
+
+      await post.save();
+
+      await post.populate(
+        'comments.user comments.replies.user',
+        'username avatar isVerified'
+      );
+
+      let updatedComment =
+        null;
+
+      if (isReply) {
+
+        for (
+          const comment
+          of post.comments
+        ) {
+
+          const reply =
+            comment.replies.id(
+              commentId
+            );
+
+          if (reply) {
+
+            updatedComment =
+              reply;
+
+            break;
+          }
+        }
+
+      } else {
+
+        updatedComment =
+          post.comments.id(
+            commentId
+          );
+      }
+
+      res.json({
+
+        success:
+          true,
+
+        comment:
+          updatedComment
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        '❌ Ошибка редактирования:',
+        error
+      );
+
+      if (
+        error.name ===
+        'CastError'
+      ) {
+
+        return res.status(404).json({
+          message:
+            'Пост или комментарий не найден'
+        });
+      }
+
+      res.status(500).json({
+        message:
+          error.message
+      });
+    }
+  };
+
+
+// =========================================================
+// DELETE COMMENT / REPLY
+// =========================================================
+
+exports.deleteComment =
+  async (
+    req,
+    res
+  ) => {
+
+    try {
+
+      const {
+        postId,
+        commentId
+      } = req.params;
+
+      const {
+        isReply = false
+      } = req.body;
+
+      const post =
+        await Post.findById(
+          postId
+        );
+
+      if (!post) {
+
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+      }
+
+      if (isReply) {
+
+        let parentComment =
+          null;
+
+        let reply =
+          null;
+
+        for (
+          const comment
+          of post.comments
+        ) {
+
+          const found =
+            comment.replies.id(
+              commentId
+            );
+
+          if (found) {
+
+            parentComment =
+              comment;
+
+            reply =
+              found;
+
+            break;
+          }
+        }
+
+        if (
+          !reply ||
+          !parentComment
+        ) {
+
+          return res.status(404).json({
+            message:
+              'Ответ не найден'
+          });
+        }
+
+        if (
+          !sameId(
+            reply.user,
+            req.user._id
+          ) &&
+          !req.user.isAdmin
+        ) {
+
+          return res.status(403).json({
+            message:
+              'Вы не можете удалить чужой ответ'
+          });
+        }
+
+        parentComment.replies.pull(
+          commentId
+        );
+
+      } else {
+
+        const comment =
+          post.comments.id(
+            commentId
+          );
+
+        if (!comment) {
+
+          return res.status(404).json({
+            message:
+              'Комментарий не найден'
+          });
+        }
+
+        if (
+          !sameId(
+            comment.user,
+            req.user._id
+          ) &&
+          !req.user.isAdmin
+        ) {
+
+          return res.status(403).json({
+            message:
+              'Вы не можете удалить чужой комментарий'
+          });
+        }
+
+        post.comments.pull(
+          commentId
+        );
+      }
+
+      await post.save();
+
+      res.json({
+        success:
+          true
+      });
+
+    } catch (error) {
+
+      console.error(
+        '❌ Ошибка удаления:',
+        error
+      );
+
+      if (
+        error.name ===
+        'CastError'
+      ) {
+
+        return res.status(404).json({
+          message:
+            'Пост или комментарий не найден'
+        });
+      }
+
+      res.status(500).json({
+        message:
+          error.message
+      });
+    }
+  };
+
+
+// =========================================================
+// UPDATE POST
+// =========================================================
+
+exports.updatePost =
+  async (
+    req,
+    res
+  ) => {
+
+    try {
+
+      const post =
+        await Post.findById(
+          req.params.id
+        );
+
+      if (!post) {
+
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+      }
+
+      if (
+        !sameId(
+          post.user,
+          req.user._id
+        ) &&
+        !req.user.isAdmin
+      ) {
+
+        return res.status(403).json({
+          message:
+            'Нет прав для редактирования'
+        });
+      }
+
+      const {
+        content
+      } = req.body;
+
+      if (
+        content !== undefined
+      ) {
+
+        post.content =
+          content;
+      }
+
+      if (req.file) {
+
+        const b64 =
+          Buffer
+            .from(
+              req.file.buffer
+            )
+            .toString(
+              'base64'
+            );
+
+        const dataURI =
+          `data:${req.file.mimetype};base64,${b64}`;
+
+        const result =
+          await cloudinary.uploader.upload(
+            dataURI,
+            {
+              folder:
+                'lume_posts',
+
+              resource_type:
+                'auto'
+            }
+          );
+
+        post.mediaUrl =
+          result.secure_url;
+
+        post.mediaType =
+          result.resource_type ===
+          'video'
+            ? 'video'
+            : 'image';
+      }
+
+      await post.save();
+
+      await post.populate([
+        {
+          path:
+            'user',
+
+          select:
+            'username avatar isVerified'
+        },
+
+        {
+          path:
+            'comments.user',
+
+          select:
+            'username avatar isVerified'
+        },
+
+        {
+          path:
+            'comments.replies.user',
+
+          select:
+            'username avatar isVerified'
+        }
+      ]);
+
+      res.json(
+        getProcessedPost(
+          post,
+          req.user._id
+        )
+      );
+
+    } catch (error) {
+
+      console.error(
+        '❌ Ошибка обновления поста:',
+        error
+      );
+
+      if (
+        error.name ===
+        'CastError'
+      ) {
+
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+      }
+
+      res.status(500).json({
+        message:
+          error.message
+      });
+    }
+  };
+
+
+// =========================================================
+// DELETE POST
+// =========================================================
+
+exports.deletePost =
+  async (
+    req,
+    res
+  ) => {
+
+    try {
+
+      const postId =
+        req.params.id;
+
+      console.log(
+        '================================'
+      );
+
+      console.log(
+        'DELETE POST HIT'
+      );
+
+      console.log(
+        'METHOD:',
+        req.method
+      );
+
+      console.log(
+        'URL:',
+        req.originalUrl
+      );
+
+      console.log(
+        'POST ID:',
+        postId
+      );
+
+      console.log(
+        'USER ID:',
+        req.user?._id?.toString()
+      );
+
+      const post =
+        await Post.findById(
+          postId
+        );
+
+      console.log(
+        'POST FOUND:',
+        post
+          ? {
+              _id:
+                post._id.toString(),
+
+              user:
+                post.user.toString()
+            }
+          : null
+      );
+
+      if (!post) {
+
+        console.log(
+          '❌ POST NOT FOUND'
+        );
+
+        return res.status(404).json({
+          message:
+            'Пост не найден',
+
+          postId
+        });
+      }
+
+      if (
+        post.user.toString() !==
+          req.user._id.toString() &&
+        !req.user.isAdmin
+      ) {
+
+        console.log(
+          '❌ NO PERMISSION'
+        );
+
+        return res.status(403).json({
+          message:
+            'Нет прав для удаления этого поста'
+        });
+      }
+
+      await post.deleteOne();
+
+      console.log(
+        '✅ POST DELETED:',
+        postId
+      );
+
+      console.log(
+        '================================'
+      );
+
+      res.json({
+
+        success:
+          true,
+
+        message:
+          'Пост удалён',
+
+        postId
+      });
+
+    } catch (error) {
+
+      console.error(
+        '❌ DELETE POST ERROR:',
+        error
+      );
+
+      if (
+        error.name ===
+        'CastError'
+      ) {
+
+        return res.status(404).json({
+          message:
+            'Пост не найден'
+        });
+      }
+
+      res.status(500).json({
+        message:
+          error.message
+      });
+    }
+  };
